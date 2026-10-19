@@ -91,7 +91,7 @@ struct MenuBarPanelView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: Formatters.bytes(snapshot.totalSize))
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .monospacedDigit()
                     Text(verbatim: headerSubtitle)
                         .font(.system(size: 11))
@@ -166,7 +166,7 @@ struct MenuBarPanelView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                 Text(verbatim: value)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .monospacedDigit()
             }
             Text(verbatim: label)
