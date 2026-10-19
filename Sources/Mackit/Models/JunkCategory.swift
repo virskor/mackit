@@ -14,6 +14,9 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
     case python
     case pods
     case ide
+    case browser
+    case language
+    case downloads
     case homebrew
     case system
     case trash
@@ -41,6 +44,9 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
         case .python: return "chevron.left.forwardslash.chevron.right"
         case .pods: return "shippingbox.fill"
         case .ide: return "puzzlepiece.extension.fill"
+        case .browser: return "globe"
+        case .language: return "character.book.closed.fill"
+        case .downloads: return "tray.and.arrow.down.fill"
         case .homebrew: return "mug.fill"
         case .system: return "internaldrive.fill"
         case .trash: return "trash.fill"
@@ -62,6 +68,9 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
         case .python: return .yellow
         case .pods: return .brown
         case .ide: return .pink
+        case .browser: return .blue
+        case .language: return .mint
+        case .downloads: return .orange
         case .homebrew: return .red
         case .system: return .gray
         case .trash: return .secondary
@@ -87,11 +96,27 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
         case .python: return 9
         case .pods: return 10
         case .ide: return 11
-        case .homebrew: return 12
-        case .system: return 13
-        case .trash: return 14
+        case .browser: return 12
+        case .language: return 13
+        case .downloads: return 14
+        case .homebrew: return 15
+        case .system: return 16
+        case .trash: return 17
         }
     }
 
     static let ordered: [JunkCategory] = allCases.sorted { $0.sortOrder < $1.sortOrder }
+
+    /// Which cleanup feature this category belongs to. The two audiences never
+    /// share a category: toolchain caches are meaningless to a general user,
+    /// and browser junk is noise to a developer mid-build. The partition also
+    /// guarantees no path is cleaned by both features.
+    var scope: CleanupScope {
+        switch self {
+        case .apps, .projects, .xcode, .simulator, .android, .go, .node, .flutter, .rust, .python, .pods, .ide, .homebrew:
+            return .developer
+        case .browser, .language, .downloads, .system, .trash:
+            return .general
+        }
+    }
 }

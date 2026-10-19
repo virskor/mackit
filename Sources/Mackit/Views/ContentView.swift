@@ -29,10 +29,11 @@ struct ContentView: View {
             // becomes the card's inner padding — the content shrinks in, while
             // the card itself still hugs the sidebar and the window's right edge.
             VStack(spacing: 0) {
-                // The settings and hardware pages have their own headers; the
-                // main toolbar's scan / clean actions are unrelated to them, so
-                // it is hidden entirely, leaving only the page content.
-                if !vm.showsSettings && !vm.showsHardware {
+                // The settings, hardware and general cleanup pages have their
+                // own headers; the main toolbar's scan / clean actions are
+                // unrelated to them, so it is hidden entirely, leaving only
+                // the page content.
+                if !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup {
                     ContentToolbarRow()
                     Divider()
                 }
@@ -84,14 +85,17 @@ struct ContentView: View {
 
     @ViewBuilder
     private var detail: some View {
-        // When the sidebar's hardware detection / settings row is selected, the
-        // detail area switches entirely to the corresponding embedded page
-        // (within the same window, not a separate window); clicking back or any
-        // category row returns to the cleanable items content.
+        // When the sidebar's hardware detection / settings / general cleanup
+        // row is selected, the detail area switches entirely to the
+        // corresponding embedded page (within the same window, not a separate
+        // window); clicking back or any category row returns to the cleanable
+        // items content.
         if vm.showsHardware {
             HardwareView()
         } else if vm.showsSettings {
             SettingsView()
+        } else if vm.showsGeneralCleanup {
+            GeneralCleanupView()
         } else {
             switch vm.cleanPhase {
             case .done:

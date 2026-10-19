@@ -158,7 +158,7 @@ struct MackitApp: App {
 
                 Button(L10n.tr("menu.scan.cleanSelected")) { vm.requestClean() }
                     .keyboardShortcut(.delete, modifiers: .command)
-                    .disabled(vm.selection.isEmpty)
+                    .disabled(vm.scopeSelectedItems.isEmpty)
             }
 
             CommandGroup(after: .sidebar) {

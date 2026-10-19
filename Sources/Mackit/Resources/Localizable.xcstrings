@@ -9769,6 +9769,1084 @@
           }
         }
       }
+    },
+    "category.browser.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览器缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browser Caches"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "瀏覽器快取"
+          }
+        }
+      }
+    },
+    "category.browser.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装浏览器的网页缓存与脚本缓存，退出浏览器后清理更彻底"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web and script caches of installed browsers; quit them first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安裝瀏覽器的網頁快取與指令碼快取，退出瀏覽器後清理更徹底"
+          }
+        }
+      }
+    },
+    "category.language.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无用语言包"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unused Language Files"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無用語言包"
+          }
+        }
+      }
+    },
+    "category.language.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用内置的非中英语言包，删除后界面回退为英文，重装应用可恢复"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localizations bundled inside apps for languages you do not use; apps fall back to English and reinstalling restores them"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "應用內建的非中英語言包，刪除後介面回復為英文，重新安裝應用可復原"
+          }
+        }
+      }
+    },
+    "category.downloads.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载目录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloads"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下載目錄"
+          }
+        }
+      }
+    },
+    "category.downloads.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载目录中的旧安装包和压缩包，清理前请确认不再需要"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Old installers and archives sitting in your Downloads folder; confirm you no longer need them"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下載目錄中的舊安裝包和壓縮檔，清理前請確認不再需要"
+          }
+        }
+      }
+    },
+    "rule.browser.chrome-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome 快取"
+          }
+        }
+      }
+    },
+    "rule.browser.chrome-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome（含 Beta / Dev / Canary 各版本）的网页缓存，建议退出 Chrome 后清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web cache of Chrome and its Beta / Dev / Canary channels; quit Chrome first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome（含 Beta / Dev / Canary 各版本）的網頁快取，建議退出 Chrome 後清理"
+          }
+        }
+      }
+    },
+    "rule.browser.chrome-code-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome 代码缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome Code Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome 程式碼快取"
+          }
+        }
+      }
+    },
+    "rule.browser.chrome-code-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome 编译后的 JavaScript 缓存，重新访问网页即可生成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome's compiled JavaScript cache; regenerated as you browse"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrome 編譯後的 JavaScript 快取，重新瀏覽網頁即可產生"
+          }
+        }
+      }
+    },
+    "rule.browser.chromium-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium 快取"
+          }
+        }
+      }
+    },
+    "rule.browser.chromium-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium 开源版的网页缓存，建议退出浏览器后清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web cache of open-source Chromium; quit the browser first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium 開源版的網頁快取，建議退出瀏覽器後清理"
+          }
+        }
+      }
+    },
+    "rule.browser.edge-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edge 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edge Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edge 快取"
+          }
+        }
+      }
+    },
+    "rule.browser.edge-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microsoft Edge 的网页缓存，建议退出浏览器后清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web cache of Microsoft Edge; quit the browser first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microsoft Edge 的網頁快取，建議退出瀏覽器後清理"
+          }
+        }
+      }
+    },
+    "rule.browser.edge-code-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edge 代码缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edge Code Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edge 程式碼快取"
+          }
+        }
+      }
+    },
+    "rule.browser.edge-code-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microsoft Edge 编译后的 JavaScript 缓存，重新访问网页即可生成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microsoft Edge's compiled JavaScript cache; regenerated as you browse"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microsoft Edge 編譯後的 JavaScript 快取，重新瀏覽網頁即可產生"
+          }
+        }
+      }
+    },
+    "rule.browser.brave-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave 快取"
+          }
+        }
+      }
+    },
+    "rule.browser.brave-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave 浏览器的网页缓存，建议退出浏览器后清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web cache of the Brave browser; quit it first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave 瀏覽器的網頁快取，建議退出瀏覽器後清理"
+          }
+        }
+      }
+    },
+    "rule.browser.arc-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc 快取"
+          }
+        }
+      }
+    },
+    "rule.browser.arc-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc 浏览器的网页缓存，建议退出浏览器后清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web cache of the Arc browser; quit it first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc 瀏覽器的網頁快取，建議退出瀏覽器後清理"
+          }
+        }
+      }
+    },
+    "rule.browser.opera-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera 快取"
+          }
+        }
+      }
+    },
+    "rule.browser.opera-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera 浏览器的网页缓存，建议退出浏览器后清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web cache of the Opera browser; quit it first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera 瀏覽器的網頁快取，建議退出瀏覽器後清理"
+          }
+        }
+      }
+    },
+    "rule.browser.firefox-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firefox 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firefox Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firefox 快取"
+          }
+        }
+      }
+    },
+    "rule.browser.firefox-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firefox 各配置文件的缓存数据，建议退出浏览器后清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cache data of every Firefox profile; quit the browser first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firefox 各設定檔的快取資料，建議退出瀏覽器後清理"
+          }
+        }
+      }
+    },
+    "rule.browser.qqbrowser-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ 浏览器缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ Browser Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ 瀏覽器快取"
+          }
+        }
+      }
+    },
+    "rule.browser.qqbrowser-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ 浏览器的网页缓存，建议退出浏览器后清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web cache of QQ Browser; quit it first for a complete sweep"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ 瀏覽器的網頁快取，建議退出瀏覽器後清理"
+          }
+        }
+      }
+    },
+    "rule.system.itunes-ipsw.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 固件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS Firmware"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 韌體"
+          }
+        }
+      }
+    },
+    "rule.system.itunes-ipsw.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过 iTunes 或访达下载的系统固件文件，需要时可以重新下载"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System firmware downloaded through iTunes or Finder; re-downloadable when needed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "透過 iTunes 或 Finder 下載的系統韌體檔案，需要時可以重新下載"
+          }
+        }
+      }
+    },
+    "language.item.detail": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 内置的语言包"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundled inside %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 內建的語言包"
+          }
+        }
+      }
+    },
+    "downloads.installer.detail": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载目录中的安装包，清理前请确认不再需要"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installer from your Downloads folder; confirm you no longer need it"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下載目錄中的安裝包，清理前請確認不再需要"
+          }
+        }
+      }
+    },
+    "downloads.archive.detail": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载目录中的压缩包，清理前请确认不再需要"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive from your Downloads folder; confirm you no longer need it"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下載目錄中的壓縮檔，清理前請確認不再需要"
+          }
+        }
+      }
+    },
+    "scan.languageFiles": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在扫描应用语言包…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning app language files…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在掃描應用語言包…"
+          }
+        }
+      }
+    },
+    "scan.downloads": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在扫描下载目录…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning Downloads…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在掃描下載目錄…"
+          }
+        }
+      }
+    },
+    "scope.developer.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开发缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developer"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開發快取"
+          }
+        }
+      }
+    },
+    "scope.developer.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode、模拟器、各语言包管理器等开发工具的缓存与构建产物"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caches and build artifacts of developer tools: Xcode, simulators, package managers"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode、模擬器、各語言套件管理器等開發工具的快取與建置產物"
+          }
+        }
+      }
+    },
+    "scope.general.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常规清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般清理"
+          }
+        }
+      }
+    },
+    "scope.general.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览器缓存、无用语言包、下载目录、系统缓存与废纸篓"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browser caches, unused language files, Downloads, system caches and the Trash"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "瀏覽器快取、無用語言包、下載目錄、系統快取與垃圾桶"
+          }
+        }
+      }
+    },
+    "sidebar.generalCleanup": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常规清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General Cleanup"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般清理"
+          }
+        }
+      }
+    },
+    "general.header.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可清理文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cleanable files"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可清理檔案"
+          }
+        }
+      }
+    },
+    "general.header.none": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未发现可清理文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing to clean"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未發現可清理檔案"
+          }
+        }
+      }
+    },
+    "general.header.start": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始扫描"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start Scan"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開始掃描"
+          }
+        }
+      }
+    },
+    "general.group.system": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统垃圾"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System Junk"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系統垃圾"
+          }
+        }
+      }
+    },
+    "general.group.browser": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上网垃圾"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browsing Junk"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上網垃圾"
+          }
+        }
+      }
+    },
+    "general.group.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %1$@，已选择 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ total, %2$@ selected"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %1$@，已選擇 %2$@"
+          }
+        }
+      }
+    },
+    "general.badge.veryClean": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "很干净"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Very clean"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "很乾淨"
+          }
+        }
+      }
+    },
+    "general.badge.recommended": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建议清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommended"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建議清理"
+          }
+        }
+      }
+    },
+    "general.badge.caution": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "谨慎清理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caution"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "謹慎清理"
+          }
+        }
+      }
+    },
+    "general.row.downloads.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载的安装包与压缩包"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded Installers & Archives"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下載的安裝包與壓縮檔"
+          }
+        }
+      }
+    },
+    "general.row.downloads.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理前请确认下载中的文件都是可删除的"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm you no longer need the files sitting in your Downloads folder"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理前請確認下載中的檔案都是可刪除的"
+          }
+        }
+      }
     }
   }
 }

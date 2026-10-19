@@ -34,6 +34,21 @@ final class AppViewModel {
 
     /// The category selected in the sidebar; nil means all.
     var selectedCategory: JunkCategory? = nil
+    /// The general cleanup page is selected in the sidebar: the detail area
+    /// switches to the Lemon-style general module and no longer shows the
+    /// developer cleanup content.
+    var showsGeneralCleanup: Bool = false
+    /// Which cleanup feature the main window is currently showing. Only
+    /// affects what the window browses and cleans; the tray panel always
+    /// reports both features combined, and its one-click clean sweeps
+    /// everything safe.
+    var cleanupScope: CleanupScope {
+        showsGeneralCleanup ? .general : .developer
+    }
+
+    /// The mode a pending confirmation will clean, nil meaning every mode
+    /// (the tray one-click path). Set when entering `.confirming`.
+    private var pendingCleanScope: CleanupScope? = nil
     var searchText: String = ""
     /// Current sort: field + direction. Header clicks rewrite this value
     /// directly via SwiftUI, while the toolbar menu writes an `ItemSort`
@@ -448,11 +463,14 @@ final class AppViewModel {
     /// Check all safe items and enter confirmation. When the selection is
     /// non-empty, keep the user's current selection, consistent with the
     /// semantics of the old "tray clean".
+    ///
+    /// Always spans both modes: the tray has no mode of its own, and its
+    /// clean is the one-click "sweep everything safe" gesture.
     private func beginCleanFromRemote() {
         if selection.isEmpty {
-            selectAllSafe()
+            selectAllSafe(allScopes: true)
         }
-        requestClean()
+        requestClean(allScopes: true)
     }
 
     /// After the scan ends (including cancellation), clear the pending
@@ -495,7 +513,7 @@ final class AppViewModel {
             totalSize: totalSize,
             itemCount: items.count,
             selectedCount: selection.count,
-            selectedSize: selectedSize
+            selectedSize: selectionStats.globalSize
         )
     }
 
@@ -613,6 +631,7 @@ final class AppViewModel {
     private struct VisibleKey: Equatable {
         let items: Int
         let category: JunkCategory?
+        let scope: CleanupScope
         let safeOnly: Bool
         let search: String
         let sort: JunkItemComparator
@@ -621,6 +640,7 @@ final class AppViewModel {
     private struct StatsKey: Equatable {
         let items: Int
         let selection: Int
+        let scope: CleanupScope?
     }
 
     private struct CategoryStats {
@@ -631,6 +651,9 @@ final class AppViewModel {
 
     private struct SelectionStats {
         let size: Int64
+        /// Every selected item's size, both modes combined: what the tray
+        /// panel reports (its clean sweeps every mode).
+        let globalSize: Int64
         let items: [JunkItem]
         let maxRisk: RiskLevel
     }
@@ -651,6 +674,7 @@ final class AppViewModel {
     @ObservationIgnored private var visibleCache: (key: VisibleKey, value: [JunkItem])?
     @ObservationIgnored private var categoryCache: (key: Int, value: CategoryStats)?
     @ObservationIgnored private var selectionCache: (key: StatsKey, value: SelectionStats)?
+    @ObservationIgnored private var generalGroupsCache: (key: (Int, Int), value: [GeneralRuleGroupState])?
 
     /// items changed: both the visible list and category stats are
     /// invalidated.
@@ -665,6 +689,7 @@ final class AppViewModel {
         let key = VisibleKey(
             items: itemsRevision,
             category: selectedCategory,
+            scope: cleanupScope,
             safeOnly: safeOnly,
             search: searchText,
             sort: sortComparator
@@ -681,7 +706,30 @@ final class AppViewModel {
 
     var categoryCounts: [JunkCategory: Int] { categoryStats.counts }
 
+    /// Grand total across both modes: what the tray panel reports.
     var totalSize: Int64 { categoryStats.totalSize }
+
+    /// Total size of the developer feature's items: what the sidebar's "all
+    /// items" row reports.
+    var developerTotalSize: Int64 {
+        categoryStats.totals.reduce(0) { $0 + ($1.key.scope == .developer ? $1.value : 0) }
+    }
+
+    /// Item count of the developer feature.
+    var developerItemCount: Int {
+        categoryStats.counts.reduce(0) { $0 + ($1.key.scope == .developer ? $1.value : 0) }
+    }
+
+    /// The categories the main window's list offers, in sidebar order,
+    /// including empty ones only while selected (so the filter row does not
+    /// vanish from under the cursor). Always the developer feature's: the
+    /// general module lives on its own page.
+    var developerCategories: [JunkCategory] {
+        JunkCategory.ordered.filter { category in
+            category.scope == .developer
+                && (categoryCounts[category, default: 0] > 0 || category == selectedCategory)
+        }
+    }
 
     private var categoryStats: CategoryStats {
         if let cached = categoryCache, cached.key == itemsRevision { return cached.value }
@@ -701,33 +749,137 @@ final class AppViewModel {
     /// The size of the currently selected items.
     var selectedSize: Int64 { selectionStats.size }
 
+    /// The items a pending confirmation will clean: the selection filtered
+    /// by the mode the clean was requested for (nil = every mode, the tray
+    /// one-click path). This is what the confirmation dialog lists and what
+    /// the clean engine receives.
     var selectedItems: [JunkItem] { selectionStats.items }
 
     /// The highest risk level among the selected items, used for the
     /// warning style of the confirmation dialog.
     var selectedMaxRisk: RiskLevel { selectionStats.maxRisk }
 
+    /// Selected items and size within the mode the window is currently
+    /// showing: what the toolbar's clean button reports.
+    var scopeSelectedItems: [JunkItem] {
+        selectionStats.items.filter { $0.category.scope == cleanupScope }
+    }
+
+    var scopeSelectedSize: Int64 {
+        scopeSelectedItems.reduce(0) { $0 + $1.size }
+    }
+
     private var selectionStats: SelectionStats {
-        let key = StatsKey(items: itemsRevision, selection: selectionRevision)
+        let key = StatsKey(items: itemsRevision, selection: selectionRevision, scope: pendingCleanScope)
         if let cached = selectionCache, cached.key == key { return cached.value }
         var size: Int64 = 0
+        var globalSize: Int64 = 0
         var maxRisk: RiskLevel?
         var selected: [JunkItem] = []
         selected.reserveCapacity(selection.count)
         for item in items where selection.contains(item.id) {
+            globalSize += item.size
+            if let scope = pendingCleanScope, item.category.scope != scope { continue }
             size += item.size
             if let current = maxRisk, item.risk > current { maxRisk = item.risk }
             else if maxRisk == nil { maxRisk = item.risk }
             selected.append(item)
         }
-        let value = SelectionStats(size: size, items: selected, maxRisk: maxRisk ?? .safe)
+        let value = SelectionStats(size: size, globalSize: globalSize, items: selected, maxRisk: maxRisk ?? .safe)
         selectionCache = (key, value)
         return value
     }
 
+    // MARK: - General Cleanup Page
+
+    /// One row of the general cleanup page with its found items rolled up.
+    struct GeneralRuleRowState {
+        let row: GeneralRuleRow
+        let items: [JunkItem]
+        let size: Int64
+        let selectedCount: Int
+        let selectedSize: Int64
+
+        /// All of the row's items are checked (an empty row is not "selected").
+        var isFullySelected: Bool { !items.isEmpty && selectedCount == items.count }
+        var isPartiallySelected: Bool { selectedCount > 0 && selectedCount < items.count }
+    }
+
+    /// One group of the general cleanup page.
+    struct GeneralRuleGroupState: Identifiable {
+        let group: GeneralCleanGroup
+        let rows: [GeneralRuleRowState]
+        let totalSize: Int64
+        let selectedSize: Int64
+
+        var id: String { group.rawValue }
+    }
+
+    /// The general cleanup page's content: every layout row, with the items
+    /// found for it rolled up (possibly none — the row still shows, with its
+    /// safety badge, so the page reads as the full checklist of what Mackit
+    /// checks).
+    var generalCleanGroups: [GeneralRuleGroupState] {
+        let key = (itemsRevision, selectionRevision)
+        if let cached = generalGroupsCache, cached.key == key { return cached.value }
+        let value = buildGeneralGroups()
+        generalGroupsCache = (key, value)
+        return value
+    }
+
+    /// Everything the general module found, selected or not: the big number
+    /// in the page header.
+    var generalTotalSize: Int64 {
+        generalCleanGroups.reduce(0) { $0 + $1.totalSize }
+    }
+
+    private func buildGeneralGroups() -> [GeneralRuleGroupState] {
+        var byRule: [String: [JunkItem]] = [:]
+        for item in items where item.category.scope == .general {
+            byRule[item.ruleID, default: []].append(item)
+        }
+        return GeneralCleanGroup.allCases.map { group in
+            let rows = GeneralCleanLayout.rows(of: group).map { row -> GeneralRuleRowState in
+                let rowItems = row.ruleIDs.flatMap { byRule[$0] ?? [] }
+                let selected = rowItems.filter { selection.contains($0.id) }
+                return GeneralRuleRowState(
+                    row: row,
+                    items: rowItems,
+                    size: rowItems.reduce(0) { $0 + $1.size },
+                    selectedCount: selected.count,
+                    selectedSize: selected.reduce(0) { $0 + $1.size }
+                )
+            }
+            return GeneralRuleGroupState(
+                group: group,
+                rows: rows,
+                totalSize: rows.reduce(0) { $0 + $1.size },
+                selectedSize: rows.reduce(0) { $0 + $1.selectedSize }
+            )
+        }
+    }
+
+    /// Checks or unchecks every item of a general-page row at once. One
+    /// selection write-back, not one per item: the row can carry hundreds of
+    /// language-file entries.
+    func setRowSelected(_ row: GeneralRuleRow, selected: Bool) {
+        var changed = false
+        for item in items where row.ruleIDs.contains(item.ruleID) {
+            if selected {
+                if selection.insert(item.id).inserted { changed = true }
+            } else if selection.remove(item.id) != nil {
+                changed = true
+            }
+        }
+        if changed {
+            selectionDidChange()
+            publishMenuSnapshot(force: true)
+        }
+    }
+
     /// Filters in a single pass, then sorts by the current sort mode.
     /// Search matching uses item.searchBlob (the whole text lowercased at
-    /// creation time), avoiding three lowercased() calls per item on every
+    /// the creation time), avoiding three lowercased() calls per item on every
     /// keystroke.
     ///
     /// Sorting itself is driven by SwiftUI's `Table(sortOrder:)`: header
@@ -740,6 +892,7 @@ final class AppViewModel {
 
         for item in items {
             if let selectedCategory, item.category != selectedCategory { continue }
+            if item.category.scope != cleanupScope { continue }
             if safeOnly, item.risk != .safe { continue }
             if !needle.isEmpty, !item.searchBlob.contains(needle) { continue }
             result.append(item)
@@ -812,6 +965,15 @@ final class AppViewModel {
             }
             guard !Task.isCancelled else { return }
 
+            // Language files and Downloads come after apps but before project
+            // directories: both enumerate only a couple of fixed directories
+            // and finish in about a second, while project roots can be huge
+            // and stay last.
+            await self.scanLanguageFiles()
+            guard !Task.isCancelled else { return }
+            await self.scanDownloads()
+            guard !Task.isCancelled else { return }
+
             // Scan custom project directories after the static rules, so
             // cache items show up as early as possible
             if !self.projectRoots.isEmpty {
@@ -831,8 +993,8 @@ final class AppViewModel {
             // time.
             if self.pendingCleanAfterScan {
                 self.pendingCleanAfterScan = false
-                self.selectAllSafe()
-                self.requestClean()
+                self.selectAllSafe(allScopes: true)
+                self.requestClean(allScopes: true)
             }
             if let startedAt = self.scanStartedAt {
                 let elapsed = MackitLog.duration(.now - startedAt)
@@ -868,12 +1030,24 @@ final class AppViewModel {
     }
 
     private func applyDefaultSelection(_ batch: [JunkItem]) {
-        // The none tier has no items eligible for auto-checking
-        guard let cap = autoSelectRisk.riskCap else { return }
+        // The general cleanup module is safe by default (Lemon's model): its
+        // safe and review rows arrive pre-checked, so the page reads as a
+        // checklist the user can accept in one click. The developer cleanup
+        // respects the user's auto-select setting instead, including "none".
         var changed = false
-        for item in batch where item.risk <= cap && !item.isUnknownSize {
-            selection.insert(item.id)
-            changed = true
+        for item in batch where !item.isUnknownSize {
+            let eligible: Bool
+            if item.category.scope == .general {
+                eligible = item.risk <= .review
+            } else if let cap = autoSelectRisk.riskCap {
+                eligible = item.risk <= cap
+            } else {
+                eligible = false
+            }
+            if eligible {
+                selection.insert(item.id)
+                changed = true
+            }
         }
         if changed { selectionDidChange() }
     }
@@ -924,8 +1098,12 @@ final class AppViewModel {
         publishMenuSnapshot(force: true)
     }
 
-    func selectAllSafe() {
-        for item in items where item.risk == .safe {
+    /// Checks every safe item. Defaults to the mode the window is currently
+    /// showing; the tray one-click clean passes `allScopes: true` so a
+    /// regular user's browser caches get swept even though the window last
+    /// sat in developer mode.
+    func selectAllSafe(allScopes: Bool = false) {
+        for item in items where item.risk == .safe && (allScopes || item.category.scope == cleanupScope) {
             selection.insert(item.id)
         }
         selectionDidChange()
@@ -944,6 +1122,17 @@ final class AppViewModel {
         selectedCategory = category
         showsSettings = false
         showsHardware = false
+        showsGeneralCleanup = false
+        if cleanPhase == .done { dismissCleanResult() }
+    }
+
+    /// Opens the general cleanup page from the sidebar.
+    func showGeneralCleanup() {
+        guard !showsGeneralCleanup else { return }
+        showsGeneralCleanup = true
+        selectedCategory = nil
+        showsSettings = false
+        showsHardware = false
         if cleanPhase == .done { dismissCleanResult() }
     }
 
@@ -951,12 +1140,16 @@ final class AppViewModel {
 
     // MARK: - Cleanup
 
-    func requestClean() {
+    /// Enters confirmation for the current mode's selection. The tray
+    /// one-click path passes `allScopes: true` to confirm across both
+    /// modes instead.
+    func requestClean(allScopes: Bool = false) {
         guard !selection.isEmpty else { return }
         // Cleaning must go through list confirmation first. There is
         // deliberately no "skip confirmation" toggle here: the cost of
         // mistakenly deleting caches/archives far outweighs clicking the
         // button one more time.
+        pendingCleanScope = allScopes ? nil : cleanupScope
         cleanPhase = .confirming
         publishMenuSnapshot(force: true)
     }
@@ -964,6 +1157,10 @@ final class AppViewModel {
     /// Cancel confirmation, returning to idle.
     func cancelConfirmation() {
         cleanPhase = .idle
+        // The clean intent only lives while a confirmation is pending; a
+        // stale one would keep filtering the selection stats after the user
+        // navigated on to the other feature's page.
+        pendingCleanScope = nil
         publishMenuSnapshot(force: true)
     }
 
@@ -1051,6 +1248,7 @@ final class AppViewModel {
                 selectionDidChange()
             }
             pendingRemoval = []
+            pendingCleanScope = nil
             publishMenuSnapshot(force: true)
         }
     }
@@ -1093,6 +1291,7 @@ final class AppViewModel {
         cleanProgress = 0
         cleanCurrentTitle = ""
         cleanStartedAt = nil
+        pendingCleanScope = nil
         cleanPhase = .idle
         publishMenuSnapshot(force: true)
     }
@@ -1364,13 +1563,70 @@ final class AppViewModel {
         mergeDiscovered(measured)
     }
 
+    // MARK: - Language File Scanning
+
+    /// Enumerates useless localization directories inside installed apps,
+    /// merging the results into the list.
+    ///
+    /// Same detached-task shape as `scanApps`: discovery walks every app
+    /// bundle's Resources directory, which must not run on the main thread.
+    func scanLanguageFiles() async {
+        progressLabel = L10n.tr("scan.languageFiles")
+
+        let measured = await Task.detached(priority: .utility) {
+            let discovered = LanguageFileScanner.scanLanguageFiles()
+            return await ScanEngine.measure(discovered)
+        }.value
+        if Task.isCancelled { return }
+        guard !measured.isEmpty else {
+            MackitLog.scan.info("语言包扫描：未发现可清理的语言包")
+            return
+        }
+        MackitLog.scan.info("语言包扫描：发现 \(measured.count, privacy: .public) 个语言包目录")
+
+        mergeDiscovered(measured)
+    }
+
+    // MARK: - Downloads Scanning
+
+    /// Enumerates installers and archives in the Downloads folder, merging
+    /// the results into the list. Items are `.caution`, so they never join a
+    /// default selection and always pass through the confirmation sheet.
+    func scanDownloads() async {
+        progressLabel = L10n.tr("scan.downloads")
+
+        let measured = await Task.detached(priority: .utility) {
+            let discovered = DownloadsScanner.scanDownloads()
+            return await ScanEngine.measure(discovered)
+        }.value
+        if Task.isCancelled { return }
+        guard !measured.isEmpty else {
+            MackitLog.scan.info("下载目录扫描：未发现安装包或压缩包")
+            return
+        }
+        MackitLog.scan.info("下载目录扫描：发现 \(measured.count, privacy: .public) 个安装包或压缩包")
+
+        mergeDiscovered(measured)
+    }
+
     /// Merges a batch of new items into the list, deduplicating by id
-    /// (shared by project scanning and app scanning). Visible within the
-    /// module so tests can drive it directly.
+    /// (shared by project scanning, app scanning, and the new scanners).
+    /// Visible within the module so tests can drive it directly.
     func mergeDiscovered(_ fresh: [JunkItem]) {
         guard !fresh.isEmpty else { return }
         let existing = Set(items.map(\.id))
-        let unique = fresh.filter { !existing.contains($0.id) }
+        // Path-level dedup on top of the id dedup: two rules can target the
+        // same path — an app's log directory is both a residue entry of the
+        // app scan and a child of the user-logs rule, and the same bytes
+        // must never be counted (or shown) twice. First one wins; the static
+        // rules stream in before the app scan, so the generic rule owns the
+        // path and the residue scan simply doesn't re-list it.
+        var seenPaths = Set(items.map(\.path))
+        var unique: [JunkItem] = []
+        for item in fresh where !existing.contains(item.id) && !item.path.isEmpty {
+            guard seenPaths.insert(item.path).inserted else { continue }
+            unique.append(item)
+        }
         guard !unique.isEmpty else { return }
 
         items.append(contentsOf: unique)
@@ -1400,7 +1656,10 @@ final class AppViewModel {
         next.formUnion(residueIDs(for: item))
         selection = next
         selectionDidChange()
-        requestClean()
+        // allScopes: apps live in the general mode, but this action is
+        // launched from a context menu row and targets exactly these items,
+        // whichever mode the window happens to be showing.
+        requestClean(allScopes: true)
     }
 
     /// Only clean an app's residue files, keeping the app bundle itself.
@@ -1410,7 +1669,7 @@ final class AppViewModel {
         guard !next.isEmpty else { return }
         selection = next
         selectionDidChange()
-        requestClean()
+        requestClean(allScopes: true)
     }
 
     /// Whether the selected items contain an app bundle (the confirmation

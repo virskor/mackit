@@ -1,23 +1,8 @@
 import SwiftUI
 
-/// Sidebar: category list + filter + storage info + settings entry.
+/// Sidebar: category list + filter + storage info + module entries.
 struct SidebarView: View {
     @Environment(AppViewModel.self) private var vm
-
-    private var orderedCategories: [JunkCategory] {
-        // The selected category keeps its row even with no items for now: at
-        // the start of a rescan items is cleared, and after cleaning empties a
-        // category, if that row disappeared along with it, the sidebar would
-        // show no trace of any selection, yet the main list would still filter
-        // by that category, showing "No Matching Items" — the empty state tells
-        // the user to "clear the category filter in the sidebar", but that row
-        // isn't in the sidebar at all, a dead end.
-        // Keeping it and highlighting it makes the filter state visible and
-        // cancellable.
-        JunkCategory.ordered.filter { category in
-            (vm.categoryCounts[category] ?? 0) > 0 || category == vm.selectedCategory
-        }
-    }
 
     var body: some View {
         @Bindable var vm = vm
@@ -29,14 +14,14 @@ struct SidebarView: View {
                     title: L10n.tr("sidebar.allItems"),
                     symbol: "square.stack.3d.up",
                     tint: .accentColor,
-                    count: vm.items.count,
-                    size: vm.totalSize
+                    count: vm.developerItemCount,
+                    size: vm.developerTotalSize
                 )
             }
 
-            if !orderedCategories.isEmpty {
+            if !vm.developerCategories.isEmpty {
                 Section(L10n.tr("sidebar.categories")) {
-                    ForEach(orderedCategories) { category in
+                    ForEach(vm.developerCategories) { category in
                         row(
                             category: category,
                             title: category.title,
@@ -48,18 +33,18 @@ struct SidebarView: View {
                     }
                 }
             }
-
             Section(L10n.tr("sidebar.filter")) {
                 Toggle(L10n.tr("sidebar.safeOnly"), isOn: $vm.safeOnly)
                     .toggleStyle(.checkbox)
                     .padding(.vertical, 2)
             }
 
-            // The settings and hardware detection entries sit at the very
-            // bottom of the list, sharing the same row style as the category
-            // rows; clicking switches the right detail area entirely to the
-            // corresponding embedded page, not a separate window.
+            // The module entries sit at the very bottom of the list, sharing
+            // the same row style as the category rows; clicking switches the
+            // right detail area entirely to the corresponding embedded page,
+            // not a separate window.
             Section {
+                generalCleanupRow
                 hardwareRow
                 settingsRow
             }
@@ -75,6 +60,30 @@ struct SidebarView: View {
             volumeFooter
         }
         .frame(minWidth: 232)
+    }
+
+    /// General cleanup entry row: opens the Lemon-style general module in the
+    /// detail area. Same pattern as the hardware row (button + listRowBackground),
+    /// without count and size — the module reports its own totals.
+    private var generalCleanupRow: some View {
+        Button {
+            vm.showGeneralCleanup()
+        } label: {
+            HStack(spacing: 8) {
+                CategoryIcon(symbol: "sparkles", tint: .orange, size: 12, width: 18)
+                Text(verbatim: L10n.tr("sidebar.generalCleanup"))
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+            }
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .listRowBackground(
+            vm.showsGeneralCleanup ? Color.accentColor.opacity(0.15) : Color.clear
+        )
+        .help(L10n.tr("scope.general.summary"))
     }
 
     private func row(
@@ -113,11 +122,11 @@ struct SidebarView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // When the settings / hardware page is active, no category row is
-        // allowed to stay highlighted: the sidebar has only one selected item
-        // at a time.
+        // When the settings / hardware / general cleanup page is active, no
+        // category row is allowed to stay highlighted: the sidebar has only
+        // one selected item at a time.
         .listRowBackground(
-            !vm.showsSettings && !vm.showsHardware && vm.selectedCategory == category
+            !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && vm.selectedCategory == category
                 ? Color.accentColor.opacity(0.15)
                 : Color.clear
         )

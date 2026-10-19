@@ -29,10 +29,13 @@ struct RulesCatalogTests {
     @Test func everyCategoryExceptProjectsHasStaticRules() {
         // .projects is produced dynamically by the custom project directory scan,
         // and .apps is produced dynamically by the app scan; neither goes through
-        // the static rule table
+        // the static rule table. .language (useless .lproj inside app bundles)
+        // and .downloads (installers in ~/Downloads) are produced by their own
+        // scanners, whose matching logic can't be expressed as static targets.
         let staticCategories = Set(RulesCatalog.scanRules.map(\.category))
             .union(RulesCatalog.cliRules.map(\.category))
-        for category in JunkCategory.allCases where category != .projects && category != .apps {
+        for category in JunkCategory.allCases
+        where category != .projects && category != .apps && category != .language && category != .downloads {
             #expect(staticCategories.contains(category), "\(category.rawValue) 没有任何规则")
         }
     }

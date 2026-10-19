@@ -66,12 +66,9 @@ enum RulesCatalog {
             target: .glob("~/Library/Developer/CoreSimulator/Devices/*/data/tmp/*"),
             risk: .safe
         ),
-        ScanRule(
-            id: "sim.logs",
-            category: .simulator,
-            target: .children("~/Library/Logs/CoreSimulator"),
-            risk: .safe
-        ),
+        // CoreSimulator's own logs are not listed here: they live under
+        // ~/Library/Logs/CoreSimulator, which the user-logs rule already
+        // covers as a child — listing both would count the same bytes twice.
         ScanRule(
             id: "sim.help",
             category: .simulator,
@@ -315,16 +312,13 @@ enum RulesCatalog {
             target: .glob("~/Library/Application Support/Code/Cache*"),
             risk: .safe
         ),
+        // CachedData has no rule of its own: the Cache* glob above already
+        // takes it as one entry, and its children are opaque hash names that
+        // read as noise in the list anyway.
         ScanRule(
             id: "ide.vscode-logs",
             category: .ide,
             target: .children("~/Library/Application Support/Code/logs"),
-            risk: .safe
-        ),
-        ScanRule(
-            id: "ide.vscode-cacheddata",
-            category: .ide,
-            target: .glob("~/Library/Application Support/Code/CachedData/*"),
             risk: .safe
         ),
         ScanRule(
@@ -340,6 +334,72 @@ enum RulesCatalog {
             risk: .safe
         ),
 
+        // MARK: Browsers
+        // Cache paths follow the Chromium convention (<vendor cache dir>/<profile>/Cache);
+        // Firefox keeps cache2 in the profile tree, so its whole cache root is taken instead.
+        // `com.apple.*` is absent by design: Safari's cache is TCC-protected on macOS 26+,
+        // where enumeration pops a system authorization dialog.
+        ScanRule(
+            id: "browser.chrome-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/Google/Chrome*/*/Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.chrome-code-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/Google/Chrome*/*/Code Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.chromium-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/Chromium/*/Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.edge-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/Microsoft Edge/*/Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.edge-code-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/Microsoft Edge/*/Code Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.brave-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/BraveSoftware/Brave-Browser/*/Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.arc-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/Arc/User Data/*/Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.opera-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/com.operasoftware.Opera/*/Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.firefox-cache",
+            category: .browser,
+            target: .children("~/Library/Caches/Firefox"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.qqbrowser-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/QQBrowser2/*/Cache"),
+            risk: .safe
+        ),
+
         // MARK: Homebrew
         ScanRule(
             id: "brew.cache",
@@ -349,18 +409,11 @@ enum RulesCatalog {
         ),
 
         // MARK: System & App Caches
-        ScanRule(
-            id: "system.user-caches",
-            category: .system,
-            target: .children("~/Library/Caches"),
-            risk: .review
-        ),
-        ScanRule(
-            id: "system.container-caches",
-            category: .system,
-            target: .glob("~/Library/Containers/*/Data/Library/Caches/*"),
-            risk: .review
-        ),
+        //
+        // No catch-all rule over ~/Library/Caches here on purpose: its children
+        // include the browser and IDE caches that dedicated rules already
+        // target, so the same bytes would be counted (and shown) twice. App
+        // caches are reached per-app through the residue scan instead.
         ScanRule(
             id: "system.logs",
             category: .system,
@@ -371,12 +424,6 @@ enum RulesCatalog {
             id: "system.crashreporter",
             category: .system,
             target: .children("~/Library/Application Support/CrashReporter"),
-            risk: .safe
-        ),
-        ScanRule(
-            id: "system.diagnostic",
-            category: .system,
-            target: .children("~/Library/Logs/DiagnosticReports"),
             risk: .safe
         ),
         ScanRule(
@@ -396,6 +443,12 @@ enum RulesCatalog {
             category: .system,
             target: .children("~/Library/Application Support/MobileSync/Backup"),
             risk: .caution
+        ),
+        ScanRule(
+            id: "system.itunes-ipsw",
+            category: .system,
+            target: .glob("~/Library/iTunes/*.ipsw"),
+            risk: .review
         ),
 
         // MARK: Trash

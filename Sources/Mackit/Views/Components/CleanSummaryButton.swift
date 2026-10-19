@@ -8,7 +8,11 @@ import SwiftUI
 struct CleanSummaryButton: View {
     @Environment(AppViewModel.self) private var vm
 
-    private var hasSelection: Bool { !vm.selection.isEmpty }
+    /// The current mode's selection: what this button will clean. The other
+    /// mode's checkmarks stay checked but are not this button's business.
+    private var scopeSelection: [JunkItem] { vm.scopeSelectedItems }
+
+    private var hasSelection: Bool { !scopeSelection.isEmpty }
 
     var body: some View {
         Button {
@@ -18,7 +22,7 @@ struct CleanSummaryButton: View {
                 Image(systemName: "trash")
                     .font(.system(size: 11, weight: .semibold))
                 if hasSelection {
-                    Text(verbatim: L10n.fmt("clean.buttonWithSize", Formatters.bytes(vm.selectedSize)))
+                    Text(verbatim: L10n.fmt("clean.buttonWithSize", Formatters.bytes(vm.scopeSelectedSize)))
                         .font(.system(size: 12, weight: .semibold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
@@ -34,10 +38,10 @@ struct CleanSummaryButton: View {
         .disabled(!hasSelection || vm.isBusy)
         .help(hasSelection
             ? L10n.fmt(
-                vm.selection.count == 1
+                scopeSelection.count == 1
                     ? "clean.helpSelected.one"
                     : "clean.helpSelected.other",
-                vm.selection.count
+                scopeSelection.count
             )
             : L10n.tr("clean.helpNoSelection"))
     }
