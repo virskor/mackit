@@ -93,6 +93,10 @@ final class AppViewModel {
     var autoSelectRisk: AutoSelectLevel = .none
     var moveToTrash: Bool = true
     var includeCLI: Bool = true
+    /// The general cleanup rows the user asked to remember, checked
+    /// automatically on every later scan. nil means "not set yet" and falls
+    /// back to the built-in default (safe + review rows pre-checked).
+    var generalSelectedRows: Set<String>? = nil
     /// Whether installed apps are enumerated in the main scan (the "Apps"
     /// category).
     var includeApps: Bool = true
@@ -1032,13 +1036,19 @@ final class AppViewModel {
     private func applyDefaultSelection(_ batch: [JunkItem]) {
         // The general cleanup module is safe by default (Lemon's model): its
         // safe and review rows arrive pre-checked, so the page reads as a
-        // checklist the user can accept in one click. The developer cleanup
+        // checklist the user can accept in one click. Once the user has
+        // saved a row selection (the "remember this" prompt), that saved
+        // selection replaces the built-in default. The developer cleanup
         // respects the user's auto-select setting instead, including "none".
         var changed = false
         for item in batch where !item.isUnknownSize {
             let eligible: Bool
             if item.category.scope == .general {
-                eligible = item.risk <= .review
+                if let saved = generalSelectedRows {
+                    eligible = saved.contains(Self.generalRowID(for: item))
+                } else {
+                    eligible = item.risk <= .review
+                }
             } else if let cap = autoSelectRisk.riskCap {
                 eligible = item.risk <= cap
             } else {
@@ -1050,6 +1060,68 @@ final class AppViewModel {
             }
         }
         if changed { selectionDidChange() }
+    }
+
+    /// The general-page row an item belongs to (for the saved-selection
+    /// setting). Items from an unknown rule id roll into no row and are
+    /// never remembered — the layout test keeps that from happening.
+    static func generalRowID(for item: JunkItem) -> String {
+        GeneralCleanLayout.rowID(forRuleID: item.ruleID) ?? ""
+    }
+
+    /// The rows the current selection checks on the general page.
+    private var selectedGeneralRows: Set<String> {
+        var rows: Set<String> = []
+        for item in items where item.category.scope == .general && selection.contains(item.id) {
+            rows.insert(Self.generalRowID(for: item))
+        }
+        return rows
+    }
+
+    /// Whether the general page's current selection differs from what the
+    /// next scan would pre-check — i.e. whether there is a new setting
+    /// worth remembering. The confirmation sheet uses this to decide
+    /// whether to show the "remember this selection" toggle.
+    func generalSelectionDiffersFromSaved() -> Bool {
+        selectedGeneralRows != defaultGeneralRows
+    }
+
+    /// Whether the confirmation sheet should offer to remember the general
+    /// page's row selection. Only for cleans launched from the general
+    /// module: the developer cleanup and the tray's one-click sweep have no
+    /// per-row selection of their own to remember.
+    var showsRememberGeneralPrompt: Bool {
+        pendingCleanScope == .general && generalSelectionDiffersFromSaved()
+    }
+
+    /// The general-page rows that currently have items — an empty row can be
+    /// neither checked nor "pre-checked next time".
+    private var generalRowsWithItems: Set<String> {
+        var rows: Set<String> = []
+        for item in items where item.category.scope == .general {
+            rows.insert(Self.generalRowID(for: item))
+        }
+        return rows
+    }
+
+    /// The rows the next scan would pre-check: the saved selection when set,
+    /// otherwise the built-in default (safe + review), either way restricted
+    /// to rows that currently have items.
+    private var defaultGeneralRows: Set<String> {
+        let eligible: Set<String>
+        if let saved = generalSelectedRows {
+            eligible = saved
+        } else {
+            eligible = Set(GeneralCleanLayout.rows.filter { $0.risk <= .review }.map(\.id))
+        }
+        return eligible.intersection(generalRowsWithItems)
+    }
+
+    /// Remembers the general page's current row selection, so every later
+    /// scan pre-checks exactly these rows.
+    func rememberGeneralSelection() {
+        generalSelectedRows = selectedGeneralRows
+        saveSettings()
     }
 
     func cancelScan() {
@@ -1415,6 +1487,13 @@ final class AppViewModel {
         if let value = values["includeApps"] as? Bool {
             includeApps = value
         }
+        // The remembered general-cleanup row selection. Absent (or empty)
+        // means "never saved" and falls back to the built-in default.
+        if let rows = values["generalSelectedRows"] as? [String], !rows.isEmpty {
+            generalSelectedRows = Set(rows)
+        } else {
+            generalSelectedRows = nil
+        }
         projectRoots = values["projectRoots"] as? [String] ?? []
         // The three monitoring toggles default to all on: the monitoring
         // section is a feature the user actively asks for, and defaulting
@@ -1443,6 +1522,8 @@ final class AppViewModel {
             "includeCLI": includeCLI,
             "includeApps": includeApps,
             "projectRoots": projectRoots,
+            // nil is stored as an absent key (plists have no null)
+            "generalSelectedRows": generalSelectedRows.map { Array($0) } ?? [],
             "showMenuBarCPU": showMenuBarCPU,
             "showMenuBarMemory": showMenuBarMemory,
             "showMenuBarTemperature": showMenuBarTemperature,

@@ -122,4 +122,10 @@ enum GeneralCleanLayout {
     static func rows(of group: GeneralCleanGroup) -> [GeneralRuleRow] {
         rows.filter { group.categories.contains($0.category) }
     }
+
+    /// The row a catalog / scanner rule id rolls up into, nil when no row
+    /// claims it (the layout test keeps the catalog and the rows in sync).
+    static func rowID(forRuleID ruleID: String) -> String? {
+        rows.first { $0.ruleIDs.contains(ruleID) }?.id
+    }
 }

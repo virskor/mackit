@@ -247,4 +247,63 @@ struct CleanupScopeTests {
         #expect(Set(vm.scopeSelectedItems.map(\.title)) == ["chromecache"])
         #expect(vm.scopeSelectedSize == 200)
     }
+
+    /// The built-in default (safe + review pre-checked) reports "nothing to
+    /// remember"; a hand-curated selection reports a difference.
+    @Test func selectionDiffersFromDefaultIsDetected() {
+        let vm = makeVM()
+        seed(vm)
+
+        #expect(!vm.generalSelectionDiffersFromSaved(), "默认勾选无需提醒")
+
+        let language = GeneralCleanLayout.rows.first { $0.id == "language" }
+        vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "browser.chrome" }!, selected: false)
+        vm.setRowSelected(language!, selected: true)
+        #expect(vm.generalSelectionDiffersFromSaved())
+    }
+
+    @Test func savedSelectionReplacesTheDefaultOnLaterScans() {
+        let vm = makeVM()
+        // Pretend the user once saved "only the Chrome row"
+        vm.generalSelectedRows = ["browser.chrome"]
+
+        vm.apply(.discovered([
+            item("browser.chrome-cache", "chromecache", category: .browser, risk: .safe, size: 200),
+            item("language.lproj", "ja.lproj", category: .language, risk: .review, size: 20),
+            item("trash.home", "trash", category: .trash, risk: .caution, size: 80),
+        ]))
+
+        #expect(Set(vm.selection) == ["browser.chrome-cache::/tmp/chromecache"],
+                "保存过的勾选取代内置默认")
+    }
+
+    @Test func rememberPromptOnlyShowsForGeneralCleansWithChanges() {
+        let vm = makeVM()
+        seed(vm)
+        // A language-file item, so the curated selection below stays non-empty
+        vm.apply(.discovered([
+            JunkItem(ruleID: "language.lproj", title: "ja.lproj", detail: "Foo",
+                     path: "/tmp/ja.lproj", category: .language, risk: .review, size: 20),
+        ]))
+
+        // No change yet: nothing to remember
+        vm.requestClean()
+        #expect(!vm.showsRememberGeneralPrompt)
+
+        // Curate differently, then clean the general module
+        vm.showGeneralCleanup()
+        vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "browser.chrome" }!, selected: false)
+        vm.requestClean()
+        #expect(vm.showsRememberGeneralPrompt)
+
+        // The developer feature never prompts
+        vm.cancelConfirmation()
+        vm.selectCategory(.go)
+        vm.requestClean()
+        #expect(!vm.showsRememberGeneralPrompt)
+
+        // Neither does the tray's one-click sweep
+        vm.requestClean(allScopes: true)
+        #expect(!vm.showsRememberGeneralPrompt)
+    }
 }

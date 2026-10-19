@@ -10847,6 +10847,50 @@
           }
         }
       }
+    },
+    "general.remember.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记住本次的勾选？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remember this selection?"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "記住本次的勾選？"
+          }
+        }
+      }
+    },
+    "general.remember.message": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下次扫描常规清理时，按照本次的勾选自动选择相同的清理项。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next time the general cleanup is scanned, the same rows will be pre-checked."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下次掃描一般清理時，按照本次的勾選自動選擇相同的清理項。"
+          }
+        }
+      }
     }
   }
 }

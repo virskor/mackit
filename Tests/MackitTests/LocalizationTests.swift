@@ -61,6 +61,7 @@ struct LocalizationTests {
             "scan.apps", "clean.confirm.uninstall", "clean.error.appRunning",
             "apps.version", "apps.confirm.title", "apps.confirm.note",
             "language.item.detail", "downloads.installer.detail", "downloads.archive.detail",
+            "general.remember.title", "general.remember.message",
             "scope.developer.title", "scope.developer.summary",
             "scope.general.title", "scope.general.summary",
             "category.browser.title", "category.browser.summary",

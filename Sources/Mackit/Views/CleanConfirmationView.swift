@@ -9,6 +9,12 @@ import SwiftUI
 struct CleanConfirmationView: View {
     @Environment(AppViewModel.self) private var vm
 
+    /// The "remember this selection" prompt, on by default: the user just
+    /// curated the general module's rows, and the common intent is to keep
+    /// that curation. Reset on every presentation because the sheet builds
+    /// its content fresh each time.
+    @State private var rememberSelection = true
+
     /// Sorted by size from large to small, largest first for easy verification.
     private var items: [JunkItem] { vm.selectedItems.sorted { $0.size > $1.size } }
     private var hasCaution: Bool { items.contains { $0.risk == .caution } }
@@ -168,6 +174,15 @@ struct CleanConfirmationView: View {
             .padding(.horizontal, 20)
             .padding(.top, 12)
 
+            // The user curated the general module's rows differently from
+            // what the next scan would pre-check: offer to remember that
+            // curation, defaulted to on so one click keeps it.
+            if vm.showsRememberGeneralPrompt {
+                rememberRow
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+            }
+
             Spacer(minLength: 16)
 
             // Buttons
@@ -184,6 +199,13 @@ struct CleanConfirmationView: View {
                             : L10n.tr("clean.confirm.cleanNow")),
                     tint: isUninstall || hasCaution ? .red : .accentColor
                 ) {
+                    // Only when the prompt is actually showing: the toggle
+                    // defaults to on, so without the guard every clean —
+                    // including the developer module's and the tray's —
+                    // would silently save a selection.
+                    if rememberSelection && vm.showsRememberGeneralPrompt {
+                        vm.rememberGeneralSelection()
+                    }
                     vm.beginClean()
                 }
             }
@@ -191,5 +213,31 @@ struct CleanConfirmationView: View {
         }
         .frame(width: 560, height: 600)
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    /// The remember-this-selection row: an inline toggle rather than a
+    /// NoticeRow, which only offers a one-shot action button.
+    private var rememberRow: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(Color.accentColor)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: L10n.tr("general.remember.title"))
+                    .font(.system(size: 12, weight: .semibold))
+                Text(verbatim: L10n.tr("general.remember.message"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            Toggle(isOn: $rememberSelection) { EmptyView() }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+        }
     }
 }
