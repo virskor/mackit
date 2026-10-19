@@ -39,7 +39,7 @@ New features should come with tests — follow the existing organization in `Tes
 
 ## Commits & PRs
 
-- Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages: `feat:` / `fix:` / `docs:` / `refactor:` / `test:` / `chore:`; Chinese descriptions are fine
+- Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages: `feat:` / `fix:` / `docs:` / `refactor:` / `test:` / `chore:`; commit messages and PR descriptions are written in English
 - Keep PRs small and focused; explain the motivation and impact, and link related issues
 - Before merging, self-check: `swift build` passes, `swift test` passes, strings added in all three languages
 
