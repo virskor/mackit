@@ -409,10 +409,19 @@ struct SettingsView: View {
                 }
                 .padding(.vertical, 4)
 
-                Link(destination: URL(string: "https://monit.run/mackit")!) {
+                Link(destination: URL(string: "https://www.mingcui.cn/mackit/")!) {
                     HStack(spacing: 6) {
                         Image(systemName: "globe")
                         Text(verbatim: L10n.tr("settings.about.website"))
+                    }
+                    .font(.system(size: 11))
+                }
+                .padding(.vertical, 2)
+
+                Link(destination: URL(string: "https://github.com/virskor/mackit")!) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        Text(verbatim: L10n.tr("settings.about.github"))
                     }
                     .font(.system(size: 11))
                 }

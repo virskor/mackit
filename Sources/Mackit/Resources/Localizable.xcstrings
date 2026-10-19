@@ -6475,19 +6475,41 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "monit.run/mackit"
+            "value": "www.mingcui.cn/mackit"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "monit.run/mackit"
+            "value": "www.mingcui.cn/mackit"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "monit.run/mackit"
+            "value": "www.mingcui.cn/mackit"
+          }
+        }
+      }
+    },
+    "settings.about.github": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "github.com/virskor/mackit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "github.com/virskor/mackit"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "github.com/virskor/mackit"
           }
         }
       }
