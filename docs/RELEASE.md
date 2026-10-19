@@ -2,6 +2,18 @@
 
 本文档面向 Mackit 的维护者：签名、公证、DMG 打包与 Sparkle 自动更新链路。普通用户请回到 [README](../README.md)。
 
+## 一键发布（Scripts/build-all.sh）
+
+`Scripts/build-all.sh` drives the whole release end to end: preflight, universal build, Developer ID signing, notarization and stapling (via `build-dmg.sh`), the Sparkle archive and appcast (via `build-update.sh`), and finally `gh release create` with the four assets.
+
+```bash
+Scripts/build-all.sh                 # release the version tagged on HEAD
+Scripts/build-all.sh --tag 1.2.0     # create and push tag v1.2.0 first
+Scripts/build-all.sh --dry-run       # preflight + plan only, builds nothing
+```
+
+Credentials come from the environment, or from a gitignored `.env.release` file at the repo root (see `--env-file`). The feed URL, archive URL prefix and notes file default to the conventions below (`releases/latest/download/appcast.xml`, `releases/download/v<tag>/`, `docs/release-notes/v<tag>.md`) and can be overridden. Preflight fails fast on anything that would otherwise surface minutes into notarization: a signing identity that is not a Developer ID Application, incomplete notarization credentials, a missing Sparkle key pair, a release that already exists for the tag, or a dirty working tree. `gh` must be installed and authenticated unless `--skip-release` is passed; `--skip-update` implies `--skip-release` because a release published without its `appcast.xml` breaks the feed for every installed copy. Other options: `--draft`, `--allow-dirty`, `--no-notes` — run `Scripts/build-all.sh --help` for the full list. The stages below remain the reference for recovering a partial release (for example, publishing artifacts manually after a failed `gh release create`).
+
 ## 签名与分发
 
 `Scripts/build-app.sh` 默认做本地 ad-hoc 签名，只够本机运行。要分发时设置签名身份环境变量，脚本会改用 Developer ID 签名并启用硬化运行时（公证的前置条件）：
