@@ -1,0 +1,57 @@
+name: 问题反馈
+description: 报告一个缺陷（Bug）
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先搜索现有 Issue，避免重复。附上 Mackit 版本与 macOS 版本能大幅加快定位。
+  - type: input
+    id: version
+    attributes:
+      label: Mackit 版本
+      description: 「设置 › 关于」里看到的版本号
+      placeholder: 例如 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: macos
+    attributes:
+      label: macOS 版本
+      options:
+        - macOS 15 或更高
+        - macOS 14
+    validations:
+      required: true
+  - type: dropdown
+    id: arch
+    attributes:
+      label: 芯片架构
+      options:
+        - Apple silicon（M 系列）
+        - Intel
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 问题描述
+      description: 发生了什么？期望的正确行为是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 如何稳定复现？例如：扫描后勾选 Xcode 分类 → 点击清理 → …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志（可选）
+      description: |
+        `log stream --predicate 'subsystem == "cn.mingcui.mackit"' --level info` 的片段（注意抹去隐私路径）。
+      render: shell
+    validations:
+      required: false

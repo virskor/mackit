@@ -1,0 +1,78 @@
+#!/bin/bash
+# Block private-key material before committing.
+#
+# .gitignore only guards against an accidental `git add .`; it cannot stop
+# `git add -f` or an editor force-staging a file, and once a private key has
+# entered the history, deleting it later does not remove it. Two scans run
+# against the staged area here:
+#   1. Filename blacklist: private-key filenames (secrets/, *.pem, *.p8,
+#      *.key, etc.) are always rejected;
+#   2. Content scan: any PEM private-key header (BEGIN ... PRIVATE KEY)
+#      causes rejection, catching renamed files too.
+#
+# Public certificates (*.cer) are public information and are not blocked.
+# The script stays pure ASCII: bash 3.2 cannot parse multi-byte characters
+# adjacent to variable expansions.
+#
+# Installed to .git/hooks/pre-commit by Scripts/install-git-hooks.sh.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+# On the initial commit (no HEAD yet), diff against the empty tree.
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    against=HEAD
+else
+    against="$(git hash-object -t tree /dev/null)"
+fi
+
+# Only newly added/modified/copied/renamed files in this commit are checked;
+# deletions need no inspection.
+files="$(git diff --cached --name-only --diff-filter=ACMR "$against")"
+[ -z "$files" ] && exit 0
+
+NL=$'\n'
+name_bad=""
+content_bad=""
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    base="$(basename "$f")"
+    hit=""
+    case "$f" in
+        secrets/*|*/secrets/*) hit="local-secrets-dir" ;;
+    esac
+    if [ -z "$hit" ]; then
+        case "$base" in
+            *.pem|*.p8|*.p12|*.mobileprovision|*.key|AuthKey_*|*ed-private*)
+                hit="secret-filename" ;;
+        esac
+    fi
+    if [ -n "$hit" ]; then
+        name_bad="${name_bad}  ${f} [${hit}]${NL}"
+        continue
+    fi
+    # Second layer: PEM private-key headers in the content
+    # (RSA / EC / DSA / OPENSSH / PGP / unencrypted). Certificates
+    # (BEGIN CERTIFICATE / CERTIFICATE REQUEST) do not match and are unaffected.
+    if LC_ALL=C grep -qE 'BEGIN ([A-Z]+ )?PRIVATE KEY' "$f" 2>/dev/null; then
+        content_bad="${content_bad}  ${f} [pem-private-key]${NL}"
+    fi
+done <<< "$files"
+
+if [ -n "$name_bad" ] || [ -n "$content_bad" ]; then
+    echo "" >&2
+    if [ -n "$name_bad" ]; then
+        echo "ERROR: staged files include private-key material, commit rejected:" >&2
+        printf '%s' "$name_bad" >&2
+    fi
+    if [ -n "$content_bad" ]; then
+        echo "ERROR: staged file content contains a PEM private key, commit rejected:" >&2
+        printf '%s' "$content_bad" >&2
+    fi
+    echo "Private keys must NOT enter this repo or the remote (see Certificates/README.md)." >&2
+    echo "Local keys belong in the secrets/ directory, which .gitignore blocks." >&2
+    exit 1
+fi
+
+exit 0
