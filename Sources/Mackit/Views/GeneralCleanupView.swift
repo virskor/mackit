@@ -7,61 +7,36 @@ import SwiftUI
 /// Deliberately a separate page rather than more rows in the developer list:
 /// the two audiences share nothing, and mixing them makes each wade through
 /// categories that mean nothing to them. The layout follows Lemon's: one big
-/// "found X GB" number, then groups of rule rows, each row showing its size
-/// and a safety badge (very clean / recommended / caution). Rows arrive
-/// pre-checked up to "recommended"; caution rows stay unchecked until the
-/// user opts in, and cleaning still goes through the confirmation sheet.
+/// "cleanable files" number with the scan and clean actions beside it, then
+/// groups of rule rows, each row showing its total and a safety level (very
+/// clean / recommended / caution). Rows arrive pre-checked up to
+/// "recommended"; caution rows stay unchecked until the user opts in, and
+/// cleaning still goes through the confirmation sheet.
 struct GeneralCleanupView: View {
     @Environment(AppViewModel.self) private var vm
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                    .padding(.bottom, 20)
+        VStack(spacing: 0) {
+            // The header stays outside the scroll area: the number and both
+            // actions remain reachable however long the row list gets.
+            header
 
-                if vm.phase == .idle && vm.items.isEmpty {
-                    startPrompt
-                } else {
-                    ForEach(vm.generalCleanGroups) { group in
-                        groupSection(group)
+            if vm.phase == .idle && vm.items.isEmpty {
+                startPrompt
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(vm.generalCleanGroups) { group in
+                            groupSection(group)
+                        }
                     }
-                }
-
-                if !vm.scopeSelectedItems.isEmpty {
-                    cleanButton
-                        .padding(.top, 4)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 4)
+                    .padding(.bottom, 24)
                 }
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 26)
-            .padding(.bottom, 24)
         }
         .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    /// The page's primary action: cleans the current selection (the rows the
-    /// user left checked), through the same confirmation sheet as the
-    /// developer list.
-    private var cleanButton: some View {
-        Button {
-            vm.requestClean()
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "trash")
-                    .font(.system(size: 12, weight: .semibold))
-                Text(verbatim: L10n.fmt("clean.buttonWithSize", Formatters.bytes(vm.scopeSelectedSize)))
-                    .font(.system(size: 13, weight: .semibold))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.regular)
-        .disabled(vm.isBusy)
-        .help(L10n.fmt("clean.helpSelected.other", vm.scopeSelectedItems.count))
     }
 
     // MARK: - Header
@@ -87,7 +62,7 @@ struct GeneralCleanupView: View {
                         .font(.system(size: 24, weight: .bold))
                     ProgressView(value: vm.progressFraction)
                         .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+                        .frame(maxWidth: 220)
                     Text(verbatim: vm.progressLabel)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
@@ -98,7 +73,7 @@ struct GeneralCleanupView: View {
                         .font(.system(size: 24, weight: .bold))
                 } else {
                     Text(verbatim: Formatters.bytes(vm.generalTotalSize))
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.system(size: 26, weight: .bold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                 }
@@ -106,22 +81,57 @@ struct GeneralCleanupView: View {
 
             Spacer(minLength: 12)
 
-            Button {
-                if vm.phase == .scanning {
-                    vm.cancelScan()
-                } else {
-                    vm.startScan()
+            HStack(spacing: 8) {
+                rescanButton
+                if !vm.scopeSelectedItems.isEmpty {
+                    cleanButton
                 }
-            } label: {
-                Label(
-                    vm.phase == .scanning
-                        ? L10n.tr("toolbar.stopScan")
-                        : L10n.tr("toolbar.rescan"),
-                    systemImage: vm.phase == .scanning ? "stop.circle" : "arrow.clockwise"
-                )
             }
-            .controlSize(.small)
         }
+        .padding(.horizontal, 28)
+        .padding(.top, 24)
+        .padding(.bottom, 14)
+    }
+
+    private var rescanButton: some View {
+        Button {
+            if vm.phase == .scanning {
+                vm.cancelScan()
+            } else {
+                vm.startScan()
+            }
+        } label: {
+            Label(
+                vm.phase == .scanning
+                    ? L10n.tr("toolbar.stopScan")
+                    : L10n.tr("toolbar.rescan"),
+                systemImage: vm.phase == .scanning ? "stop.circle" : "arrow.clockwise"
+            )
+        }
+        .controlSize(.small)
+    }
+
+    /// The page's primary action: cleans the current selection (the rows the
+    /// user left checked), through the same confirmation sheet as the
+    /// developer list.
+    private var cleanButton: some View {
+        Button {
+            vm.requestClean()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "trash")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(verbatim: L10n.fmt("clean.buttonWithSize", Formatters.bytes(vm.scopeSelectedSize)))
+                    .font(.system(size: 12, weight: .semibold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            .padding(.horizontal, 12)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.small)
+        .disabled(vm.isBusy)
+        .help(L10n.fmt("clean.helpSelected.other", vm.scopeSelectedItems.count))
     }
 
     /// Shown before the first scan: the whole page is one call to action.
@@ -149,11 +159,17 @@ struct GeneralCleanupView: View {
 
     private func groupSection(_ group: AppViewModel.GeneralRuleGroupState) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: group.group.symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(group.group.tint)
+
                 Text(verbatim: group.group.title)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(group.group.tint)
+
                 Spacer(minLength: 8)
+
                 Text(verbatim: L10n.fmt(
                     "general.group.summary",
                     Formatters.bytes(group.totalSize),
@@ -165,15 +181,15 @@ struct GeneralCleanupView: View {
             }
 
             VStack(spacing: 0) {
-                    ForEach(Array(group.rows.enumerated()), id: \.element.row.id) { index, rowState in
+                ForEach(Array(group.rows.enumerated()), id: \.element.row.id) { index, rowState in
                     if index > 0 {
                         Divider().padding(.leading, 38)
                     }
                     ruleRow(rowState)
                 }
             }
-            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .padding(.bottom, 16)
+            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.bottom, 18)
         }
     }
 
@@ -201,14 +217,7 @@ struct GeneralCleanupView: View {
 
                 Spacer(minLength: 8)
 
-                VStack(alignment: .trailing, spacing: 2) {
-                    if !rowState.items.isEmpty {
-                        Text(verbatim: Formatters.bytes(rowState.size))
-                            .font(.system(size: 12, weight: .medium))
-                            .monospacedDigit()
-                    }
-                    badge(rowState.row.risk)
-                }
+                trailing(rowState)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
@@ -217,28 +226,45 @@ struct GeneralCleanupView: View {
         .buttonStyle(.plain)
     }
 
-    /// Lemon's three safety levels. Rows with nothing found always read "very
-    /// clean" regardless of their nominal risk: there is nothing to be careful
-    /// about.
-    private func badge(_ risk: RiskLevel) -> some View {
-        let key: String
-        let tint: Color
-        switch risk {
-        case .safe:
-            key = "general.badge.veryClean"
-            tint = .green
-        case .review:
-            key = "general.badge.recommended"
-            tint = .orange
-        case .caution:
-            key = "general.badge.caution"
-            tint = .red
+    /// The row's right side, one baseline like Lemon's: the total in primary
+    /// color, the safety level tinted after it. Rows with nothing found show
+    /// the level alone.
+    @ViewBuilder
+    private func trailing(_ rowState: AppViewModel.GeneralRuleRowState) -> some View {
+        let tint = levelTint(rowState.row.risk)
+
+        if rowState.items.isEmpty {
+            Text(verbatim: L10n.tr(levelKey(rowState.row.risk)))
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(tint)
+        } else {
+            HStack(spacing: 3) {
+                Text(verbatim: L10n.fmt("general.row.total", Formatters.bytes(rowState.size)))
+                    .font(.system(size: 12))
+                    .monospacedDigit()
+                Text(verbatim: L10n.tr("general.row.separator"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                Text(verbatim: L10n.tr(levelKey(rowState.row.risk)))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(tint)
+            }
         }
-        return Text(verbatim: L10n.tr(key))
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(tint.opacity(0.12), in: Capsule())
+    }
+
+    private func levelKey(_ risk: RiskLevel) -> String {
+        switch risk {
+        case .safe: return "general.badge.veryClean"
+        case .review: return "general.badge.recommended"
+        case .caution: return "general.badge.caution"
+        }
+    }
+
+    private func levelTint(_ risk: RiskLevel) -> Color {
+        switch risk {
+        case .safe: return .green
+        case .review: return .orange
+        case .caution: return .red
+        }
     }
 }

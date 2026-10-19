@@ -17,6 +17,10 @@ struct SidebarView: View {
                     count: vm.developerItemCount,
                     size: vm.developerTotalSize
                 )
+                // The general module sits directly under "all items": the two
+                // are the window's top-level destinations, while the category
+                // rows below only filter the developer list.
+                generalCleanupRow
             }
 
             if !vm.developerCategories.isEmpty {
@@ -39,12 +43,11 @@ struct SidebarView: View {
                     .padding(.vertical, 2)
             }
 
-            // The module entries sit at the very bottom of the list, sharing
-            // the same row style as the category rows; clicking switches the
-            // right detail area entirely to the corresponding embedded page,
-            // not a separate window.
+            // The hardware detection and settings entries sit at the very
+            // bottom of the list, sharing the same row style as the category
+            // rows; clicking switches the right detail area entirely to the
+            // corresponding embedded page, not a separate window.
             Section {
-                generalCleanupRow
                 hardwareRow
                 settingsRow
             }

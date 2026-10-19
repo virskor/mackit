@@ -19,6 +19,13 @@ enum GeneralCleanGroup: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    var symbol: String {
+        switch self {
+        case .system: return "internaldrive"
+        case .browser: return "globe"
+        }
+    }
+
     /// The categories this group covers, in row order.
     var categories: [JunkCategory] {
         switch self {

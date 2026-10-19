@@ -6,7 +6,13 @@ import Testing
 @MainActor
 struct CleanupScopeTests {
     private func makeVM() -> AppViewModel {
-        AppViewModel(statsPolling: false)
+        let vm = AppViewModel(statsPolling: false)
+        // The VM's init reads the real shared settings file, so a developer
+        // machine that has used the remember prompt would otherwise leak its
+        // saved row selection into the tests. Declare the starting state.
+        vm.generalSelectedRows = nil
+        vm.autoSelectRisk = .none
+        return vm
     }
 
     private func item(_ ruleID: String, _ name: String, category: JunkCategory, risk: RiskLevel, size: Int64) -> JunkItem {
