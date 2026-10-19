@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-10-19
+
+### Changed
+
+- About section: the website link now opens the official site (`https://www.mingcui.cn/mackit/`), and a new GitHub repository link (`https://github.com/virskor/mackit`) was added next to it — both localized in Simplified Chinese, English and Traditional Chinese
+
+### Added
+
+- `AGENTS.md`: contributor guidance covering the build/test workflow, code conventions and the English-first rule for development artifacts
+- `docs/release-notes/`: per-release notes, alongside the maintainer-facing release procedure in `docs/RELEASE.md`
+
+## [1.0.1] - 2026-10-19
+
+Release-pipeline verification build — the application itself is unchanged from 1.0.0.
+
+### Changed
+
+- Update feed moved to GitHub Releases (`https://github.com/virskor/mackit/releases/latest/download/appcast.xml`), so the public repository can serve the appcast anonymously
+- The update archive and `appcast.xml` now ship with every Release, letting 1.0.0 users upgrade in-app
+- Developer ID signing, notarization and stapling verified end to end; the downloaded app opens with no Gatekeeper warning
+- `docs/RELEASE.md`: maintainer-facing notes on signing, notarization, DMG packaging and Sparkle update hosting
+
 ## [1.0.0] - 2026-10-19
 
 First release. Mackit is a macOS developer cache cleaner: scan every regenerable cache your toolchain leaves behind, pick items one by one with clear risk labels, and take your disk space back.
@@ -51,4 +73,6 @@ First release. Mackit is a macOS developer cache cleaner: scan every regenerable
 
 - Private keys, certificates and credentials never enter the repo (`secrets/`, `*.p8` / `*.pem` / `*.key` blocked by `.gitignore`); a pre-commit hook scans the staging area to intercept private keys
 
+[1.0.2]: https://github.com/virskor/mackit/releases/tag/v1.0.2
+[1.0.1]: https://github.com/virskor/mackit/releases/tag/v1.0.1
 [1.0.0]: https://github.com/virskor/mackit/releases/tag/v1.0.0
