@@ -3,9 +3,26 @@
     <channel>
         <title>Mackit</title>
         <item>
+            <title>1.0.1</title>
+            <pubDate>Mon, 19 Oct 2026 15:58:57 +0800</pubDate>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[## Mackit 1.0.1
+
+发布链路验证版：签名、公证、DMG 安装与应用内自动更新的首次全流程实测。
+
+- 更新源切换为 GitHub Releases 托管（`https://github.com/virskor/mackit/releases/latest/download/appcast.xml`），仓库公开后匿名即可拉取
+- 更新归档与 appcast 随每个 Release 一同发布，1.0.0 用户可在应用内直接升级到 1.0.1
+- Developer ID 签名 + 公证 + 装订均通过，下载后双击即可安装
+- 文档补充维护者向的发布托管说明（`docs/RELEASE.md`）
+]]></description>
+            <enclosure url="https://github.com/virskor/mackit/releases/download/v1.0.1/Mackit-1.0.1.tar.bz2" length="6512539" type="application/octet-stream" sparkle:edSignature="98KxAI2gB7d0/iVXg+UIzQRBeLLrVBaFUQF2nB+A8b/CG/s582sJBo6fzVU166nxTiqHw3gaEV5Vg/gtznleCQ=="/>
+        </item>
+        <item>
             <title>1.0.0</title>
-            <pubDate>Sun, 18 Oct 2026 15:36:03 +0800</pubDate>
-            <sparkle:version>7</sparkle:version>
+            <pubDate>Mon, 19 Oct 2026 15:58:57 +0800</pubDate>
+            <sparkle:version>2</sparkle:version>
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <description sparkle:format="markdown"><![CDATA[## Mackit 1.0.0
@@ -17,8 +34,9 @@
 - **项目构建产物**：扫描自定义目录下的 `node_modules`、`build`、`Pods`、`DerivedData`、`target`、`.venv` 等可重建目录
 - **菜单栏面板**：CPU / 内存 / 温度监控、内存占用排行与一键释放、磁盘可用空间
 - **多语言**：简体中文 / 英语 / 繁体中文，跟随系统语言
+
 ]]></description>
-            <enclosure url="https://github.com/virskor/mackit/releases/download/v1.0.0/Mackit-1.0.0.tar.bz2" length="3206872" type="application/octet-stream" sparkle:edSignature="SIPl7NIqfhFKKe/cQqFNezRSq81pniFJnGHR5XuEIcK3uG4ZuBKBoRFplVASYsIt54ZwVqqwgkcB5NBYPkKZCQ=="/>
+            <enclosure url="https://github.com/virskor/mackit/releases/download/v1.0.0/Mackit-1.0.0.tar.bz2" length="6513168" type="application/octet-stream" sparkle:edSignature="3kQRPsOVpAmrcaT7f/ubHNoGDgCGz9Ky/sENJ3hLgFl0P4qSIiBciPCm/XlCqZzMnqYg0eQatgpccsr6gwL+Bg=="/>
         </item>
     </channel>
 </rss>
