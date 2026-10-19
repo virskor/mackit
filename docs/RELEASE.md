@@ -40,7 +40,7 @@ MACKIT_API_ISSUER=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
 Scripts/build-dmg.sh release
 ```
 
-产物在 `dist/`：`Mackit-<version>.dmg` 与同名 `.sha256`。版本号读构建产物的 Info.plist，也就是最近的 git tag（当前为 `v1.0.0`）。
+产物在 `dist/`：`Mackit-<version>.dmg` 与同名 `.sha256`。版本号读构建产物的 Info.plist，也就是最近的 git tag（当前为 `v1.0.2`）。
 
 DMG 内含 Applications 快捷方式、安装箭头背景图（`Scripts/make-dmg-background.swift` 生成，坐标与 Finder 布局对应）和卷图标。首次在本机运行时，设置 Finder 布局会弹一次「辅助功能 / 自动化」授权；允许后布局才会生效，拒绝或无人值守时脚本等待 `MACKIT_LAYOUT_TIMEOUT`（默认 60 秒）后跳过布局，不影响 DMG 本身。
 
