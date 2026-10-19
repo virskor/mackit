@@ -1,15 +1,15 @@
-## 动机
+## Motivation
 
-这个 PR 解决什么问题？关联 Issue：（#）
+What problem does this PR solve? Related Issue: (#)
 
-## 改动
+## Changes
 
 -
 
-## 自查
+## Checklist
 
-- [ ] `swift build` 通过
-- [ ] `swift test` 通过
-- [ ] 面向用户的新文案已加进 `Localizable.xcstrings`（zh-Hans / en / zh-Hant 三种语言）
-- [ ] 未提交任何私钥 / 证书 / 凭据
-- [ ] 新功能配了测试
+- [ ] `swift build` passes
+- [ ] `swift test` passes
+- [ ] New user-facing strings are added to `Localizable.xcstrings` (all three languages: zh-Hans / en / zh-Hant)
+- [ ] No private keys / certificates / credentials committed
+- [ ] New functionality is covered by tests
