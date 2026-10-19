@@ -1,0 +1,24 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Mackit</title>
+        <item>
+            <title>1.0.0</title>
+            <pubDate>Sun, 18 Oct 2026 15:36:03 +0800</pubDate>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[## Mackit 1.0.0
+
+首个正式版。
+
+- **缓存扫描**：一键扫描 50+ 类开发缓存（Go / Node / Flutter / Rust / Python / CocoaPods / Xcode / Gradle 等），流式出结果，逐项勾选后清理，每项标注风险等级
+- **应用卸载**：列出已安装应用及其在 `~/Library` 的残留文件，可连同残留一起卸载，正在运行的应用会拒绝卸载
+- **项目构建产物**：扫描自定义目录下的 `node_modules`、`build`、`Pods`、`DerivedData`、`target`、`.venv` 等可重建目录
+- **菜单栏面板**：CPU / 内存 / 温度监控、内存占用排行与一键释放、磁盘可用空间
+- **多语言**：简体中文 / 英语 / 繁体中文，跟随系统语言
+]]></description>
+            <enclosure url="https://github.com/virskor/mackit/releases/download/v1.0.0/Mackit-1.0.0.tar.bz2" length="3206872" type="application/octet-stream" sparkle:edSignature="SIPl7NIqfhFKKe/cQqFNezRSq81pniFJnGHR5XuEIcK3uG4ZuBKBoRFplVASYsIt54ZwVqqwgkcB5NBYPkKZCQ=="/>
+        </item>
+    </channel>
+</rss>
