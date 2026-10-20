@@ -179,4 +179,66 @@ struct FileSystemTests {
         #expect(!FileSystem.isProtected("~/go/pkg/mod"))
         #expect(!FileSystem.isProtected("~/.pub-cache/hosted"))
     }
+
+    /// The disk analysis page's summary counts: the entry's *direct* children
+    /// split into folders and files — the same numbers the mockup reports
+    /// (Users: 2 folders 1 file = its 3 direct children) — while the size
+    /// stays recursive, since that is what the treemap areas show. A
+    /// symlinked directory is neither followed nor counted: the analysis
+    /// listing skips symlinks, so counting one would report an entry the user
+    /// never sees.
+    @Test func allocatedSizeAndCountsCountsFoldersAndFiles() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-counts-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        let mb = 1024 * 1024
+        try Data(repeating: 0, count: mb).write(to: base.appendingPathComponent("a.bin"))
+        try FileManager.default.createDirectory(at: base.appendingPathComponent("sub"), withIntermediateDirectories: true)
+        try Data(repeating: 0, count: mb).write(to: base.appendingPathComponent("sub/b.bin"))
+        try FileManager.default.createSymbolicLink(
+            atPath: base.appendingPathComponent("link").path,
+            withDestinationPath: base.appendingPathComponent("sub").path
+        )
+
+        let counts = FileSystem.allocatedSizeAndCounts(of: base)
+        #expect(counts.folders == 1, "only sub/ is a direct folder; the symlink is skipped")
+        #expect(counts.files == 1, "only a.bin is a direct file; b.bin sits inside sub/")
+        // The size is recursive: it must still cover sub/b.bin.
+        #expect(counts.size > 1_900_000)
+
+        // A plain file has no contents to count, only a size.
+        let fileCounts = FileSystem.allocatedSizeAndCounts(of: base.appendingPathComponent("a.bin"))
+        #expect(fileCounts.files == 0)
+        #expect(fileCounts.folders == 0)
+        #expect(fileCounts.size > 900_000)
+
+        // A missing path reports nothing rather than crashing.
+        let missing = FileSystem.allocatedSizeAndCounts(of: base.appendingPathComponent("nope"))
+        #expect(missing.size == 0 && missing.folders == 0 && missing.files == 0)
+    }
+
+    /// com.apple.* subtrees are pruned mid-traversal: on macOS 26+ enumerating
+    /// them pops a TCC authorization dialog, and the analysis runs full-disk
+    /// traversals where the cleaning engine's listing-level filter alone
+    /// would not reach.
+    @Test func allocatedSizeAndCountsPrunesSystemDataSubtrees() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-prune-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        let mb = 1024 * 1024
+        try FileManager.default.createDirectory(at: base.appendingPathComponent("keep"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: base.appendingPathComponent("com.apple.Music"), withIntermediateDirectories: true)
+        try Data(repeating: 0, count: mb).write(to: base.appendingPathComponent("keep/a.bin"))
+        try Data(repeating: 0, count: 5 * mb).write(to: base.appendingPathComponent("com.apple.Music/huge.bin"))
+
+        let counts = FileSystem.allocatedSizeAndCounts(of: base)
+        #expect(counts.folders == 1, "only keep/ is a direct folder")
+        #expect(counts.files == 0)
+        #expect(counts.size > 900_000, "keep/a.bin is counted")
+        #expect(counts.size < 2_000_000, "the pruned com.apple.* payload must not be counted: \(counts.size)")
+    }
 }

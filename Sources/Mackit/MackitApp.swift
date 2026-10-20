@@ -172,7 +172,7 @@ struct MackitApp: App {
             CommandGroup(replacing: .appSettings) {
                 Button(L10n.tr("menubar.settings")) {
                     openWindow(id: "main")
-                    vm.showsSettings = true
+                    vm.showSettings()
                     NSApp.activate(ignoringOtherApps: true)
                 }
                 .keyboardShortcut(",", modifiers: .command)
@@ -387,8 +387,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             reopen()
         case .settings:
             reopen()
-            vm.showsSettings = true
-            vm.showsHardware = false
+            vm.showSettings()
         case .hardware:
             reopen()
             vm.showHardware()

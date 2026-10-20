@@ -98,7 +98,17 @@ struct LocalizationTests {
             "hw.memory", "hw.memory.label",
             "hw.battery", "hw.battery.level", "hw.battery.cycles", "hw.battery.health",
             "hw.battery.healthValue", "hw.battery.normal", "hw.battery.serviceRecommended",
-            "clean.error.trashFailed", "scan.measuring"
+            "clean.error.trashFailed", "scan.measuring",
+            "sidebar.tools", "sidebar.diskAnalysis", "sidebar.diskAnalysis.help",
+            "diskAnalysis.title", "diskAnalysis.nav.back", "diskAnalysis.nav.forward",
+            "diskAnalysis.visualization", "diskAnalysis.visualization.help",
+            "diskAnalysis.header.folders.one", "diskAnalysis.header.folders.other",
+            "diskAnalysis.header.files.one", "diskAnalysis.header.files.other",
+            "diskAnalysis.header.total", "diskAnalysis.reveal.help", "diskAnalysis.measuring",
+            "diskAnalysis.unreadable", "diskAnalysis.fdaHint", "diskAnalysis.empty",
+            "diskAnalysis.selectPrompt", "diskAnalysis.disk",
+            "format.gigabytes.compact", "format.megabytes.compact", "format.kilobytes.compact",
+            "format.terabytes.compact", "format.bytes.compact",
         ]
         for key in keys {
             #expect(!isFallback(L10n.tr(key), key: key), "\(key) not localized")
@@ -234,7 +244,12 @@ struct LocalizationTests {
             ("hw.osVersion", 2),
             ("hw.cpu.cores", 1),
             ("hw.cpu.coresSplit", 3),
-            ("hw.battery.healthValue", 2)
+            ("hw.battery.healthValue", 2),
+            ("diskAnalysis.title", 2),
+            ("diskAnalysis.header.folders.other", 1),
+            ("diskAnalysis.header.files.other", 1),
+            ("diskAnalysis.header.total", 1),
+            ("diskAnalysis.measuring", 1)
         ]
         // Compatible with positional parameters (%1$@): residue file
         // subtitles use this layout
@@ -268,7 +283,9 @@ struct LocalizationTests {
             "toast.reclaimedWithFailures",
             "apps.residueSummary",
             "apps.confirm.summary",
-            "apps.confirm.running"
+            "apps.confirm.running",
+            "diskAnalysis.header.folders",
+            "diskAnalysis.header.files"
         ]
         let placeholder = /%(?:\d+\$)?(?:@|lld)/
         for base in pairs {
@@ -310,7 +327,11 @@ struct LocalizationTests {
             ("apps.confirm.summary.one", [1, "2.1 GB"]),
             ("apps.confirm.summary.other", [5, "2.1 GB"]),
             ("apps.confirm.running.one", [1]),
-            ("apps.confirm.running.other", [3])
+            ("apps.confirm.running.other", [3]),
+            ("diskAnalysis.header.folders.one", [1]),
+            ("diskAnalysis.header.folders.other", [3]),
+            ("diskAnalysis.header.files.one", [1]),
+            ("diskAnalysis.header.files.other", [4])
         ]
         for (key, args) in calls {
             let value = String(format: L10n.tr(key), arguments: args)

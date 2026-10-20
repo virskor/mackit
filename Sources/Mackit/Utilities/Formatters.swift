@@ -41,6 +41,29 @@ enum Formatters {
         return bytes(value)
     }
 
+    /// Compact size with no space and fixed decimals, e.g. "206.53GB", "740.35MB".
+    ///
+    /// The disk analysis page's tiles and title follow the mockup's tighter
+    /// style: `bytes` keeps a space and drops trailing zeros ("5 GB"), which
+    /// reads too loose inside a treemap tile. Units are localized like
+    /// `capacity`'s, but the unit itself carries no surrounding space.
+    static func compactBytes(_ value: Int64) -> String {
+        let gb = Double(value) / 1_000_000_000
+        if gb >= 1000 { return Self.decimal(gb / 1000) + L10n.tr("format.terabytes.compact") }
+        if gb >= 1 { return Self.decimal(gb) + L10n.tr("format.gigabytes.compact") }
+        let mb = Double(value) / 1_000_000
+        if mb >= 1 { return Self.decimal(mb) + L10n.tr("format.megabytes.compact") }
+        let kb = Double(value) / 1000
+        if kb >= 1 { return String(format: "%.1f", kb) + L10n.tr("format.kilobytes.compact") }
+        return "\(value)" + L10n.tr("format.bytes.compact")
+    }
+
+    /// Two decimals, always shown: "5.00" reads as deliberate next to "206.53",
+    /// whereas ByteCountFormatter's "5" makes tiles look inconsistent.
+    private static func decimal(_ value: Double) -> String {
+        String(format: "%.2f", value)
+    }
+
     /// Relative time, e.g. "3 hours ago".
     @MainActor
     static func relative(_ date: Date?) -> String {

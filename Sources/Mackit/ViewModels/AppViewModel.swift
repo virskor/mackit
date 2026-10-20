@@ -67,6 +67,10 @@ final class AppViewModel {
     /// area switches to the hardware info page, using the same container
     /// as the settings page.
     var showsHardware: Bool = false
+    /// The disk analysis tool row is selected in the sidebar: the detail
+    /// area switches to the analysis page, the same embedded-page pattern
+    /// as the hardware page.
+    var showsDiskAnalysis: Bool = false
 
     /// Row selection set, consistent with the list checkmarks. All of the
     /// state and every rule that decides it live in `CleanupSelection`; this
@@ -79,6 +83,10 @@ final class AppViewModel {
     /// The one owner of the selection: what a scan pre-checks, what a toggle
     /// moves, what a clean leaves behind, what gets remembered.
     private let selectionState = CleanupSelection()
+
+    /// State model of the disk analysis tool page. Lives for the whole
+    /// session so its per-directory cache survives page switches.
+    let diskAnalysis = DiskAnalysisModel()
 
     /// Cleanup result summary.
     var lastReclaimed: Int64 = 0
@@ -602,6 +610,7 @@ final class AppViewModel {
     func showHardware() {
         showsSettings = false
         showsHardware = true
+        dismissDiskAnalysis()
         hardwareProfile = HardwareSampler.profile()
     }
 
@@ -613,6 +622,39 @@ final class AppViewModel {
         showsHardware = false
         selectedCategory = nil
         startScan()
+    }
+
+    /// Opens the settings page from the sidebar, the ⌘, menu item, or the
+    /// tray — all three used to set `showsSettings` by hand and each forgot a
+    /// different sibling flag.
+    func showSettings() {
+        showsSettings = true
+        showsHardware = false
+        showsGeneralCleanup = false
+        dismissDiskAnalysis()
+    }
+
+    /// Opens the disk analysis tool page from the sidebar. Same
+    /// embedded-page pattern as the hardware and general cleanup rows: the
+    /// detail area swaps entirely, and the main toolbar hides.
+    func showDiskAnalysis() {
+        guard !showsDiskAnalysis else { return }
+        showsDiskAnalysis = true
+        selectedCategory = nil
+        showsSettings = false
+        showsHardware = false
+        showsGeneralCleanup = false
+        if cleanPhase == .done { dismissCleanResult() }
+        diskAnalysis.activate()
+    }
+
+    /// Leaves the disk analysis page: cancels its measurements (nobody is
+    /// watching them anymore) while keeping its state and cache, so coming
+    /// back resumes where the user left off.
+    private func dismissDiskAnalysis() {
+        guard showsDiskAnalysis else { return }
+        showsDiskAnalysis = false
+        diskAnalysis.suspend()
     }
 
     // MARK: - Memory Release
@@ -1311,6 +1353,7 @@ final class AppViewModel {
         showsSettings = false
         showsHardware = false
         showsGeneralCleanup = false
+        dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
     }
 
@@ -1321,6 +1364,7 @@ final class AppViewModel {
         selectedCategory = nil
         showsSettings = false
         showsHardware = false
+        dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
     }
 

@@ -37,6 +37,8 @@ enum MackitLog {
     static let updates = Logger(subsystem: subsystem, category: "updates")
     /// Filesystem enumeration details.
     static let fs = Logger(subsystem: subsystem, category: "fs")
+    /// Disk space analysis: directory scans, navigation, and measurement totals.
+    static let disk = Logger(subsystem: subsystem, category: "disk")
 
     /// Formats a duration into whole milliseconds, for interpolation in log messages.
     static func duration(_ interval: Duration) -> String {

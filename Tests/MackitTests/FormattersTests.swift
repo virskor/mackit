@@ -33,4 +33,20 @@ struct FormattersTests {
         #expect(Formatters.memory(16 * 1024 * 1024 * 1024).contains("16"))
         #expect(Formatters.memory(16 * 1024 * 1024 * 1024).contains("GB"))
     }
+
+    /// The treemap tiles need the mockup's tighter format: no space between
+    /// number and unit, and two decimals even for round values, so tiles next
+    /// to each other don't read as inconsistent.
+    @Test func compactBytesDropsTheSpaceAndKeepsDecimals() {
+        #expect(Formatters.compactBytes(206_530_000_000) == "206.53GB")
+        #expect(Formatters.compactBytes(5_000_000_000) == "5.00GB")
+        #expect(Formatters.compactBytes(740_350_000) == "740.35MB")
+        // Escalates to TB at 1000 GB
+        #expect(Formatters.compactBytes(4_000_000_000_000) == "4.00TB")
+        // Below 1 MB falls back to KB / B, never "0 MB"
+        #expect(Formatters.compactBytes(512) == "512B")
+        #expect(!Formatters.compactBytes(512).contains("MB"))
+        #expect(Formatters.compactBytes(1536) == "1.5KB")
+        #expect(Formatters.compactBytes(0) == "0B")
+    }
 }

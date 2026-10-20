@@ -23,6 +23,13 @@ struct SidebarView: View {
                 generalCleanupRow
             }
 
+            // Tools sit directly below the cleanup entries, above the
+            // developer category filters: they are read-only utilities, a
+            // different kind of destination from either cleanup module.
+            Section(L10n.tr("sidebar.tools")) {
+                diskAnalysisRow
+            }
+
             if !vm.developerCategories.isEmpty {
                 Section(L10n.tr("sidebar.categories")) {
                     ForEach(vm.developerCategories) { category in
@@ -89,6 +96,31 @@ struct SidebarView: View {
         .help(L10n.tr("scope.general.summary"))
     }
 
+    /// Disk analysis tool entry: opens the analysis page in the detail area.
+    /// Same pattern as the general cleanup and hardware rows (button +
+    /// listRowBackground), without count and size — the page reports its own
+    /// totals.
+    private var diskAnalysisRow: some View {
+        Button {
+            vm.showDiskAnalysis()
+        } label: {
+            HStack(spacing: 8) {
+                CategoryIcon(symbol: "chart.pie", tint: .accentColor, size: 12, width: 18)
+                Text(verbatim: L10n.tr("sidebar.diskAnalysis"))
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+            }
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .listRowBackground(
+            vm.showsDiskAnalysis ? Color.accentColor.opacity(0.15) : Color.clear
+        )
+        .help(L10n.tr("sidebar.diskAnalysis.help"))
+    }
+
     private func row(
         category: JunkCategory?,
         title: String,
@@ -125,11 +157,11 @@ struct SidebarView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // When the settings / hardware / general cleanup page is active, no
-        // category row is allowed to stay highlighted: the sidebar has only
-        // one selected item at a time.
+        // When the settings / hardware / general cleanup / disk analysis page
+        // is active, no category row is allowed to stay highlighted: the
+        // sidebar has only one selected item at a time.
         .listRowBackground(
-            !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && vm.selectedCategory == category
+            !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && vm.selectedCategory == category
                 ? Color.accentColor.opacity(0.15)
                 : Color.clear
         )
@@ -191,8 +223,7 @@ struct SidebarView: View {
     /// embedded settings page.
     private var settingsRow: some View {
         Button {
-            vm.showsSettings = true
-            vm.showsHardware = false
+            vm.showSettings()
         } label: {
             HStack(spacing: 8) {
                 CategoryIcon(symbol: "gear", tint: .accentColor, size: 12, width: 18)

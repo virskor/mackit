@@ -210,6 +210,91 @@ enum FileSystem {
         return (total, latest)
     }
 
+    /// Recursively total the allocated size, plus the entry's *direct*
+    /// children split into folders and files.
+    ///
+    /// The disk analysis page needs both: the size drives the treemap areas,
+    /// and the "N folders N files" summary counts the direct children the
+    /// treemap is about to show — the same numbers the mockup reports
+    /// (Users: 2 folders 1 file = the 3 items listed). Symlinks are skipped
+    /// entirely — not followed, not sized, not counted — matching the
+    /// analysis listing, which skips them.
+    ///
+    /// `com.apple.*` subtrees are pruned during the traversal: since macOS 26
+    /// they are TCC-protected, and enumerating them pops an authorization
+    /// dialog (observed mid-scan as "allow Mackit to access Apple Music's
+    /// media library"). They are system-maintained data the user can't act on
+    /// anyway, so skipping them costs no actionable information — the listing
+    /// layer (`children(of:)`) filters them the same way.
+    static func allocatedSizeAndCounts(of url: URL) -> (size: Int64, folders: Int, files: Int) {
+        if (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]))?.isSymbolicLink == true {
+            return (0, 0, 0)
+        }
+        var isDirectory: ObjCBool = false
+        guard manager.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return (0, 0, 0) }
+        if !isDirectory.boolValue {
+            // A file has no contents: the counts describe what is inside the
+            // entry, and inside a file there is nothing.
+            return (fileSize(of: url), 0, 0)
+        }
+
+        let keys: [URLResourceKey] = [.isRegularFileKey, .totalFileAllocatedSizeKey, .fileSizeKey, .isSymbolicLinkKey]
+        var total: Int64 = 0
+        if let enumerator = manager.enumerator(
+            at: url,
+            includingPropertiesForKeys: keys,
+            options: [],
+            errorHandler: nil
+        ) {
+            let keySet = Set(keys)
+            for case let entry as URL in enumerator {
+                if isSystemData(entry.lastPathComponent) {
+                    // Prune the whole subtree, not just the entry: the
+                    // enumerator would otherwise descend into it anyway.
+                    enumerator.skipDescendants()
+                    continue
+                }
+                guard let values = try? entry.resourceValues(forKeys: keySet) else { continue }
+                if values.isSymbolicLink == true { continue }
+                guard values.isRegularFile == true else { continue }
+                if let allocated = values.totalFileAllocatedSize {
+                    total += Int64(allocated)
+                } else if let size = values.fileSize {
+                    total += Int64(size)
+                }
+            }
+        }
+        let counts = directChildCounts(of: url)
+        return (total, counts.folders, counts.files)
+    }
+
+    /// One level of children, split into folders and files. Reuses
+    /// `children(of:)` so the com.apple.* and unreadable-directory rules (and
+    /// therefore the counts) stay in sync with what the analysis listing
+    /// shows.
+    ///
+    /// Everything that is neither a folder nor a symlink counts as a file —
+    /// device nodes, sockets and FIFOs included. /dev holds hundreds of
+    /// device nodes and the mockup counts them in its "N 项"; counting only
+    /// regular files would report 2 where the user sees 354.
+    private static func directChildCounts(of url: URL) -> (folders: Int, files: Int) {
+        var folders = 0
+        var files = 0
+        for child in children(of: url.path) {
+            let values = try? child.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            // A symlink reports isDirectory false even when it points at a
+            // folder, so it has to be filtered explicitly or it would count
+            // as a file.
+            if values?.isSymbolicLink == true { continue }
+            if values?.isDirectory == true {
+                folders += 1
+            } else {
+                files += 1
+            }
+        }
+        return (folders, files)
+    }
+
     /// Protected paths; the cleaning engine rejects them outright.
     ///
     /// Both the as-is and realpath spellings are compared: on deletion the
