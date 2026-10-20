@@ -3,12 +3,14 @@ import Sparkle
 
 /// The auto-update controller: a thin wrapper around Sparkle.
 ///
-/// It has only three responsibilities:
+/// It has only four responsibilities:
 /// 1. Decide whether to start the updater based on `SUFeedURL` in Info.plist — dev builds have no
 ///    feed configured, Sparkle does not start at all, and the settings page hides update-related rows;
 /// 2. Expose the updater's bindable state (auto-check / auto-download / last check time /
 ///    whether a check is possible) to the settings page and the menu;
-/// 3. Forward the "Check for Updates" action to Sparkle.
+/// 3. Forward the "Check for Updates" action to Sparkle;
+/// 4. Keep the tray agent in step with the app bundle: after an update the
+///    resident agent must be restarted so the menu bar runs the new binary.
 ///
 /// After a new version is found, the download, EdDSA signature verification,
 /// code signature validation, bundle replacement and restart are all handled
@@ -77,11 +79,86 @@ final class UpdateController: NSObject, ObservableObject {
         if let feedURL = controller.updater.feedURL {
             MackitLog.updates.info("updater started, feed: \(feedURL.absoluteString, privacy: .public)")
         }
+        checkOnLaunch(controller.updater)
+    }
+
+    /// Kicks off a background check immediately after the updater starts, so
+    /// every launch re-examines the feed.
+    ///
+    /// Without this, Sparkle's own schedule only runs a check when enough time
+    /// has passed since the last one (SUScheduledCheckInterval, a day by
+    /// default): after a check has run once — an earlier launch that day, or
+    /// the user's own manual check — every subsequent launch inside that
+    /// window checks nothing, and a newly published version stays unnoticed
+    /// until the user checks by hand. A background check right after startup
+    /// is Sparkle's documented way to additionally check on every launch.
+    ///
+    /// Gated on the automatic-checks setting so a user who opted out is not
+    /// overridden. Must be invoked before the next runloop cycle, per
+    /// Sparkle's startUpdater contract. Background rather than
+    /// checkForUpdates: no progress UI is wanted for a check the user did not
+    /// ask for; if an update is found, Sparkle's standard update UI takes
+    /// over from here.
+    private func checkOnLaunch(_ updater: SPUUpdater) {
+        guard updater.automaticallyChecksForUpdates else { return }
+        MackitLog.updates.info("launch-time update check")
+        updater.checkForUpdatesInBackground()
     }
 
     /// Trigger a check initiated by the user. Called by the settings page button and the App menu.
     func checkForUpdates() {
         standardController?.checkForUpdates(nil)
+    }
+
+    // MARK: - Tray agent freshness
+
+    /// UserDefaults key recording the app bundle version as of the main app's
+    /// previous launch. Kept in the app domain's defaults, which survive a
+    /// bundle replacement (same bundle ID), unlike anything inside the bundle.
+    static let previousBundleVersionKey = "previousBundleVersion"
+
+    /// The running app bundle's version, e.g. "1.0.4 (152)". Nil when it
+    /// cannot be read (see `AppVersion.display`).
+    static var currentBundleVersion: String? {
+        AppVersion.display
+    }
+
+    /// Restarts the tray agent when the app bundle was replaced since the
+    /// previous launch — a Sparkle update, a reinstall over an older copy, or
+    /// a downgrade.
+    ///
+    /// The agent is a separate process embedded in this bundle, and a resident
+    /// one keeps running the code it was started with (see
+    /// `AppBridge.restartTrayAgent`): without this, an auto-update leaves the
+    /// menu bar on the previous version until the next login. The previous
+    /// version is recorded in user defaults, so the very first launch after
+    /// this logic ships — when nothing is recorded yet — also restarts the
+    /// agent: a resident one can only predate it.
+    ///
+    /// Call before `AppBridge.ensureAgentRunning`, so a launch that finds no
+    /// agent resident lets ensureAgentRunning bring it up from the current
+    /// bundle instead of restarting the instance it just started.
+    func restartTrayAgentIfBundleReplaced(
+        currentBundleVersion: String? = UpdateController.currentBundleVersion,
+        defaults: UserDefaults = .standard
+    ) {
+        guard let currentBundleVersion else { return }
+        let previous = defaults.string(forKey: Self.previousBundleVersionKey)
+        if Self.trayAgentIsStale(previousBundleVersion: previous, currentBundleVersion: currentBundleVersion) {
+            AppBridge.restartTrayAgent()
+        }
+        defaults.set(currentBundleVersion, forKey: Self.previousBundleVersionKey)
+    }
+
+    /// Whether the tray agent resident in the menu bar must be restarted.
+    ///
+    /// A pure function (takes both versions rather than reading them) so both
+    /// branches are testable. A missing previous version counts as stale: the
+    /// first launch that tracks bundle versions has no record of what the
+    /// agent is running, and a resident agent can only be older.
+    nonisolated static func trayAgentIsStale(previousBundleVersion: String?, currentBundleVersion: String) -> Bool {
+        guard let previousBundleVersion else { return true }
+        return previousBundleVersion != currentBundleVersion
     }
 
     /// The auto-check for updates switch, wired directly to Sparkle's corresponding property (persisted in user defaults).

@@ -300,6 +300,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // In development builds with no feed configured,
             // startIfNeeded returns directly.
             UpdateController.shared.startIfNeeded()
+            // The tray agent is a separate process embedded in this bundle:
+            // after an update (or a reinstall over an older copy) the resident
+            // one keeps running the previous build's code, leaving the menu
+            // bar on the old version. Restart it first, so a launch that finds
+            // no agent resident lets ensureAgentRunning below bring one up
+            // from the current bundle.
+            UpdateController.shared.restartTrayAgentIfBundleReplaced()
             // When the user launches the main app directly from the Dock /
             // Finder, the agent in the login item may not have been
             // brought up (or a login item was never registered). Bring it
