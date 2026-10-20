@@ -142,7 +142,7 @@ Verifying the update pipeline locally: start a local HTTP server pointing at the
 
 An HTTP (non-HTTPS) feed is not blocked: Sparkle then insists that the update carry an EdDSA signature and that the host be signed (both hold here), and the archive enclosure's scheme allows http as well. Launch the older build and you see the whole "new version found → download → install and restart" flow.
 
-The settings page's "Updates" section offers two toggles: auto-check (on by default, once every 24 hours) and auto-download (downloads in the background once a new version is found, still asking before installing). "Check Now…" sits below the Settings item in the App menu. All update-related logs go through the `updates` category of `os.Logger`.
+The settings page's "Updates" section offers two toggles: auto-check (on by default — Sparkle's own schedule runs at most once every 24 hours, and the app additionally checks in the background at every launch) and auto-download (off by default: a found update is offered in the standard alert, which asks before downloading; when on, Sparkle downloads in the background and installs on quit without prompting at all). "Check Now…" sits below the Settings item in the App menu. All update-related logs go through the `updates` category of `os.Logger`.
 
 ## Credential Security
 
