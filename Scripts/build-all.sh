@@ -190,6 +190,10 @@ if [ "$NO_NOTES" = "0" ] && [ -z "${MACKIT_NOTES_FILE:-}" ]; then
     MACKIT_NOTES_FILE="$ROOT/docs/release-notes/$TAG.md"
 fi
 NOTES_FILE="${MACKIT_NOTES_FILE:-}"
+# build-update.sh reads MACKIT_NOTES_FILE from the environment to embed the
+# notes in the appcast item; without the export the in-app update window
+# shows a version number with no release notes.
+export MACKIT_NOTES_FILE
 
 # ---------- Preflight ----------
 echo "==> Preflight"
@@ -320,6 +324,13 @@ DMG="$DIST/Mackit-$VERSION.dmg"
 ASSETS=("$DMG" "$DMG.sha256")
 if [ "$SKIP_UPDATE" = "0" ]; then
     ASSETS+=("$DIST/updates/Mackit-$VERSION.tar.bz2" "$DIST/updates/appcast.xml")
+    # Delta archives referenced by this release's appcast entry are release
+    # assets too: generate_appcast emits them whenever a previous archive is
+    # still around, and an enclosure without its file 404s for every client
+    # that picks the delta.
+    while IFS= read -r delta; do
+        [ -n "$delta" ] && ASSETS+=("$DIST/updates/$delta")
+    done < <(grep -oE "releases/download/$TAG/[^\"]+\.delta" "$DIST/updates/appcast.xml" | sed "s|releases/download/$TAG/||" | sort -u)
 fi
 for asset in "${ASSETS[@]}"; do
     [ -s "$asset" ] || die "missing or empty asset: $asset"
