@@ -527,9 +527,13 @@ private struct TreemapView: View {
                 items: entries.map { (id: $0.id, size: $0.size) },
                 in: geometry.size
             )
+            // A tile this small is invisible and unclickable; skipping them
+            // keeps a directory with thousands of children (node_modules,
+            // caches) from building thousands of views for nothing.
+            let visibleRects = rects.filter { $0.value.width >= 2 && $0.value.height >= 2 }
             ZStack(alignment: .topLeading) {
                 ForEach(entries) { entry in
-                    if let rect = rects[entry.id] {
+                    if let rect = visibleRects[entry.id] {
                         TreemapTile(
                             entry: entry,
                             icon: icon(entry.path),
@@ -545,7 +549,7 @@ private struct TreemapView: View {
                 // Tiles need sizes, so the card is blank until the first
                 // measurement lands — say what is happening instead of
                 // showing an empty rectangle.
-                if rects.isEmpty, let measuringName {
+                if visibleRects.isEmpty, let measuringName {
                     VStack(spacing: 8) {
                         ProgressView()
                             .controlSize(.small)

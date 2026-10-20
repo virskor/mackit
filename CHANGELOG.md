@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Disk space analysis: a new tool page (sidebar "Tools" section, below the cleanup entries) answering "where did the space go". The left column lists the current directory's children with their recursive sizes and item counts — the whole listing appears immediately and sizes stream in, biggest last; the right column shows the selected folder's breakdown as a squarified treemap, with a toggle between the treemap and a plain list. Navigation is breadcrumb-based with back/forward history, and a toolbar shortcut jumps straight to the home folder (the fastest path to `~/Library/Containers`, where most reclaimable container junk lives). The hardware page's "Analyze Disk Space" now opens this tool instead of running a cleanup scan
+- The analysis page is honest about what it could not measure: a folder the process may not read (a denied permission prompt, or a locked directory) is reported as unreadable instead of claiming "0 B", and `~/Documents` / `~/Desktop` / `~/Downloads` are listed as "not scanned" rather than silently skipped — scanning one is an explicit action, so no access dialog interrupts a scan, and a link to the Full Disk Access pane is offered for a complete scan
+
 ## [1.0.4] - 2026-10-20
 
 ### Fixed

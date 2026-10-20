@@ -276,11 +276,22 @@ final class DiskAnalysisModel {
     /// Folder icons, cached per path: `NSWorkspace.icon` is not free, and the
     /// list re-renders every time a measurement streams in. The same cache
     /// serves the rows, the breadcrumb's disk icon and the treemap tiles.
+    ///
+    /// Capped like the directory cache: a long drilling session visits
+    /// thousands of paths, and each NSImage carries its full representation
+    /// set. Eviction is FIFO — an icon is a few syscalls to rebuild, so the
+    /// policy only has to be cheap.
     @ObservationIgnored private var iconCache: [String: NSImage] = [:]
+    @ObservationIgnored private var iconCacheOrder: [String] = []
+    private let iconCacheCapacity = 128
 
     func icon(forPath path: String) -> NSImage {
         if let cached = iconCache[path] { return cached }
         let icon = NSWorkspace.shared.icon(forFile: path)
+        if iconCacheOrder.count >= iconCacheCapacity {
+            iconCache.removeValue(forKey: iconCacheOrder.removeFirst())
+        }
+        iconCacheOrder.append(path)
         iconCache[path] = icon
         return icon
     }
