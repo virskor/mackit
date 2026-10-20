@@ -61,7 +61,7 @@ enum FileSystem {
         // areas) are skipped directly: forcing enumeration either fails
         // immediately or pops a system authorization dialog that hangs the scan thread.
         guard manager.isReadableFile(atPath: base.path) else {
-            MackitLog.fs.debug("目录不可读，跳过：\(base.path, privacy: .public)")
+            MackitLog.fs.debug("directory not readable, skipped: \(base.path, privacy: .public)")
             return []
         }
         let keys: [URLResourceKey] = [.isDirectoryKey, .isSymbolicLinkKey]
@@ -70,7 +70,7 @@ enum FileSystem {
             includingPropertiesForKeys: keys,
             options: [.skipsSubdirectoryDescendants, .skipsPackageDescendants]
         ) else {
-            MackitLog.fs.debug("目录枚举失败，跳过：\(base.path, privacy: .public)")
+            MackitLog.fs.debug("directory enumeration failed, skipped: \(base.path, privacy: .public)")
             return []
         }
         // com.apple.* system data is TCC-protected; enumerating it pops an authorization dialog, so it is skipped directly

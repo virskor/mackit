@@ -68,8 +68,17 @@ final class AppViewModel {
     /// as the settings page.
     var showsHardware: Bool = false
 
-    /// Row selection set, consistent with the list checkmarks.
-    var selection: Set<String> = []
+    /// Row selection set, consistent with the list checkmarks. All of the
+    /// state and every rule that decides it live in `CleanupSelection`; this
+    /// is the item-id view of it the list and the tray panel read.
+    var selection: Set<String> {
+        get { selectionState.ids }
+        set { selectionState.replace(with: newValue) }
+    }
+
+    /// The one owner of the selection: what a scan pre-checks, what a toggle
+    /// moves, what a clean leaves behind, what gets remembered.
+    private let selectionState = CleanupSelection()
 
     /// Cleanup result summary.
     var lastReclaimed: Int64 = 0
@@ -96,7 +105,10 @@ final class AppViewModel {
     /// The general cleanup rows the user asked to remember, checked
     /// automatically on every later scan. nil means "not set yet" and falls
     /// back to the built-in default (safe + review rows pre-checked).
-    var generalSelectedRows: Set<String>? = nil
+    var generalSelectedRows: Set<String>? {
+        get { selectionState.rememberedRows }
+        set { selectionState.rememberedRows = newValue }
+    }
     /// Whether installed apps are enumerated in the main scan (the "Apps"
     /// category).
     var includeApps: Bool = true
@@ -113,6 +125,15 @@ final class AppViewModel {
     var showMenuBarCPU: Bool = true
     var showMenuBarMemory: Bool = true
     var showMenuBarTemperature: Bool = true
+    /// Whether the brand icon is drawn in front of the monitoring values in
+    /// the menu bar item. On by default: the icon is what makes the item
+    /// recognizable at a glance.
+    ///
+    /// Only dropped when at least one monitoring value is showing — with the
+    /// icon off and all three values off as well, the item would be an empty
+    /// image and the app would vanish from the menu bar with no way back
+    /// (see `MenuBarStatsImage`).
+    var showMenuBarLogo: Bool = true
     /// Master toggle for the desktop floating stats window. Off by
     /// default: a permanently present block on the desktop is a
     /// conspicuous change, so the user should turn it on themselves;
@@ -222,6 +243,13 @@ final class AppViewModel {
     /// module so tests can drive it directly; the default value is the
     /// app's startup behavior.
     init(statsPolling: Bool = true) {
+        // A remembered row selection is the one piece of selection state that
+        // outlives a process, so the model's user actions route through here
+        // to persist it. `loadSettings` below assigns the stored value
+        // directly and does not trigger a write.
+        selectionState.onRememberedRowsChanged = { [weak self] _ in
+            self?.saveSettings()
+        }
         loadSettings()
         if statsPolling { startStatsPolling() }
         // NSMenu's tracking notifications are delivered by AppKit on the
@@ -442,6 +470,27 @@ final class AppViewModel {
         DispatchQueue.main.async { NSApp.terminate(nil) }
     }
 
+    /// Panel action: quit one of the apps in the memory ranking (the button
+    /// that appears on a row while hovered).
+    ///
+    /// The panel stays open afterwards — quitting several apps in a row is
+    /// the point of the button, and the ranking refreshes right away so the
+    /// row disappears under the pointer.
+    func quitApp(_ entry: AppMemoryEntry) {
+        let outcome = AppQuitter().quit(pid: entry.pid) { [weak self] in
+            self?.quitFromTray()
+        }
+        switch outcome {
+        case .quittingMackit:
+            MackitLog.system.info("quit app: matched Mackit itself, quitting the whole app instead")
+        case .alreadyGone:
+            MackitLog.system.info("quit app failed: \(entry.name, privacy: .public) process no longer exists")
+        case .quitRequested:
+            MackitLog.system.info("quit app: \(entry.name, privacy: .public)")
+        }
+        refreshStats()
+    }
+
     // MARK: - Main App Side Command Handling (IPC)
 
     /// Where the main app goes after receiving a `.clean` command.
@@ -581,7 +630,7 @@ final class AppViewModel {
     /// the result is also forwarded to the main app: if the main window is
     /// open, the hint appears in the window the user is looking at.
     func freeMemory() {
-        MackitLog.system.info("释放内存：请求授权")
+        MackitLog.system.info("free memory: requesting authorization")
         Task { [weak self] in
             let outcome = MemoryReleaser.release(
                 run: MemoryReleaser.run,
@@ -592,19 +641,19 @@ final class AppViewModel {
             let message: String
             switch outcome {
             case .released(let freed):
-                MackitLog.system.info("释放内存完成：\(freed, privacy: .public) 字节")
+                MackitLog.system.info("free memory done: \(freed, privacy: .public) bytes")
                 style = .success
                 message = L10n.fmt("toast.memoryReleased", Formatters.bytes(freed))
             case .noChange:
-                MackitLog.system.info("释放内存：空闲量无变化")
+                MackitLog.system.info("free memory: no change in free amount")
                 style = .info
                 message = L10n.tr("toast.memoryReleasedNone")
             case .cancelled:
-                MackitLog.system.info("释放内存：用户在授权对话框取消")
+                MackitLog.system.info("free memory: user cancelled in authorization dialog")
                 style = .info
                 message = L10n.tr("toast.memoryReleasedCancelled")
             case .failed(let detail):
-                MackitLog.system.error("释放内存失败：\(detail, privacy: .public)")
+                MackitLog.system.error("free memory failed: \(detail, privacy: .public)")
                 style = .error
                 message = L10n.fmt("toast.memoryReleaseFailed", detail)
             }
@@ -796,6 +845,16 @@ final class AppViewModel {
 
     // MARK: - General Cleanup Page
 
+    /// General-page rows checked outside the item selection. Two kinds of
+    /// rows need it: rows the scan found nothing for — their checkbox cannot
+    /// be derived from items that do not exist, and without a record of the
+    /// check the row is inert (clicking it changes nothing and the row reads
+    /// as broken) — and rows arriving with the remembered selection, which
+    /// must show checked even when the new scan finds nothing for them.
+    /// Restarted from the saved selection on every scan start
+    /// (see `resetGeneralRowChecks`).
+    var handCheckedGeneralRows: Set<String> { selectionState.handCheckedRows }
+
     /// One row of the general cleanup page with its found items rolled up.
     struct GeneralRuleRowState {
         let row: GeneralRuleRow
@@ -803,10 +862,36 @@ final class AppViewModel {
         let size: Int64
         let selectedCount: Int
         let selectedSize: Int64
+        /// The row is checked, but not through its items: the scan found
+        /// nothing for it, or it came in with the remembered selection.
+        let isCheckedByHand: Bool
+        /// The row's entries grouped below the header; empty for a flat row.
+        /// Sorted by size, largest first, same as the main list.
+        let subRows: [GeneralSubRowState]
 
-        /// All of the row's items are checked (an empty row is not "selected").
-        var isFullySelected: Bool { !items.isEmpty && selectedCount == items.count }
-        var isPartiallySelected: Bool { selectedCount > 0 && selectedCount < items.count }
+        /// All of the row's items are checked. A row with no items has no
+        /// items to derive from, so it is checked exactly when it was
+        /// checked by hand.
+        var isFullySelected: Bool {
+            items.isEmpty ? isCheckedByHand : selectedCount == items.count
+        }
+
+        var isPartiallySelected: Bool { !isFullySelected && selectedCount > 0 }
+    }
+
+    /// One sub-row of a grouped general-page row: a single language, or one
+    /// app's junk. Clicking it moves exactly that group's items, so the user
+    /// can keep one language — or one app's caches — while sweeping the rest.
+    struct GeneralSubRowState: Identifiable {
+        /// The group key: the language code, or the owning app's display name.
+        let id: String
+        let title: String
+        let itemIDs: [String]
+        let size: Int64
+        let selectedCount: Int
+
+        var isFullySelected: Bool { selectedCount == itemIDs.count }
+        var isPartiallySelected: Bool { !isFullySelected && selectedCount > 0 }
     }
 
     /// One group of the general cleanup page.
@@ -826,7 +911,7 @@ final class AppViewModel {
         }
 
         var isPartiallySelected: Bool {
-            !isFullySelected && rows.contains { $0.selectedCount > 0 }
+            !isFullySelected && rows.contains { $0.isFullySelected || $0.isPartiallySelected }
         }
     }
 
@@ -862,7 +947,9 @@ final class AppViewModel {
                     items: rowItems,
                     size: rowItems.reduce(0) { $0 + $1.size },
                     selectedCount: selected.count,
-                    selectedSize: selected.reduce(0) { $0 + $1.size }
+                    selectedSize: selected.reduce(0) { $0 + $1.size },
+                    isCheckedByHand: handCheckedGeneralRows.contains(row.id),
+                    subRows: buildSubRows(for: row, items: rowItems)
                 )
             }
             return GeneralRuleGroupState(
@@ -874,34 +961,77 @@ final class AppViewModel {
         }
     }
 
-    /// Checks or unchecks every item of a general-page row at once.
+    /// Groups a row's items into sub-rows by the row's mode: one per language
+    /// for the language-files row, one per app for the app-junk row. The
+    /// grouping itself belongs to the selection model; this only adds the
+    /// display title and the selected count the page shows.
+    private func buildSubRows(for row: GeneralRuleRow, items: [JunkItem]) -> [GeneralSubRowState] {
+        selectionState.subRowGroups(of: row, items: items).map { group in
+            GeneralSubRowState(
+                id: group.key,
+                title: subRowTitle(key: group.key, mode: row.subRowMode),
+                itemIDs: Array(group.itemIDs),
+                size: group.size,
+                selectedCount: group.itemIDs.count { selectionState.ids.contains($0) }
+            )
+        }
+    }
+
+    /// The sub-row's display title. Language sub-rows show the language's own
+    /// name ("Japanese", "Tamil"), in the language Mackit's own UI is currently
+    /// rendered in — the same convention as System Settings' language list.
+    private func subRowTitle(key: String, mode: GeneralSubRowMode) -> String {
+        switch mode {
+        case .flat:
+            return key
+        case .byLanguage:
+            let locale = Locale(identifier: AppLanguage.running.effective.rawValue)
+            // Returns nil for a code Foundation has no name for; the code
+            // itself is a better sub-row title than a blank one.
+            return locale.localizedString(forLanguageCode: key) ?? key
+        case .byApp:
+            return key
+        }
+    }
+
+    /// Checks or unchecks every item of a general-page row at once. A row the
+    /// scan found nothing for has no items to move, so its check is recorded
+    /// by hand instead — without that record the row would be inert and
+    /// ignore every click.
     func setRowSelected(_ row: GeneralRuleRow, selected: Bool) {
-        setSelected(ruleIDs: Set(row.ruleIDs), selected: selected)
+        if selectionState.setRow(row, selected: selected, items: items) {
+            selectionDidChange()
+            publishMenuSnapshot(force: true)
+        }
+    }
+
+    /// Checks or unchecks one sub-row of a grouped row — a single language,
+    /// or a single app's junk — leaving the rest of the row as it was.
+    func setSubRowSelected(_ row: GeneralRuleRow, key: String, selected: Bool) {
+        if selectionState.setSubRow(of: row, key: key, selected: selected, items: items) {
+            selectionDidChange()
+            publishMenuSnapshot(force: true)
+        }
     }
 
     /// Checks or unchecks a whole general-page group at once — the group
     /// header is the toggle, for when the user wants all of "System Junk"
-    /// without clicking each row. A group whose rows found nothing has no
-    /// items to move, so the call is a no-op there.
+    /// without clicking each row. Rows that found nothing have no items to
+    /// move, so the group's hand-checked rows move with the toggle.
     func setGroupSelected(_ group: GeneralCleanGroup, selected: Bool) {
-        setSelected(ruleIDs: Set(GeneralCleanLayout.rows(of: group).flatMap(\.ruleIDs)), selected: selected)
-    }
-
-    /// Checks or unchecks every item whose rule is in `ruleIDs`. One selection
-    /// write-back for the whole set, not one per item: a row can carry
-    /// hundreds of language-file entries.
-    private func setSelected(ruleIDs: Set<String>, selected: Bool) {
-        var changed = false
-        for item in items where ruleIDs.contains(item.ruleID) {
-            if selected {
-                if selection.insert(item.id).inserted { changed = true }
-            } else if selection.remove(item.id) != nil {
-                changed = true
-            }
-        }
-        if changed {
+        if selectionState.setGroup(group, selected: selected, items: items) {
             selectionDidChange()
             publishMenuSnapshot(force: true)
+        }
+    }
+
+    /// Restarts the general page's hand-checked rows for a new scan: the
+    /// remembered selection when the user saved one (so a remembered row
+    /// shows checked even if the new scan finds nothing for it), otherwise
+    /// nothing — the built-in default pre-check covers the rest.
+    func resetGeneralRowChecks() {
+        if selectionState.restartHandCheckedRows() {
+            selectionDidChange()
         }
     }
 
@@ -941,7 +1071,8 @@ final class AppViewModel {
         cleanTask?.cancel()
 
         items = []
-        selection = []
+        selectionState.reset()
+        resetGeneralRowChecks()
         cleanOutcomes = []
         cleanPhase = .idle
         phase = .scanning
@@ -960,7 +1091,7 @@ final class AppViewModel {
         selectionDidChange()
         publishMenuSnapshot(force: true)
         scanStartedAt = .now
-        MackitLog.scan.info("扫描开始：项目根 \(self.projectRoots.count, privacy: .public) 个，CLI \(self.includeCLI, privacy: .public)，应用发现 \(self.includeApps, privacy: .public)")
+        MackitLog.scan.info("scan started: \(self.projectRoots.count, privacy: .public) project roots, CLI \(self.includeCLI, privacy: .public), app discovery \(self.includeApps, privacy: .public)")
 
         let options = ScanOptions(
             autoSelectRisk: autoSelectRisk,
@@ -981,7 +1112,7 @@ final class AppViewModel {
             }
             guard !Task.isCancelled else { return }
             if let startedAt = self.scanStartedAt {
-                MackitLog.scan.info("规则扫描阶段完成：\(self.items.count, privacy: .public) 项，耗时 \(MackitLog.duration(.now - startedAt), privacy: .public)")
+                MackitLog.scan.info("rule scan phase finished: \(self.items.count, privacy: .public) items, took \(MackitLog.duration(.now - startedAt), privacy: .public)")
             }
 
             // App discovery comes before project directories: it always
@@ -1026,7 +1157,7 @@ final class AppViewModel {
             }
             if let startedAt = self.scanStartedAt {
                 let elapsed = MackitLog.duration(.now - startedAt)
-                MackitLog.scan.info("扫描完成：\(self.items.count, privacy: .public) 项，合计 \(self.totalSize, privacy: .public) 字节，耗时 \(elapsed, privacy: .public)")
+                MackitLog.scan.info("scan finished: \(self.items.count, privacy: .public) items, \(self.totalSize, privacy: .public) bytes total, took \(elapsed, privacy: .public)")
                 self.scanStartedAt = nil
             }
         }
@@ -1057,33 +1188,13 @@ final class AppViewModel {
         publishMenuSnapshot()
     }
 
+    /// Applies the pre-check policy to a batch of newly discovered items.
+    /// The rules live in `CleanupSelection`; this only invalidates the caches
+    /// and republishes.
     private func applyDefaultSelection(_ batch: [JunkItem]) {
-        // The general cleanup module is safe by default (Lemon's model): its
-        // safe and review rows arrive pre-checked, so the page reads as a
-        // checklist the user can accept in one click. Once the user has
-        // saved a row selection (the "remember this" prompt), that saved
-        // selection replaces the built-in default. The developer cleanup
-        // respects the user's auto-select setting instead, including "none".
-        var changed = false
-        for item in batch where !item.isUnknownSize {
-            let eligible: Bool
-            if item.category.scope == .general {
-                if let saved = generalSelectedRows {
-                    eligible = saved.contains(Self.generalRowID(for: item))
-                } else {
-                    eligible = item.risk <= .review
-                }
-            } else if let cap = autoSelectRisk.riskCap {
-                eligible = item.risk <= cap
-            } else {
-                eligible = false
-            }
-            if eligible {
-                selection.insert(item.id)
-                changed = true
-            }
+        if selectionState.applyDefaultPolicy(to: batch, autoSelect: autoSelectRisk) {
+            selectionDidChange()
         }
-        if changed { selectionDidChange() }
     }
 
     /// The general-page row an item belongs to (for the saved-selection
@@ -1093,21 +1204,12 @@ final class AppViewModel {
         GeneralCleanLayout.rowID(forRuleID: item.ruleID) ?? ""
     }
 
-    /// The rows the current selection checks on the general page.
-    private var selectedGeneralRows: Set<String> {
-        var rows: Set<String> = []
-        for item in items where item.category.scope == .general && selection.contains(item.id) {
-            rows.insert(Self.generalRowID(for: item))
-        }
-        return rows
-    }
-
     /// Whether the general page's current selection differs from what the
     /// next scan would pre-check — i.e. whether there is a new setting
     /// worth remembering. The confirmation sheet uses this to decide
     /// whether to show the "remember this selection" toggle.
     func generalSelectionDiffersFromSaved() -> Bool {
-        selectedGeneralRows != defaultGeneralRows
+        selectionState.selectionDiffersFromDefault(items: items)
     }
 
     /// Whether the confirmation sheet should offer to remember the general
@@ -1118,34 +1220,30 @@ final class AppViewModel {
         pendingCleanScope == .general && generalSelectionDiffersFromSaved()
     }
 
-    /// The general-page rows that currently have items — an empty row can be
-    /// neither checked nor "pre-checked next time".
-    private var generalRowsWithItems: Set<String> {
-        var rows: Set<String> = []
-        for item in items where item.category.scope == .general {
-            rows.insert(Self.generalRowID(for: item))
-        }
-        return rows
-    }
-
-    /// The rows the next scan would pre-check: the saved selection when set,
-    /// otherwise the built-in default (safe + review), either way restricted
-    /// to rows that currently have items.
-    private var defaultGeneralRows: Set<String> {
-        let eligible: Set<String>
-        if let saved = generalSelectedRows {
-            eligible = saved
-        } else {
-            eligible = Set(GeneralCleanLayout.rows.filter { $0.risk <= .review }.map(\.id))
-        }
-        return eligible.intersection(generalRowsWithItems)
-    }
-
     /// Remembers the general page's current row selection, so every later
     /// scan pre-checks exactly these rows.
     func rememberGeneralSelection() {
-        generalSelectedRows = selectedGeneralRows
-        saveSettings()
+        selectionState.rememberCurrentRows(items: items)
+        showToast(.success, L10n.tr("toast.generalSelectionRemembered"))
+    }
+
+    /// Whether a row selection is remembered. While one is, the general page's
+    /// header offers "restore defaults" instead of "remember this selection" —
+    /// otherwise a remembered selection would be a one-way door with no way
+    /// back to the built-in default.
+    var hasRememberedGeneralSelection: Bool {
+        selectionState.hasRememberedSelection
+    }
+
+    /// Drops the remembered selection and re-applies the built-in default
+    /// (safe + review rows pre-checked) to the items the current scan already
+    /// found, so the shortcut works without forcing a rescan.
+    func restoreDefaultGeneralSelection() {
+        if selectionState.restoreDefaultSelection(items: items) {
+            selectionDidChange()
+            publishMenuSnapshot(force: true)
+            showToast(.info, L10n.tr("toast.generalDefaultsRestored"))
+        }
     }
 
     func cancelScan() {
@@ -1160,7 +1258,7 @@ final class AppViewModel {
         cleanCurrentTitle = ""
         pendingRemoval = []
         if let startedAt = scanStartedAt {
-            MackitLog.scan.info("扫描被用户取消：已发现 \(self.items.count, privacy: .public) 项，耗时 \(MackitLog.duration(.now - startedAt), privacy: .public)")
+            MackitLog.scan.info("scan cancelled by user: \(self.items.count, privacy: .public) items found, took \(MackitLog.duration(.now - startedAt), privacy: .public)")
             scanStartedAt = nil
         }
         publishMenuSnapshot(force: true)
@@ -1169,29 +1267,24 @@ final class AppViewModel {
     // MARK: - Selection
 
     func toggle(_ item: JunkItem) {
-        if selection.contains(item.id) {
-            selection.remove(item.id)
-        } else {
-            selection.insert(item.id)
+        if selectionState.setItem(item.id, selected: !isSelected(item)) {
+            selectionDidChange()
+            publishMenuSnapshot(force: true)
         }
-        selectionDidChange()
-        publishMenuSnapshot(force: true)
     }
 
     func selectAllVisible() {
-        for item in visibleItems {
-            selection.insert(item.id)
+        if selectionState.setItems(Set(visibleItems.map(\.id)), selected: true) {
+            selectionDidChange()
+            publishMenuSnapshot(force: true)
         }
-        selectionDidChange()
-        publishMenuSnapshot(force: true)
     }
 
     func deselectAllVisible() {
-        for item in visibleItems {
-            selection.remove(item.id)
+        if selectionState.setItems(Set(visibleItems.map(\.id)), selected: false) {
+            selectionDidChange()
+            publishMenuSnapshot(force: true)
         }
-        selectionDidChange()
-        publishMenuSnapshot(force: true)
     }
 
     /// Checks every safe item. Defaults to the mode the window is currently
@@ -1199,11 +1292,10 @@ final class AppViewModel {
     /// regular user's browser caches get swept even though the window last
     /// sat in developer mode.
     func selectAllSafe(allScopes: Bool = false) {
-        for item in items where item.risk == .safe && (allScopes || item.category.scope == cleanupScope) {
-            selection.insert(item.id)
+        if selectionState.selectAllSafe(items, scopes: allScopes ? nil : [cleanupScope]) {
+            selectionDidChange()
+            publishMenuSnapshot(force: true)
         }
-        selectionDidChange()
-        publishMenuSnapshot(force: true)
     }
 
     /// Switching category in the sidebar: collapse the cleanup result page
@@ -1269,7 +1361,7 @@ final class AppViewModel {
         cleanCurrentTitle = ""
         publishMenuSnapshot(force: true)
         cleanStartedAt = .now
-        MackitLog.clean.info("清理开始：\(self.selectedItems.count, privacy: .public) 项，合计 \(self.selectedSize, privacy: .public) 字节，移入废纸篓 \(self.moveToTrash, privacy: .public)")
+        MackitLog.clean.info("clean started: \(self.selectedItems.count, privacy: .public) items, \(self.selectedSize, privacy: .public) bytes total, move to Trash \(self.moveToTrash, privacy: .public)")
 
         let targets = selectedItems
         let useTrash = moveToTrash
@@ -1317,11 +1409,11 @@ final class AppViewModel {
             cleanPhase = .done
             volumeUsage = .home()
             if let startedAt = cleanStartedAt {
-                MackitLog.clean.info("清理完成：释放 \(reclaimed, privacy: .public) 字节，失败 \(failures, privacy: .public) 项，耗时 \(MackitLog.duration(.now - startedAt), privacy: .public)")
+                MackitLog.clean.info("clean finished: freed \(reclaimed, privacy: .public) bytes, \(failures, privacy: .public) failures, took \(MackitLog.duration(.now - startedAt), privacy: .public)")
                 cleanStartedAt = nil
             }
             for outcome in cleanOutcomes where !outcome.succeeded {
-                MackitLog.clean.error("清理失败「\(outcome.title, privacy: .public)」：\(outcome.message, privacy: .public)")
+                MackitLog.clean.error("clean failed \"\(outcome.title, privacy: .public)\": \(outcome.message, privacy: .public)")
             }
 
             // Cleanup results are reported via Toast; the failure count
@@ -1337,21 +1429,37 @@ final class AppViewModel {
             }
 
             // Remove in one batch, triggering only one cache invalidation
-            if !pendingRemoval.isEmpty {
-                items.removeAll { pendingRemoval.contains($0.id) }
-                selection.subtract(pendingRemoval)
-                itemsDidChange()
-                selectionDidChange()
-            }
+            removeCleanedItems(pendingRemoval)
             pendingRemoval = []
             pendingCleanScope = nil
             publishMenuSnapshot(force: true)
         }
     }
 
+    /// Drops the cleaned items from the list in one batch.
+    ///
+    /// The selection deliberately survives: a clean acts on the user's
+    /// selection, it does not reset it. What the user checked stays checked —
+    /// items whose clean failed stay checked so they can be retried, and rows
+    /// whose items were all cleaned keep their check as a hand-checked row, so
+    /// the page still shows the curation instead of reading as "nothing
+    /// selected". Only a new scan restarts the selection.
+    ///
+    /// The selection must be updated *before* the items leave the list: which
+    /// rows lost their items is computed from the full list.
+    ///
+    /// Visible within the module so tests can drive it directly.
+    func removeCleanedItems(_ ids: Set<String>) {
+        guard !ids.isEmpty else { return }
+        selectionState.applyCleanResult(ids, items: items)
+        items.removeAll { ids.contains($0.id) }
+        itemsDidChange()
+        selectionDidChange()
+    }
+
     private func removeItem(id: String) {
+        selectionState.discard([id])
         items.removeAll { $0.id == id }
-        selection.remove(id)
         itemsDidChange()
         selectionDidChange()
         publishMenuSnapshot(force: true)
@@ -1374,14 +1482,11 @@ final class AppViewModel {
         // would try to delete already-nonexistent paths a second time.
         if !pendingRemoval.isEmpty {
             let alreadyRemoved = pendingRemoval.count
-            items.removeAll { pendingRemoval.contains($0.id) }
-            selection.subtract(pendingRemoval)
-            itemsDidChange()
-            selectionDidChange()
+            removeCleanedItems(pendingRemoval)
             pendingRemoval = []
-            MackitLog.clean.info("清理被用户取消：已完成的 \(alreadyRemoved, privacy: .public) 项已从清单移除")
+            MackitLog.clean.info("clean cancelled by user: \(alreadyRemoved, privacy: .public) completed items removed from the list")
         } else {
-            MackitLog.clean.info("清理被用户取消：尚无已完成的项")
+            MackitLog.clean.info("clean cancelled by user: no completed items")
         }
         cleanOutcomes = []
         cleanProgress = 0
@@ -1489,11 +1594,27 @@ final class AppViewModel {
 
     // MARK: - Settings Persistence
 
+    /// The write side of settings persistence.
+    ///
+    /// A seam for tests: the VM's init reads the real shared settings file,
+    /// so a test that exercises a save — the remembered row selection, say —
+    /// needs somewhere to put it other than the developer's own settings.
+    /// Never reassigned in production, where it writes the shared file.
+    var settingsSink: @MainActor ([String: Any]) -> Void = { SharedStore.saveSettings($0) }
+
     private func loadSettings() {
         // The two processes (main app and tray agent) each hold a VM, and
         // settings live in a shared file, so a change on one side becomes
         // visible to the other.
-        let values = SharedStore.loadSettings()
+        loadSettings(from: SharedStore.loadSettings())
+    }
+
+    /// Applies one settings dictionary.
+    ///
+    /// Split out from `loadSettings` so a test can feed a dictionary directly
+    /// instead of reading the developer's own shared file — the read-side
+    /// counterpart of the `settingsSink` seam on the write side.
+    func loadSettings(from values: [String: Any]) {
         // autoSelectRisk is stored as an Int (AutoSelectLevel.rawValue).
         // It was once stored as a string historically; both paths are
         // accepted, and when it cannot be read, keep the initial .none.
@@ -1531,6 +1652,11 @@ final class AppViewModel {
         if let value = values["showMenuBarTemperature"] as? Bool {
             showMenuBarTemperature = value
         }
+        // Defaults to on: absent means the user never touched the switch, and
+        // dropping the icon on an upgrade would be a silent visual change.
+        if let value = values["showMenuBarLogo"] as? Bool {
+            showMenuBarLogo = value
+        }
         if let value = values["showDesktopStats"] as? Bool {
             showDesktopStats = value
         }
@@ -1540,7 +1666,7 @@ final class AppViewModel {
     func saveSettings() {
         // Only write the keys this VM is responsible for; SharedStore
         // merges with the other keys in the file and replaces wholesale.
-        SharedStore.saveSettings([
+        settingsSink([
             "autoSelectRisk": autoSelectRisk.rawValue,
             "moveToTrash": moveToTrash,
             "includeCLI": includeCLI,
@@ -1551,6 +1677,7 @@ final class AppViewModel {
             "showMenuBarCPU": showMenuBarCPU,
             "showMenuBarMemory": showMenuBarMemory,
             "showMenuBarTemperature": showMenuBarTemperature,
+            "showMenuBarLogo": showMenuBarLogo,
             "showDesktopStats": showDesktopStats,
         ])
         // Broadcast to the tray agent: its VM re-reads once, so setting
@@ -1623,10 +1750,10 @@ final class AppViewModel {
                 return await ScanEngine.measure(discovered)
             }.value
             guard !measured.isEmpty else {
-                MackitLog.scan.info("项目根无产物：\(root, privacy: .public)")
+                MackitLog.scan.info("project root has no artifacts: \(root, privacy: .public)")
                 continue
             }
-            MackitLog.scan.info("项目根发现 \(measured.count, privacy: .public) 个产物目录：\(root, privacy: .public)，耗时 \(MackitLog.duration(.now - startedAt), privacy: .public)")
+            MackitLog.scan.info("project root found \(measured.count, privacy: .public) artifact directories: \(root, privacy: .public), took \(MackitLog.duration(.now - startedAt), privacy: .public)")
 
             // Roots may be nested inside each other (e.g. ~/Projects and
             // ~/Projects/foo), so the same build artifact directory may be
@@ -1659,11 +1786,11 @@ final class AppViewModel {
         }.value
         if Task.isCancelled { return }
         guard !measured.isEmpty else {
-            MackitLog.apps.info("应用发现：未找到任何已安装应用")
+            MackitLog.apps.info("app discovery: no installed apps found")
             return
         }
         let bundleCount = measured.filter { $0.appKind == .bundle }.count
-        MackitLog.apps.info("应用发现：\(bundleCount, privacy: .public) 个应用，\(measured.count, privacy: .public) 条条目")
+        MackitLog.apps.info("app discovery: \(bundleCount, privacy: .public) apps, \(measured.count, privacy: .public) entries")
 
         mergeDiscovered(measured)
     }
@@ -1684,10 +1811,10 @@ final class AppViewModel {
         }.value
         if Task.isCancelled { return }
         guard !measured.isEmpty else {
-            MackitLog.scan.info("语言包扫描：未发现可清理的语言包")
+            MackitLog.scan.info("language packs scan: no cleanable language packs found")
             return
         }
-        MackitLog.scan.info("语言包扫描：发现 \(measured.count, privacy: .public) 个语言包目录")
+        MackitLog.scan.info("language packs scan: found \(measured.count, privacy: .public) language pack directories")
 
         mergeDiscovered(measured)
     }
@@ -1706,10 +1833,10 @@ final class AppViewModel {
         }.value
         if Task.isCancelled { return }
         guard !measured.isEmpty else {
-            MackitLog.scan.info("下载目录扫描：未发现安装包或压缩包")
+            MackitLog.scan.info("downloads scan: no installers or archives found")
             return
         }
-        MackitLog.scan.info("下载目录扫描：发现 \(measured.count, privacy: .public) 个安装包或压缩包")
+        MackitLog.scan.info("downloads scan: found \(measured.count, privacy: .public) installers or archives")
 
         mergeDiscovered(measured)
     }
@@ -1727,9 +1854,19 @@ final class AppViewModel {
         // rules stream in before the app scan, so the generic rule owns the
         // path and the residue scan simply doesn't re-list it.
         var seenPaths = Set(items.map(\.path))
+        // The same bytes are also double-counted when one entry *contains*
+        // another: Homebrew's cache directory is a single app-junk entry
+        // while the brew rule lists each download inside it. The coarser
+        // entry is the one that loses — the finer entries stay, so nothing
+        // disappears from the list that was not already covered. Only this
+        // direction is checked: an app bundle contains the language packs
+        // listed for it, and those are junk the bundle's own uninstall does
+        // not replace, so a bundle must not swallow them.
+        let listedPaths = items.map(\.path)
         var unique: [JunkItem] = []
         for item in fresh where !existing.contains(item.id) && !item.path.isEmpty {
             guard seenPaths.insert(item.path).inserted else { continue }
+            guard !containsListed(item.path, in: listedPaths) else { continue }
             unique.append(item)
         }
         guard !unique.isEmpty else { return }
@@ -1738,6 +1875,14 @@ final class AppViewModel {
         applyDefaultSelection(unique)
         itemsDidChange()
         publishMenuSnapshot()
+    }
+
+    /// Whether any already-listed entry sits inside `path` — i.e. whether
+    /// cleaning `path` would also delete entries the list already shows
+    /// separately.
+    private func containsListed(_ path: String, in listedPaths: [String]) -> Bool {
+        let prefix = path + "/"
+        return listedPaths.contains { $0.hasPrefix(prefix) }
     }
 
     // MARK: - App Uninstall
@@ -1759,7 +1904,7 @@ final class AppViewModel {
         guard item.appKind == .bundle else { return }
         var next: Set<String> = [item.id]
         next.formUnion(residueIDs(for: item))
-        selection = next
+        selectionState.replace(with: next)
         selectionDidChange()
         // allScopes: apps live in the general mode, but this action is
         // launched from a context menu row and targets exactly these items,
@@ -1772,7 +1917,7 @@ final class AppViewModel {
         guard item.appKind == .bundle else { return }
         let next = Set(residueIDs(for: item))
         guard !next.isEmpty else { return }
-        selection = next
+        selectionState.replace(with: next)
         selectionDidChange()
         requestClean(allScopes: true)
     }
@@ -1826,7 +1971,7 @@ final class AppViewModel {
             next.formUnion(residueItems(bundleID: bundleID).map(\.id))
         }
         guard next != selection else { return }
-        selection = next
+        selectionState.setItems(next, selected: true)
         selectionDidChange()
     }
 

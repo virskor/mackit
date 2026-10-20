@@ -76,9 +76,9 @@ wait_bounded() {
 MACKIT_ARCHES="${MACKIT_ARCHES:-arm64 x86_64}"
 
 if [ "${MACKIT_SKIP_BUILD:-0}" = "1" ]; then
-    echo "==> 跳过构建（MACKIT_SKIP_BUILD=1）"
+    echo "==> Skipping build (MACKIT_SKIP_BUILD=1)"
 else
-    echo "==> 构建 Mackit.app（${CONFIG}）"
+    echo "==> Building Mackit.app (${CONFIG})"
     MACKIT_SIGN_IDENTITY="${MACKIT_SIGN_IDENTITY:-}" \
     MACKIT_VERSION="${MACKIT_VERSION:-}" \
     MACKIT_BUILD_NUMBER="${MACKIT_BUILD_NUMBER:-}" \
@@ -88,7 +88,7 @@ else
 fi
 
 if [ ! -d "$APP" ]; then
-    echo "找不到 $APP" >&2
+    echo "Cannot find $APP" >&2
     exit 1
 fi
 
@@ -98,21 +98,21 @@ fi
 # here — this is the version the user ultimately sees.
 VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist" 2>/dev/null || true)"
 if [ -z "$VERSION" ]; then
-    echo "无法从 $APP/Contents/Info.plist 读取版本号" >&2
+    echo "Cannot read the version number from $APP/Contents/Info.plist" >&2
     exit 1
 fi
 DMG="$DIST/Mackit-$VERSION.dmg"
 # The braces cannot be omitted: bash 3.2 swallows the non-ASCII bytes following $VAR into the variable name.
-echo "==> 版本 ${VERSION}，目标 ${DMG}"
+echo "==> Version ${VERSION}, target ${DMG}"
 
 # ---------- 3. Verify the app signature and architecture ----------
 # Print the actual architecture first: a universal binary should contain both
 # x86_64 and arm64; when MACKIT_SKIP_BUILD=1 is used, this line shows the
 # architecture actually in the package, avoiding delivering a half-built package.
-echo "==> 校验架构"
+echo "==> Verifying architecture"
 lipo -info "$APP/Contents/MacOS/Mackit" | sed 's/^/    /'
 
-echo "==> 校验签名"
+echo "==> Verifying signature"
 codesign --verify --strict --verbose=2 "$APP" 2>&1 | sed 's/^/    /'
 
 # The nested resource bundle is only signed separately on the Developer ID path
@@ -132,12 +132,12 @@ fi
 if [ "$IS_DEVELOPER_ID" = "1" ]; then
     # Notarization requires the hardened runtime; without it notarytool rejects the package outright.
     if ! echo "$SIGN_INFO" | grep -q "runtime"; then
-        echo "签名未启用硬化运行时，公证会被拒绝。" >&2
+        echo "Signing does not have the hardened runtime enabled; notarization would be rejected." >&2
         exit 1
     fi
-    echo "    Developer ID Application + 硬化运行时"
+    echo "    Developer ID Application + hardened runtime"
 else
-    echo "    本地签名（未使用 Developer ID Application 身份）"
+    echo "    Local signature (Developer ID Application identity not used)"
 fi
 
 # ---------- 4. Notarization credentials ----------
@@ -153,7 +153,7 @@ elif [ -n "${MACKIT_API_KEY:-}" ] || [ -n "${MACKIT_API_KEY_ID:-}" ] || [ -n "${
     [ -z "${MACKIT_API_KEY_ID:-}" ] && MISSING="$MISSING MACKIT_API_KEY_ID"
     [ -z "${MACKIT_API_ISSUER:-}" ] && MISSING="$MISSING MACKIT_API_ISSUER"
     if [ -n "$MISSING" ]; then
-        echo "App Store Connect API 密钥需要同时设置：$MISSING" >&2
+        echo "The App Store Connect API key requires all of these to be set: $MISSING" >&2
         exit 1
     fi
     # A ~ in an environment variable is not expanded automatically; handle it here.
@@ -161,10 +161,10 @@ elif [ -n "${MACKIT_API_KEY:-}" ] || [ -n "${MACKIT_API_KEY_ID:-}" ] || [ -n "${
         "~/"*) MACKIT_API_KEY="$HOME/${MACKIT_API_KEY#\~/}" ;;
     esac
     if [ ! -f "$MACKIT_API_KEY" ]; then
-        echo "密钥文件不存在：$MACKIT_API_KEY" >&2
+        echo "Key file does not exist: $MACKIT_API_KEY" >&2
         exit 1
     fi
-    echo "==> 公证凭据：App Store Connect API 密钥 ${MACKIT_API_KEY_ID}"
+    echo "==> Notarization credentials: App Store Connect API key ${MACKIT_API_KEY_ID}"
 elif [ -n "${MACKIT_APPLE_ID:-}" ] || [ -n "${MACKIT_APP_PASSWORD:-}" ] || [ -n "${MACKIT_TEAM_ID:-}" ]; then
     NOTARY_MODE="appleid"
     MISSING=""
@@ -172,10 +172,10 @@ elif [ -n "${MACKIT_APPLE_ID:-}" ] || [ -n "${MACKIT_APP_PASSWORD:-}" ] || [ -n 
     [ -z "${MACKIT_APP_PASSWORD:-}" ] && MISSING="$MISSING MACKIT_APP_PASSWORD"
     [ -z "${MACKIT_TEAM_ID:-}" ] && MISSING="$MISSING MACKIT_TEAM_ID"
     if [ -n "$MISSING" ]; then
-        echo "Apple ID 公证需要同时设置：$MISSING" >&2
+        echo "Apple ID notarization requires all of these to be set: $MISSING" >&2
         exit 1
     fi
-    echo "==> 公证凭据：Apple ID ${MACKIT_APPLE_ID}"
+    echo "==> Notarization credentials: Apple ID ${MACKIT_APPLE_ID}"
 fi
 
 # ---------- 5. Distribution form determination ----------
@@ -185,23 +185,23 @@ fi
 # them either.
 if [ -n "$NOTARY_MODE" ] && [ "$IS_DEVELOPER_ID" != "1" ]; then
     cat >&2 <<'MSG'
-错误：公证要求先用 Developer ID Application 身份签名。
-请设置 MACKIT_SIGN_IDENTITY="Developer ID Application: 名字 (TEAMID)" 后重试；
-钥匙串里没有该证书时，先在 developer.apple.com 创建并导入本机。
+Error: Notarization requires signing with a Developer ID Application identity first.
+Set MACKIT_SIGN_IDENTITY="Developer ID Application: Name (TEAMID)" and retry;
+if that certificate is missing from the keychain, create it on developer.apple.com and import it first.
 MSG
     exit 1
 fi
 if [ -n "${MACKIT_SIGN_IDENTITY:-}" ] && [ "$IS_DEVELOPER_ID" != "1" ]; then
-    echo "警告：MACKIT_SIGN_IDENTITY 不是 Developer ID Application 身份，" >&2
-    echo "      分发版过不了 Gatekeeper（本机运行没问题）。" >&2
+    echo "Warning: MACKIT_SIGN_IDENTITY is not a Developer ID Application identity," >&2
+    echo "       so the distributed build would fail Gatekeeper (it still runs on this machine)." >&2
 fi
 
 # ---------- 6. Assemble the DMG ----------
-echo "==> 生成 DMG 背景图"
+echo "==> Generating DMG background image"
 BACKGROUND="$BUILD_DIR/dmg-background.png"
 swift "$ROOT/Scripts/make-dmg-background.swift" "$BACKGROUND"
 
-echo "==> 组装 DMG 内容"
+echo "==> Assembling DMG contents"
 STAGING="$BUILD_DIR/dmg-staging"
 rm -rf "$STAGING"
 mkdir -p "$STAGING/.background"
@@ -232,18 +232,18 @@ hdiutil create "$TEMP_DMG" -volname "$VOLUME_NAME" -fs HFS+ -srcfolder "$STAGING
 # after mounting. Failure is purely cosmetic (the default icon view still
 # works) and does not block the build.
 if [ "${MACKIT_NO_LAYOUT:-0}" = "1" ]; then
-    echo "==> 跳过 Finder 布局（MACKIT_NO_LAYOUT=1）"
+    echo "==> Skipping Finder layout (MACKIT_NO_LAYOUT=1)"
 else
     # An abnormal exit last time may have left a mount point behind, in which
     # case the new volume would become "Mackit 1" and the layout would find no
     # target.
     if [ -d "/Volumes/$VOLUME_NAME" ]; then
-        echo "==> 卸载残留挂载 /Volumes/$VOLUME_NAME"
+        echo "==> Detaching leftover mount /Volumes/$VOLUME_NAME"
         hdiutil detach "/Volumes/$VOLUME_NAME" > /dev/null 2>&1 \
             || hdiutil detach -force "/Volumes/$VOLUME_NAME" > /dev/null 2>&1 || true
     fi
 
-    echo "==> 挂载并设置窗口布局"
+    echo "==> Mounting and setting the window layout"
     ATTACH_OUTPUT="$(hdiutil attach "$TEMP_DMG" -nobrowse)"
     DEVICE="$(echo "$ATTACH_OUTPUT" | grep "/Volumes/$VOLUME_NAME" | awk '{print $1}')"
     MOUNT_POINT="/Volumes/$VOLUME_NAME"
@@ -292,12 +292,12 @@ APPLESCRIPT
     fi
 
     if [ "$OSA_RESULT" = "ok" ]; then
-        echo "    布局完成"
+        echo "    Layout done"
     elif [ "$OSA_RESULT" = "timeout" ]; then
-        echo "    警告：等待 Finder 授权超时，跳过布局（DMG 仍可正常使用）" >&2
+        echo "    Warning: timed out waiting for Finder authorization, skipping layout (the DMG is still usable)" >&2
     else
-        echo "    警告：Finder 布局失败，跳过布局（DMG 仍可正常使用）" >&2
-        echo "    首次运行需在弹窗中允许「辅助功能/自动化」权限。日志：$OSA_LOG" >&2
+        echo "    Warning: Finder layout failed, skipping layout (the DMG is still usable)" >&2
+        echo "    First run requires allowing the Accessibility/Automation permission in the dialog. Log: $OSA_LOG" >&2
     fi
 
     hdiutil detach "$DEVICE" > /dev/null 2>&1 \
@@ -313,14 +313,14 @@ rm -f "$TEMP_DMG"
 
 # ---------- 8. Sign the DMG ----------
 if [ -n "${MACKIT_SIGN_IDENTITY:-}" ]; then
-    echo "==> 签名 DMG"
+    echo "==> Signing DMG"
     codesign --force --sign "$MACKIT_SIGN_IDENTITY" --timestamp "$DMG"
     codesign --verify --verbose=2 "$DMG" 2>&1 | sed 's/^/    /'
 fi
 
 # ---------- 9. Notarize and staple ----------
 if [ -n "$NOTARY_MODE" ]; then
-    echo "==> 提交公证（通常需要几分钟）"
+    echo "==> Submitting for notarization (usually takes a few minutes)"
     NOTARY_LOG="$BUILD_DIR/notarytool.log"
     NOTARY_OK=0
     case "$NOTARY_MODE" in
@@ -342,50 +342,50 @@ if [ -n "$NOTARY_MODE" ]; then
     esac
     # notarytool's exit code is only 0 when Accepted; the grep is a second safety net.
     if [ "$NOTARY_OK" != "1" ] || ! grep -q "Accepted" "$NOTARY_LOG"; then
-        echo "公证失败，notarytool 日志：" >&2
+        echo "Notarization failed, notarytool log:" >&2
         tail -30 "$NOTARY_LOG" >&2
         exit 1
     fi
-    echo "    公证通过"
+    echo "    Notarization passed"
 
-    echo "==> 装订公证票据"
+    echo "==> Stapling the notarization ticket"
     xcrun stapler staple "$DMG"
     xcrun stapler validate "$DMG"
 
     # Gatekeeper final check: if this step fails, warnings still pop up on users' machines.
-    echo "==> Gatekeeper 评估"
+    echo "==> Gatekeeper assessment"
     if spctl --assess --type execute --verbose "$APP" 2>&1 | sed 's/^/    /'; then
         :
     else
-        echo "Gatekeeper 评估未通过（见上），不要分发这个包。" >&2
+        echo "Gatekeeper assessment failed (see above); do not distribute this package." >&2
         exit 1
     fi
 fi
 
 # ---------- 10. Checksum and delivery notes ----------
-echo "==> 生成校验和"
+echo "==> Generating checksum"
 ( cd "$DIST" && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256" )
 
 SIZE="$(du -h "$DMG" | awk '{print $1}')"
 echo
-echo "完成：${DMG}（${SIZE}）"
-echo "校验和：${DMG}.sha256"
+echo "Done: ${DMG} (${SIZE})"
+echo "Checksum: ${DMG}.sha256"
 
 if [ -n "$NOTARY_MODE" ]; then
-    echo "状态：Developer ID Application 签名 + 已公证装订，用户下载后双击即可打开。"
+    echo "Status: Developer ID Application signed + notarized and stapled; users can open it directly after downloading."
 elif [ -n "${MACKIT_SIGN_IDENTITY:-}" ]; then
     cat <<'MSG'
 
-状态：已签名，但未公证。用户首次打开仍会看到「无法验证开发者」的警告。
-补齐公证凭据后重跑本脚本即可（API 密钥 / Apple ID / 钥匙串 profile 任选其一）。
+Status: signed, but not notarized. Users will still see a "developer cannot be verified" warning on first open.
+Re-run this script after filling in the notarization credentials (API key / Apple ID / keychain profile, any one of them).
 MSG
 else
     cat <<'MSG'
 
-状态：本地 ad-hoc 签名，仅限本机运行，不要直接分发。
-若必须给用户试用，请转告：
-  1. 在访达中右键点按 Mackit.app，选「打开」，再在弹窗中点「打开」；或
-  2. 移除隔离属性：xattr -dr com.apple.quarantine /Applications/Mackit.app
-正式分发请设置 MACKIT_SIGN_IDENTITY 与公证凭据后重跑本脚本。
+Status: local ad-hoc signature, runs on this machine only; do not distribute directly.
+If you must let users try it, tell them:
+  1. In Finder, right-click Mackit.app, choose "Open", then click "Open" again in the dialog; or
+  2. Remove the quarantine attribute: xattr -dr com.apple.quarantine /Applications/Mackit.app
+For formal distribution, set MACKIT_SIGN_IDENTITY and the notarization credentials, then re-run this script.
 MSG
 fi

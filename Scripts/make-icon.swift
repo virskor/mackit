@@ -36,11 +36,11 @@ let sparkleImage: CGImage? = {
 func savePNG(_ image: CGImage, size: Int, name: String) throws {
     let url = URL(fileURLWithPath: "\(outputDir)/\(name)")
     guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
-        throw NSError(domain: "make-icon", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法创建 \(name)"])
+        throw NSError(domain: "make-icon", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot create \(name)"])
     }
     CGImageDestinationAddImage(destination, image, nil)
     guard CGImageDestinationFinalize(destination) else {
-        throw NSError(domain: "make-icon", code: 2, userInfo: [NSLocalizedDescriptionKey: "写入 \(name) 失败"])
+        throw NSError(domain: "make-icon", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to write \(name)"])
     }
 }
 
@@ -128,7 +128,7 @@ do {
     if sparkleImage == nil {
         throw NSError(
             domain: "make-icon", code: 4,
-            userInfo: [NSLocalizedDescriptionKey: "读不到星星源图 \(sparkleURL.path)，确认文件存在"]
+            userInfo: [NSLocalizedDescriptionKey: "Cannot read the star source image \(sparkleURL.path); check that the file exists"]
         )
     }
     try FileManager.default.createDirectory(
@@ -157,12 +157,12 @@ do {
             cache[size] = render(size: CGFloat(size))
         }
         guard let image = cache[size] else {
-            throw NSError(domain: "make-icon", code: 3, userInfo: [NSLocalizedDescriptionKey: "渲染 \(size)px 失败"])
+            throw NSError(domain: "make-icon", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to render \(size)px"])
         }
         try savePNG(image, size: size, name: name)
     }
-    print("已生成图标集：\(outputDir)")
+    print("Generated the icon set: \(outputDir)")
 } catch {
-    FileHandle.standardError.write("make-icon 失败：\(error.localizedDescription)\n".data(using: .utf8)!)
+    FileHandle.standardError.write("make-icon failed: \(error.localizedDescription)\n".data(using: .utf8)!)
     exit(1)
 }

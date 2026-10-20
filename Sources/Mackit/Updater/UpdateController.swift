@@ -75,7 +75,7 @@ final class UpdateController: NSObject, ObservableObject {
         standardController = controller
         refresh()
         if let feedURL = controller.updater.feedURL {
-            MackitLog.updates.info("更新器已启动，feed：\(feedURL.absoluteString, privacy: .public)")
+            MackitLog.updates.info("updater started, feed: \(feedURL.absoluteString, privacy: .public)")
         }
     }
 
@@ -134,14 +134,14 @@ extension UpdateController: SPUUpdaterDelegate {
             self?.refresh()
         }
         if let error {
-            MackitLog.updates.error("更新检查周期结束（失败）：\(error.localizedDescription, privacy: .public)")
+            MackitLog.updates.error("update check cycle ended (failed): \(error.localizedDescription, privacy: .public)")
         } else {
-            MackitLog.updates.info("更新检查周期结束")
+            MackitLog.updates.info("update check cycle ended")
         }
     }
 
     /// A valid update was found: Sparkle will show its own update UI next; here we only leave a log.
     nonisolated func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
-        MackitLog.updates.info("发现新版本 \(item.displayVersionString, privacy: .public)")
+        MackitLog.updates.info("found new version \(item.displayVersionString, privacy: .public)")
     }
 }

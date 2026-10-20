@@ -73,7 +73,11 @@ private struct MenuBarLabel: View {
     @Environment(AppViewModel.self) private var vm
 
     var body: some View {
-        Image(nsImage: MenuBarStatsImage.image(metrics: metrics, barHeight: menuBarHeight))
+        Image(nsImage: MenuBarStatsImage.image(
+            metrics: metrics,
+            barHeight: menuBarHeight,
+            showIcon: vm.showMenuBarLogo
+        ))
         // Any change to the master switch or the three monitoring
         // switches re-checks visibility once: settings changed in the main
         // program are broadcast over, and once the agent re-reads and the
@@ -92,12 +96,17 @@ private struct MenuBarLabel: View {
         let stats = vm.menuSnapshot.stats
         var result: [MenuBarStatsImage.Metric] = []
         if vm.showMenuBarCPU, let usage = stats.cpuUsage {
-            result.append(.init(value: Formatters.percent(usage), label: L10n.tr("menubar.cpu")))
+            result.append(.init(
+                value: Formatters.percent(usage),
+                label: L10n.tr("menubar.cpu"),
+                alternativeValues: percentWidthBasis
+            ))
         }
         if vm.showMenuBarMemory, stats.memoryTotal > 0 {
             result.append(.init(
                 value: Formatters.percent(stats.memoryUsedFraction),
-                label: L10n.tr("menubar.memory")
+                label: L10n.tr("menubar.memory"),
+                alternativeValues: percentWidthBasis
             ))
         }
         if vm.showMenuBarTemperature {
@@ -113,6 +122,15 @@ private struct MenuBarLabel: View {
         }
         return result
     }
+
+    /// The widest string a percentage can ever render to, used to fix the
+    /// width of the CPU and memory groups.
+    ///
+    /// `Formatters.percent` clamps to 0–100 and keeps no decimals, so three
+    /// digits plus the sign is the longest case there is. A value whose length
+    /// changes with every poll (7% → 47% → 100%) would otherwise widen and
+    /// narrow the group, dragging the groups after it sideways.
+    private let percentWidthBasis = [Formatters.percent(1)]
 
     /// The four thermal-state values, used to fix the width of the
     /// temperature group.

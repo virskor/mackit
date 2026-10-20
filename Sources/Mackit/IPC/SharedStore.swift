@@ -31,8 +31,11 @@ enum SharedStore {
 
     /// Reads all settings. Returns an empty dictionary when the file does
     /// not exist or fails to read (each key falls back to its default).
-    static func loadSettings() -> [String: Any] {
-        guard let data = FileManager.default.contents(atPath: settingsURL.path),
+    ///
+    /// The file path is a parameter so tests can round-trip a settings file
+    /// without touching the real one the two processes share.
+    static func loadSettings(from url: URL = settingsURL) -> [String: Any] {
+        guard let data = FileManager.default.contents(atPath: url.path),
               let dict = try? PropertyListSerialization.propertyList(
                   from: data, options: [], format: nil
               ) as? [String: Any] else {
@@ -44,22 +47,22 @@ enum SharedStore {
     /// Writes all settings (atomic replacement). Only overwrites the keys
     /// passed in; keys not passed keep their original values—so adding
     /// other shared state to this file later will not wipe each other out.
-    static func saveSettings(_ values: [String: Any]) {
-        var merged = loadSettings()
+    static func saveSettings(_ values: [String: Any], to url: URL = settingsURL) {
+        var merged = loadSettings(from: url)
         merged.merge(values) { _, new in new }
         guard let data = try? PropertyListSerialization.data(
             fromPropertyList: merged, format: .xml, options: 0
         ) else { return }
         try? FileManager.default.createDirectory(
-            at: directoryURL, withIntermediateDirectories: true
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true
         )
-        let temporary = directoryURL
-            .appendingPathComponent("\(settingsURL.lastPathComponent).\(UUID().uuidString).tmp")
+        let temporary = url.deletingLastPathComponent()
+            .appendingPathComponent("\(url.lastPathComponent).\(UUID().uuidString).tmp")
         // A write failure only means the settings were not saved (the old
         // value is read next time, and each key falls back to its
         // default); it is not worth interrupting the caller over; the
         // temporary file is cleaned up by writeAtomically itself.
-        try? writeAtomically(data, to: settingsURL, via: temporary)
+        try? writeAtomically(data, to: url, via: temporary)
     }
 
     /// Writes a temporary file first, then replaces the target: readers
@@ -145,7 +148,7 @@ enum PendingCommandStore {
         // and the case where the content is readable but the attributes
         // are not almost never happens.
         if let modified, Date().timeIntervalSince(modified) > maxAge {
-            MackitLog.ui.info("丢弃过期的积压命令：\(command.rawValue, privacy: .public)")
+            MackitLog.ui.info("discarding stale pending command: \(command.rawValue, privacy: .public)")
             return nil
         }
         return command

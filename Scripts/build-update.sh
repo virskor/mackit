@@ -70,7 +70,7 @@ SPARKLE_VERSION="${MACKIT_SPARKLE_VERSION:-2.10.0}"
 TOOLS_DIR="${MACKIT_SPARKLE_TOOLS_DIR:-$ROOT/.build/sparkle-tools}"
 
 if [ ! -d "$APP" ]; then
-    echo "找不到 $APP，先构建 Mackit.app。" >&2
+    echo "Cannot find $APP; build Mackit.app first." >&2
     exit 1
 fi
 
@@ -78,11 +78,11 @@ fi
 VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist" 2>/dev/null || true)"
 BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Contents/Info.plist" 2>/dev/null || true)"
 if [ -z "$VERSION" ]; then
-    echo "无法从 $APP/Contents/Info.plist 读取版本号" >&2
+    echo "Cannot read the version number from $APP/Contents/Info.plist" >&2
     exit 1
 fi
 ARCHIVE="$UPDATES_DIR/Mackit-$VERSION.tar.bz2"
-echo "==> 版本 ${VERSION}（构建 ${BUILD_NUMBER:-?}），目标 ${ARCHIVE}"
+echo "==> Version ${VERSION} (build ${BUILD_NUMBER:-?}), target ${ARCHIVE}"
 
 # ---------- 1. Sparkle command-line tools ----------
 # Download only when missing: generate_appcast / sign_update / generate_keys
@@ -92,7 +92,7 @@ echo "==> 版本 ${VERSION}（构建 ${BUILD_NUMBER:-?}），目标 ${ARCHIVE}"
 BIN_DIR="$TOOLS_DIR/bin"
 mkdir -p "$TOOLS_DIR"
 if [ ! -x "$BIN_DIR/generate_appcast" ]; then
-    echo "==> 下载 Sparkle 命令行工具 ${SPARKLE_VERSION}"
+    echo "==> Downloading Sparkle command-line tools ${SPARKLE_VERSION}"
     TARBALL="$TOOLS_DIR/Sparkle-$SPARKLE_VERSION.tar.xz"
     curl -fL -o "$TARBALL" \
         "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz"
@@ -106,13 +106,13 @@ GENERATE_APPCAST="$BIN_DIR/generate_appcast"
 # The app inside the update archive must be signed with the same identity as
 # the host for Sparkle to accept it. Ad-hoc-signed local builds are packaged as
 # usual (for local testing); before distributing, make sure it is Developer ID.
-echo "==> 校验应用签名"
+echo "==> Verifying the app signature"
 codesign --verify --strict --verbose=2 "$APP" 2>&1 | sed 's/^/    /'
 SIGN_INFO="$(codesign -dvv "$APP" 2>&1 || true)"
 if echo "$SIGN_INFO" | grep -q "Authority=Developer ID Application"; then
     echo "    Developer ID Application"
 else
-    echo "    警告：不是 Developer ID Application 签名，只能本机测试更新链路。" >&2
+    echo "    Warning: not a Developer ID Application signature; the update chain can only be tested locally." >&2
 fi
 
 # ---------- 3. Package ----------
@@ -124,7 +124,7 @@ fi
 APP_DIR="$(cd "$(dirname "$APP")" && pwd)"
 APP_NAME="$(basename "$APP")"
 mkdir -p "$UPDATES_DIR"
-echo "==> 打包 ${ARCHIVE}"
+echo "==> Packaging ${ARCHIVE}"
 rm -f "$ARCHIVE"
 tar -cjf "$ARCHIVE" -C "$APP_DIR" "$APP_NAME"
 
@@ -133,7 +133,7 @@ tar -cjf "$ARCHIVE" -C "$APP_DIR" "$APP_NAME"
 # archive", so copy it under the canonical name first.
 if [ -n "${MACKIT_NOTES_FILE:-}" ]; then
     if [ ! -f "$MACKIT_NOTES_FILE" ]; then
-        echo "更新说明文件不存在：$MACKIT_NOTES_FILE" >&2
+        echo "Release notes file does not exist: $MACKIT_NOTES_FILE" >&2
         exit 1
     fi
     NOTES_EXT="${MACKIT_NOTES_FILE##*.}"
@@ -146,10 +146,10 @@ if [ -n "${MACKIT_NOTES_FILE:-}" ]; then
     SRC_REAL="$(cd "$(dirname "$MACKIT_NOTES_FILE")" && pwd -P)/$(basename "$MACKIT_NOTES_FILE")"
     DEST_REAL="$(cd "$UPDATES_DIR" && pwd -P)/$(basename "$DEST")"
     if [ "$SRC_REAL" = "$DEST_REAL" ]; then
-        echo "==> 更新说明已在输出目录，跳过拷贝：$DEST"
+        echo "==> Release notes already in the output directory, skipping copy: $DEST"
     else
         cp "$MACKIT_NOTES_FILE" "$DEST"
-        echo "==> 更新说明：$DEST"
+        echo "==> Release notes: $DEST"
     fi
 fi
 
@@ -163,8 +163,8 @@ APPCAST_ARGS=("$UPDATES_DIR" --embed-release-notes)
 if [ -n "${MACKIT_DOWNLOAD_URL_PREFIX:-}" ]; then
     APPCAST_ARGS+=(--download-url-prefix "$MACKIT_DOWNLOAD_URL_PREFIX")
 else
-    echo "警告：未设置 MACKIT_DOWNLOAD_URL_PREFIX，" >&2
-    echo "      enclosure 地址会是本地路径，上传前必须补托管前缀重新生成本步。" >&2
+    echo "Warning: MACKIT_DOWNLOAD_URL_PREFIX is not set," >&2
+    echo "      enclosure addresses will be local paths; re-run this step with a hosting prefix before uploading." >&2
 fi
 if [ -n "${MACKIT_ED_KEY_FILE:-}" ]; then
     APPCAST_ARGS+=(--ed-key-file "$MACKIT_ED_KEY_FILE")
@@ -176,7 +176,7 @@ if [ -n "${MACKIT_MAXIMUM_VERSIONS:-}" ]; then
     APPCAST_ARGS+=(--maximum-versions "$MACKIT_MAXIMUM_VERSIONS")
 fi
 
-echo "==> 生成 appcast"
+echo "==> Generating the appcast"
 "$GENERATE_APPCAST" "${APPCAST_ARGS[@]}"
 
 # ---------- 6. Self-check ----------
@@ -184,25 +184,25 @@ echo "==> 生成 appcast"
 # recorded in the appcast: a mismatch means the archive was modified after the
 # appcast was generated (or the version number collided with an old file);
 # catch it before uploading.
-echo "==> 验签更新归档"
+echo "==> Verifying the update archive signature"
 SIGN_ARGS=(-p "$ARCHIVE")
 if [ -n "${MACKIT_ED_KEY_FILE:-}" ]; then
     SIGN_ARGS+=(--ed-key-file "$MACKIT_ED_KEY_FILE")
 fi
 DISK_SIG="$("$BIN_DIR/sign_update" "${SIGN_ARGS[@]}")"
 if grep -qF "$DISK_SIG" "$UPDATES_DIR/appcast.xml"; then
-    echo "    签名与 appcast 一致"
+    echo "    Signature matches the appcast"
 else
-    echo "错误：归档签名与 appcast 记录不一致，不要分发。" >&2
+    echo "Error: the archive signature does not match the appcast record; do not distribute." >&2
     exit 1
 fi
 
 echo
-echo "完成：${UPDATES_DIR}/appcast.xml"
+echo "Done: ${UPDATES_DIR}/appcast.xml"
 echo "      ${ARCHIVE}"
 echo
-echo "上传到同一个 HTTPS 位置（前缀须为 MACKIT_DOWNLOAD_URL_PREFIX），"
-echo "并把 appcast.xml 的地址配进构建："
+echo "Upload both to the same HTTPS location (the prefix must match MACKIT_DOWNLOAD_URL_PREFIX),"
+echo "and configure the appcast.xml address into the build:"
 echo "  MACKIT_UPDATE_FEED_URL=https://.../appcast.xml \\"
-echo "  MACKIT_UPDATE_PUBLIC_KEY=<generate_keys 输出的公钥> \\"
+echo "  MACKIT_UPDATE_PUBLIC_KEY=<the public key output by generate_keys> \\"
 echo "  Scripts/build-dmg.sh release"

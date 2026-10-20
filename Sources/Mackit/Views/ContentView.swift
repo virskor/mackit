@@ -85,6 +85,31 @@ struct ContentView: View {
 
     @ViewBuilder
     private var detail: some View {
+        // A clean owns the detail area, on both features. It used to live in
+        // the else-branch below, which meant the general module — whose rows
+        // say nothing about progress — swallowed it entirely: clicking clean
+        // there ran the clean with no progress overlay and no result summary,
+        // and the only feedback was a toast that is easy to miss. Progress
+        // and result belong to the action the user just took, not to which
+        // page they were browsing.
+        switch vm.cleanPhase {
+        case .cleaning:
+            // The overlay sits on top of whichever page was showing, so the
+            // list behind stays visible — the same composition the developer
+            // module always had.
+            page
+                .overlay(alignment: .bottom) { CleanProgressView() }
+        case .done:
+            CleanResultView()
+        case .confirming, .idle:
+            // Confirmation is a sheet over the current page; nothing to swap.
+            page
+        }
+    }
+
+    /// The page the sidebar selects, ignoring any clean in flight.
+    @ViewBuilder
+    private var page: some View {
         // When the sidebar's hardware detection / settings / general cleanup
         // row is selected, the detail area switches entirely to the
         // corresponding embedded page (within the same window, not a separate
@@ -97,28 +122,20 @@ struct ContentView: View {
         } else if vm.showsGeneralCleanup {
             GeneralCleanupView()
         } else {
-            switch vm.cleanPhase {
-            case .done:
-                CleanResultView()
-            case .cleaning:
-                ItemListView()
-            case .confirming:
-                // The confirmation panel is shown as a sheet, keeping the list
-                // behind it.
-                ItemListView()
-            case .idle:
-                if vm.phase == .scanning {
-                    if vm.items.isEmpty {
-                        ScanProgressView()
-                    } else {
-                        // When results already exist, display while scanning:
-                        // entries keep growing in the list and the size keeps
-                        // accumulating, making it clearer that things are
-                        // "not stuck" than waiting idle on a full-screen
-                        // progress ring.
-                        ItemListView()
-                    }
-                } else if vm.items.isEmpty {
+            switch vm.phase {
+            case .scanning:
+                if vm.items.isEmpty {
+                    ScanProgressView()
+                } else {
+                    // When results already exist, display while scanning:
+                    // entries keep growing in the list and the size keeps
+                    // accumulating, making it clearer that things are
+                    // "not stuck" than waiting idle on a full-screen
+                    // progress ring.
+                    ItemListView()
+                }
+            case .idle, .done:
+                if vm.items.isEmpty {
                     WelcomeView()
                 } else {
                     ItemListView()

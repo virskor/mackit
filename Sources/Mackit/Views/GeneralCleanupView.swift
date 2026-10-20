@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The general cleanup module: a Lemon-style page for everyone who is not a
-/// developer — browser caches, useless language files, system junk, Downloads
-/// and the Trash.
+/// developer — browser caches, app junk, useless language files, system junk,
+/// Downloads and the Trash.
 ///
 /// Deliberately a separate page rather than more rows in the developer list:
 /// the two audiences share nothing, and mixing them makes each wade through
@@ -12,7 +12,15 @@ import SwiftUI
 /// actions beside it, then groups of rule rows, each row showing its total and
 /// a safety level (very clean / recommended / caution). Rows arrive pre-checked
 /// up to "recommended"; caution rows stay unchecked until the user opts in, and
-/// cleaning still goes through the confirmation sheet.
+/// cleaning still goes through the confirmation sheet. A row the scan found
+/// nothing for stays interactive: its check is kept outside the item selection
+/// (see `AppViewModel.handCheckedGeneralRows`), so the user can opt a row like
+/// the Trash in before it has anything in it, and the remember prompt then
+/// carries that choice into later scans. Rows whose entries group naturally
+/// (language files, app junk) show one sub-row per language or per app, so a
+/// single language — or a single app's caches — can be kept while the rest is
+/// swept. The header carries the remember / restore shortcut for the row
+/// selection, so a remembered selection is never a one-way door.
 struct GeneralCleanupView: View {
     @Environment(AppViewModel.self) private var vm
 
@@ -74,6 +82,42 @@ struct GeneralCleanupView: View {
             Spacer(minLength: 12)
 
             HStack(spacing: 8) {
+                // The remember / restore shortcut for the row selection.
+                // Adaptive rather than two permanent buttons: while a
+                // selection is remembered the only sensible action is going
+                // back to the default, and before that the only sensible one
+                // is remembering. With the built-in default in effect and
+                // nothing remembered, neither applies and the row stays empty.
+                //
+                // Hidden while scanning for the same reason the clean button
+                // is: rows stream in and get pre-checked as the rules run, so
+                // mid-scan the selection is a moving target — remembering it
+                // would save whatever happened to have been found so far.
+                if vm.phase != .scanning {
+                    if vm.hasRememberedGeneralSelection {
+                        BrandCTAButton(
+                            title: L10n.tr("general.restoreDefault"),
+                            systemImage: "arrow.uturn.backward",
+                            style: .secondary,
+                            compact: true,
+                            glass: true
+                        ) {
+                            vm.restoreDefaultGeneralSelection()
+                        }
+                        .help(L10n.tr("general.restoreDefault.help"))
+                    } else if vm.generalSelectionDiffersFromSaved() {
+                        BrandCTAButton(
+                            title: L10n.tr("general.remember.action"),
+                            systemImage: "star",
+                            style: .secondary,
+                            compact: true,
+                            glass: true
+                        ) {
+                            vm.rememberGeneralSelection()
+                        }
+                        .help(L10n.tr("general.remember.help"))
+                    }
+                }
                 rescanButton
                 // Hidden while scanning: rows stream in and get pre-checked as
                 // the rules run, so a "Clean N kB" button would show a number
@@ -198,6 +242,26 @@ struct GeneralCleanupView: View {
     }
 
     private func ruleRow(_ rowState: AppViewModel.GeneralRuleRowState) -> some View {
+        // A grouped row is one cell: the header toggles everything, and the
+        // sub-rows below it toggle one language or one app at a time.
+        VStack(spacing: 0) {
+            rowHeader(rowState)
+
+            if !rowState.subRows.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(Array(rowState.subRows.enumerated()), id: \.element.id) { index, sub in
+                        if index > 0 {
+                            Divider().padding(.leading, 40)
+                        }
+                        subRow(sub, of: rowState.row)
+                    }
+                }
+                .padding(.leading, 22)
+            }
+        }
+    }
+
+    private func rowHeader(_ rowState: AppViewModel.GeneralRuleRowState) -> some View {
         Button {
             vm.setRowSelected(rowState.row, selected: !rowState.isFullySelected)
         } label: {
@@ -232,6 +296,39 @@ struct GeneralCleanupView: View {
         }
         // RowPressStyle fully replaces the style (no .plain underneath): it
         // draws no chrome of its own, only the press fill.
+        .buttonStyle(RowPressStyle())
+    }
+
+    /// One sub-row: a single language ("Tamil · 1.79 MB") or one app's junk.
+    /// Same checkbox semantics as the row header, one level in.
+    private func subRow(_ sub: AppViewModel.GeneralSubRowState, of row: GeneralRuleRow) -> some View {
+        Button {
+            vm.setSubRowSelected(row, key: sub.id, selected: !sub.isFullySelected)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: sub.isFullySelected
+                    ? "checkmark.circle.fill"
+                    : (sub.isPartiallySelected ? "minus.circle.fill" : "circle"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(sub.isFullySelected || sub.isPartiallySelected ? .green : .secondary)
+                    .frame(width: 15)
+                    .symbolEffect(.bounce, value: sub.isFullySelected)
+
+                Text(verbatim: sub.title)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                Text(verbatim: Formatters.bytes(sub.size))
+                    .font(.system(size: 11))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
         .buttonStyle(RowPressStyle())
     }
 

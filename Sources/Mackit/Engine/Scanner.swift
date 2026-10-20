@@ -23,7 +23,7 @@ actor AsyncSemaphore {
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
     init(max: Int) {
-        precondition(max > 0, "信号量上限必须为正数")
+        precondition(max > 0, "semaphore limit must be positive")
         self.max = max
     }
 

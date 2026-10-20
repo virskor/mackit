@@ -101,7 +101,7 @@ struct MackitEntry {
         let escaped = Bundle.main.bundleURL.path.replacingOccurrences(of: "'", with: "'\\''")
         relaunch.arguments = ["-c", "sleep 0.6; open '\(escaped)'"]
         try? relaunch.run()
-        MackitLog.ui.info("语言选择变为 \(stored.rawValue, privacy: .public)：重启托盘 agent")
+        MackitLog.ui.info("language selection changed to \(stored.rawValue, privacy: .public): restarting tray agent")
         // Defer quitting by one runloop turn: the shell has already been
         // launched and the notifications have been sent
         DispatchQueue.main.async { NSApp.terminate(nil) }
@@ -208,7 +208,7 @@ private struct MainWindowRootView: View {
                 // Stored on AppDelegate's static property, so it remains
                 // valid after the main window closes.
                 AppDelegate.reopenMainWindow = {
-                    MackitLog.ui.info("重建 / 聚焦主窗口（openWindow）")
+                    MackitLog.ui.info("rebuild / focus main window (openWindow)")
                     openWindow(id: "main")
                 }
                 AppDelegate.viewModel = vm
@@ -227,7 +227,7 @@ private struct MainWindowRootView: View {
                 // Dock, so that does not count as closing; only quit when
                 // the window is truly gone.
                 guard !NSApp.isHidden else { return }
-                MackitLog.ui.info("主窗口关闭：退出主程序，托盘 agent 继续常驻")
+                MackitLog.ui.info("main window closed: quitting main app, tray agent stays resident")
                 // Before quitting, broadcast the last scan state: the
                 // total reclaimable size and item count are left as-is for
                 // the tray panel, while the selection is voided along with
@@ -266,13 +266,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if AppIdentity.currentProcessIsAgent {
-            MackitLog.ui.info("托盘 agent 启动")
+            MackitLog.ui.info("tray agent started")
             // A resident process does not accept being terminated for
             // "looking idle": NSSupportsAutomaticTermination is turned off
             // in the plist, but testing shows processes launched via a
             // LaunchServices login item still get tagged with TAL, so
             // disable it programmatically once more.
-            ProcessInfo.processInfo.disableAutomaticTermination("Mackit 托盘常驻")
+            ProcessInfo.processInfo.disableAutomaticTermination("Mackit tray stays resident")
             // The main app broadcasts scan / clean state over, which is
             // merged into the panel snapshot's scan fields; the monitoring
             // fields (CPU / memory / temperature / rankings) are polled by
@@ -340,7 +340,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// never receives reopen, so it ignores this directly.
     func applicationShouldHandleReopen(_ notification: Notification) -> Bool {
         guard !AppIdentity.currentProcessIsAgent else { return false }
-        MackitLog.ui.info("reopen：聚焦主窗口")
+        MackitLog.ui.info("reopen: focus main window")
         Self.reopen()
         return true
     }
@@ -358,7 +358,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// here, and Dock reopening is unaffected.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         guard !AppIdentity.currentProcessIsAgent else { return false }
-        MackitLog.ui.info("最后一个窗口关闭：退出主程序，托盘 agent 继续常驻")
+        MackitLog.ui.info("last window closed: quitting main app, tray agent stays resident")
         // The same move as the scenePhase route: broadcast the exit state
         // that keeps the total and zeroes the selection, so the tray panel
         // does not lose the last scan's result when the window closes
@@ -372,7 +372,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Executes one tray command (only the main app role receives these).
     static func handleCommand(_ command: AppCommand, text: String? = nil, style: String? = nil) {
         guard let vm = viewModel else {
-            MackitLog.ui.error("收到命令 \(command.rawValue, privacy: .public) 但 VM 未就绪")
+            MackitLog.ui.error("received command \(command.rawValue, privacy: .public) but VM is not ready")
             return
         }
         switch command {

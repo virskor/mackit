@@ -11,21 +11,36 @@ struct InstalledApp: Sendable, Hashable {
     let path: String
 }
 
-/// The discovery engine for app uninstallation.
+/// The discovery engine for installed apps: their bundles, their regenerable
+/// junk, and the data they leave behind.
 ///
 /// The difference from cache rules is that app entries are not static paths:
 /// the .app's Info.plist must be read, then associated residue files are
 /// probed across `~/Library` by bundle ID and app name. Discoveries take the
 /// same path as "project directory scanning": they are handed to the caller
 /// to have their sizes filled in and merged into the list.
+///
+/// Residue is split by what it holds (see `ResidueKind.isRegenerableJunk`):
+/// regenerable junk becomes general-module app-junk entries, so a user can
+/// sweep an app's caches without uninstalling it, while data (preferences,
+/// Application Support, containers, cookies…) stays with the bundle in the
+/// uninstall flow, where removing it is the user's explicit intent and the
+/// "app is running" guard applies. The split also keeps the two cleanup
+/// features' path sets disjoint — the same directory never appears in both.
 enum AppScanner {
     /// Default discovery locations: system-level and user-level Applications.
     static let defaultRoots = ["/Applications", "~/Applications"]
 
     /// Rule id: the app bundle itself.
     static let bundleRuleID = "app.bundle"
-    /// Rule id: residue files.
+    /// Rule id: residue files that hold app data (preferences, Application
+    /// Support, containers…). They stay with the app bundle in the uninstall
+    /// flow, where deleting them is the user's explicit intent.
     static let residueRuleID = "app.residue"
+    /// Rule id: regenerable residue (caches, HTTP storages, WebKit data). They
+    /// roll up into the general module's app-junk row, so an app's caches can
+    /// be swept without uninstalling anything.
+    static let junkRuleID = "app.junk"
 
     // MARK: - Composition entry point
 
@@ -38,36 +53,53 @@ enum AppScanner {
         return apps.flatMap { items(for: $0, home: home, index: index) }
     }
 
-    /// All entries for a single app: the bundle first, with residue following in probing order.
+    /// All entries for a single app: the bundle first, with junk residue
+    /// following and data residue last, in probing order.
     static func items(for app: InstalledApp, home: String, index: SupportIndex? = nil) -> [JunkItem] {
         let index = index ?? supportIndex(home: home)
         let residues = residuePaths(for: app, home: home, index: index)
-        let residueItems = residues.map { entry in
-            JunkItem(
-                ruleID: residueRuleID,
-                title: (entry.path as NSString).lastPathComponent,
-                detail: L10n.fmt("apps.residue.detail", app.name, L10n.tr(entry.kind.labelKey)),
-                path: entry.path,
-                category: .apps,
-                risk: entry.kind.risk,
-                isDirectory: FileSystem.isDirectory(FileSystem.url(entry.path)),
-                bundleID: app.bundleID,
-                appKind: .residue(entry.kind)
-            )
-        }
+        let junk = residues
+            .filter { $0.kind.isRegenerableJunk }
+            .map { residueItem(for: $0, app: app, ruleID: junkRuleID, category: .appJunk, holdsLiveAppData: false) }
+        let data = residues
+            .filter { !$0.kind.isRegenerableJunk }
+            .map { residueItem(for: $0, app: app, ruleID: residueRuleID, category: .apps, holdsLiveAppData: true) }
         let bundle = JunkItem(
             ruleID: bundleRuleID,
             title: app.name,
-            detail: appDetail(version: app.version, residueCount: residueItems.count),
+            detail: appDetail(version: app.version, residueCount: junk.count + data.count),
             path: app.path,
             category: .apps,
             risk: .caution,
             isDirectory: true,
             bundleID: app.bundleID,
             appKind: .bundle,
+            holdsLiveAppData: true,
             searchExtra: app.bundleID
         )
-        return [bundle] + residueItems
+        return [bundle] + junk + data
+    }
+
+    private static func residueItem(
+        for entry: ResidueEntry,
+        app: InstalledApp,
+        ruleID: String,
+        category: JunkCategory,
+        holdsLiveAppData: Bool
+    ) -> JunkItem {
+        JunkItem(
+            ruleID: ruleID,
+            title: (entry.path as NSString).lastPathComponent,
+            detail: L10n.fmt("apps.residue.detail", app.name, L10n.tr(entry.kind.labelKey)),
+            path: entry.path,
+            category: category,
+            risk: entry.kind.risk,
+            isDirectory: FileSystem.isDirectory(FileSystem.url(entry.path)),
+            bundleID: app.bundleID,
+            appKind: .residue(entry.kind),
+            appName: app.name,
+            holdsLiveAppData: holdsLiveAppData
+        )
     }
 
     /// The app bundle's subtitle: "Version x · N residue files", with missing parts omitted automatically.
@@ -169,12 +201,21 @@ enum AppScanner {
 
         add("Library/Application Support/\(id)", .applicationSupport)
         add("Library/Application Support/\(name)", .applicationSupport)
+        // Caches are probed by both bundle ID and app name: bundle authors
+        // pick either spelling for `~/Library/Caches` (Chrome uses
+        // `Caches/Google/Chrome`, most others `Caches/<bundleID>` or
+        // `Caches/<app name>`). Name-based matching is exact-match only —
+        // an app called "Chrome" must not claim `Caches/Google` — and safe
+        // to be loose about because everything probed here is regenerable.
         add("Library/Caches/\(id)", .caches)
+        add("Library/Caches/\(name)", .caches)
         add("Library/Containers/\(id)", .containers)
         add("Library/Preferences/\(id).plist", .preferences)
         add("Library/Saved Application State/\(id).savedState", .savedState)
         add("Library/HTTPStorages/\(id)", .httpStorages)
+        add("Library/HTTPStorages/\(name)", .httpStorages)
         add("Library/WebKit/\(id)", .webKit)
+        add("Library/WebKit/\(name)", .webKit)
         add("Library/Cookies/\(id).binarycookies", .cookies)
         add("Library/Application Scripts/\(id)", .applicationScripts)
         add("Library/LaunchAgents/\(id).plist", .launchAgents)

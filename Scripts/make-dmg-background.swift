@@ -32,7 +32,7 @@ let dpi = 144
 let outputPath = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "dmg-background.png"
 
 func fail(_ message: String) -> Never {
-    FileHandle.standardError.write("make-dmg-background 失败：\(message)\n".data(using: .utf8)!)
+    FileHandle.standardError.write("make-dmg-background failed: \(message)\n".data(using: .utf8)!)
     exit(1)
 }
 
@@ -100,7 +100,7 @@ guard let context = CGContext(
     space: colorSpace,
     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
 ) else {
-    fail("无法创建画布")
+    fail("Cannot create the canvas")
 }
 context.scaleBy(x: scale, y: scale)
 
@@ -113,7 +113,7 @@ guard let base = CGGradient(
     ] as CFArray,
     locations: [0, 1]
 ) else {
-    fail("无法创建底色渐变")
+    fail("Cannot create the base gradient")
 }
 context.drawLinearGradient(
     base,
@@ -171,7 +171,7 @@ context.fillPath()
 // which does not affect rendering.
 let line = CTLineCreateWithAttributedString(CFAttributedStringCreate(
     nil,
-    "拖动 Mackit 到 Applications 完成安装" as CFString,
+    "Drag Mackit to Applications" as CFString,
     [
         kCTFontAttributeName: CTFontCreateWithName("PingFangSC-Medium" as CFString, 13, nil),
         kCTForegroundColorAttributeName: CGColor(gray: 1, alpha: 0.85)
@@ -185,7 +185,7 @@ context.textPosition = CGPoint(
 CTLineDraw(line, context)
 
 guard let image = context.makeImage() else {
-    fail("渲染失败")
+    fail("Rendering failed")
 }
 guard let destination = CGImageDestinationCreateWithURL(
     URL(fileURLWithPath: outputPath) as CFURL,
@@ -193,11 +193,11 @@ guard let destination = CGImageDestinationCreateWithURL(
     1,
     nil
 ) else {
-    fail("无法创建 \(outputPath)")
+    fail("Cannot create \(outputPath)")
 }
 CGImageDestinationAddImage(destination, image, nil)
 guard CGImageDestinationFinalize(destination) else {
-    fail("写入 \(outputPath) 失败")
+    fail("Failed to write \(outputPath)")
 }
 
 // ImageIO does not write DPI for PNG, so pHYs is added manually: without it
@@ -206,7 +206,7 @@ guard CGImageDestinationFinalize(destination) else {
 do {
     try insertPhysChunk(path: outputPath, dpi: dpi)
 } catch {
-    fail("插入 pHYs 失败：\(error.localizedDescription)")
+    fail("Failed to insert pHYs: \(error.localizedDescription)")
 }
 
-print("已生成 DMG 背景图：\(outputPath)（\(logicalWidth)x\(logicalHeight) @\(dpi)dpi）")
+print("Generated DMG background image: \(outputPath) (\(logicalWidth)x\(logicalHeight) @\(dpi)dpi)")

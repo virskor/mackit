@@ -137,14 +137,16 @@ struct MenuBarPanelView: View {
                 bigStat(
                     symbol: "cpu",
                     value: stats.cpuUsage.map { Formatters.percent($0) } ?? "—",
-                    label: L10n.tr("panel.cpuUsage")
+                    label: L10n.tr("panel.cpuUsage"),
+                    widestValue: widestPercent
                 )
             }
             if vm.showMenuBarMemory {
                 bigStat(
                     symbol: "memorychip",
                     value: stats.memoryTotal > 0 ? Formatters.percent(stats.memoryUsedFraction) : "—",
-                    label: L10n.tr("panel.memoryUsage")
+                    label: L10n.tr("panel.memoryUsage"),
+                    widestValue: widestPercent
                 )
             }
             if vm.showMenuBarTemperature {
@@ -159,21 +161,57 @@ struct MenuBarPanelView: View {
         .padding(.vertical, 16)
     }
 
-    private func bigStat(symbol: String, value: String, label: String) -> some View {
+    /// Font of the big numbers. Shared by the visible value and the invisible
+    /// width placeholder, so the two measure identically.
+    private let bigValueFont = Font.system(size: 17, weight: .semibold, design: .rounded)
+
+    /// The widest string a percentage can render to.
+    ///
+    /// `Formatters.percent` clamps to 0–100 and keeps no decimals, so three
+    /// digits plus the sign is the longest case there is.
+    private let widestPercent = Formatters.percent(1)
+
+    private func bigStat(symbol: String, value: String, label: String, widestValue: String? = nil) -> some View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
                 Image(systemName: symbol)
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
-                Text(verbatim: value)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
+                if let widestValue {
+                    fixedWidthValue(value, widest: widestValue)
+                } else {
+                    Text(verbatim: value)
+                        .font(bigValueFont)
+                        .monospacedDigit()
+                }
             }
             Text(verbatim: label)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// A value text that occupies the width of the widest string it can render
+    /// to.
+    ///
+    /// The monitor values refresh every two seconds, and "9%" → "10%" already
+    /// changes the text's width: centered in its cell, the number would slide
+    /// sideways every time the digit count changes. An invisible copy of the
+    /// widest value holds the layout width — `.hidden()` also drops it from
+    /// accessibility, so VoiceOver reads only the real value — and the real
+    /// value is drawn over it at the leading edge, which keeps the digits on
+    /// one grid anchored right after the icon.
+    private func fixedWidthValue(_ value: String, widest: String) -> some View {
+        Text(verbatim: widest)
+            .font(bigValueFont)
+            .monospacedDigit()
+            .hidden()
+            .overlay(alignment: .leading) {
+                Text(verbatim: value)
+                    .font(bigValueFont)
+                    .monospacedDigit()
+            }
     }
 
     // MARK: - Memory
@@ -225,40 +263,15 @@ struct MenuBarPanelView: View {
                     Divider()
                         .padding(.leading, 42)
                 }
-                HStack(spacing: 8) {
-                    appIcon(for: app)
-                        .frame(width: 20, height: 20)
-                    Text(verbatim: app.name)
-                        .font(.system(size: 12))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    Spacer(minLength: 8)
-                    Text(verbatim: Formatters.bytes(app.bytes))
-                        .font(.system(size: 12))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                AppMemoryRow(
+                    entry: app,
+                    icon: vm.appIcon(forPath: app.path)
+                ) { entry in
+                    vm.quitApp(entry)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
             }
         }
         .padding(.bottom, 4)
-    }
-
-    /// App icon. Falls back to the generic app symbol when unavailable — a
-    /// placeholder in the ranking beats an empty gap.
-    @ViewBuilder
-    private func appIcon(for entry: AppMemoryEntry) -> some View {
-        if let image = vm.appIcon(forPath: entry.path) {
-            Image(nsImage: image)
-                .resizable()
-                .frame(width: 20, height: 20)
-        } else {
-            Image(systemName: "app")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .frame(width: 20, height: 20)
-        }
     }
 
     // MARK: - Disk and chart
@@ -380,6 +393,165 @@ struct MenuBarPanelView: View {
             window.setFrame(frame, display: true)
             return
         }
+    }
+}
+
+/// One row of the memory ranking: icon + name + memory usage.
+///
+/// The two hover controls — the quit button and the warning beside it — take
+/// the place of the size text rather than sitting beside it: the row keeps one
+/// width, so hovering neither pushes the name aside nor grows the panel (whose
+/// height is pinned to its content, see `fitPanelWindow`).
+private struct AppMemoryRow: View {
+    let entry: AppMemoryEntry
+    /// The app's icon, nil when it could not be read.
+    let icon: NSImage?
+    let onQuit: (AppMemoryEntry) -> Void
+
+    /// Hover is tracked on the row and on the controls separately, then OR-ed
+    /// together: a control sitting on top of a row can take the pointer's
+    /// tracking over from it, and the controls would blink out from under the
+    /// pointer on their way to being clicked.
+    @State private var isRowHovered = false
+    @State private var isControlsHovered = false
+
+    private var isHovered: Bool { isRowHovered || isControlsHovered }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            iconView
+                .frame(width: 20, height: 20)
+            Text(verbatim: entry.name)
+                .font(.system(size: 12))
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 8)
+            Text(verbatim: Formatters.bytes(entry.bytes))
+                .font(.system(size: 12))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .opacity(isHovered ? 0 : 1)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .contentShape(Rectangle())
+        // The highlight says which row the two hover controls belong to — the
+        // rows are only a few points tall, and the pointer is already inside
+        // one of them by the time the controls fade in.
+        .background(isHovered ? Color.primary.opacity(0.06) : Color.clear)
+        .onHover { isRowHovered = $0 }
+        .animation(.easeOut(duration: 0.12), value: isHovered)
+        .overlay(alignment: .trailing) {
+            HStack(spacing: 6) {
+                quitButton
+                quitWarning
+            }
+            // Line the controls up with the size text they take the place of:
+            // the overlay aligns to the row's outer edge, which is 14pt wider
+            // than the content inside it.
+            .padding(.trailing, 14)
+            .opacity(isHovered ? 1 : 0)
+            .onHover { isControlsHovered = $0 }
+            // The warning hangs off the controls' leading edge, in the space the
+            // size text vacates, rather than floating over the row above — the
+            // rows are dense enough that a bubble up there buries the
+            // neighbour's figures. It rides on the controls' own overlay so
+            // that the controls' bounds, and with them the tracking area that
+            // drives the hover, never change size.
+            .overlay(alignment: .leading) {
+                if isControlsHovered {
+                    quitHint
+                        .offset(x: -(hintWidth + 6))
+                        .transition(.opacity)
+                        .animation(.easeOut(duration: 0.12), value: isControlsHovered)
+                }
+            }
+        }
+    }
+
+    /// The warning's width: 210pt of text plus 8pt of padding each side. It is
+    /// placed by offset from the controls' leading edge, so the offset is
+    /// derived from this rather than measured at runtime.
+    private let hintWidth: CGFloat = 226
+
+    /// App icon. Falls back to the generic app symbol when unavailable — a
+    /// placeholder in the ranking beats an empty gap.
+    @ViewBuilder
+    private var iconView: some View {
+        if let image = icon {
+            Image(nsImage: image)
+                .resizable()
+        } else {
+            Image(systemName: "app")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var quitButton: some View {
+        Button {
+            onQuit(entry)
+        } label: {
+            Text(verbatim: L10n.tr("panel.quitApp"))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.blue)
+        }
+        .buttonStyle(.plain)
+        // The controls stay in the layout and in hit testing whether they are
+        // visible or not: taking them out re-installs the row's tracking area,
+        // which AppKit reports as the pointer having left the row, and the
+        // controls would blink out from under the pointer. Disabling them
+        // keeps the invisible ones inert instead — the row has no click action
+        // of its own to shadow.
+        .disabled(!isHovered)
+        .accessibilityLabel(L10n.fmt("panel.quitApp.help", entry.name))
+    }
+
+    /// The warning that accompanies the quit button.
+    ///
+    /// Quitting is the one action in the ranking that can cost the user work
+    /// in another app, so its consequence is spelled out right where the
+    /// button is. It is a marker rather than a second button: nothing happens
+    /// when it is clicked, and the warning next to it is what carries the
+    /// message (see `quitHint`).
+    private var quitWarning: some View {
+        Image(systemName: "info.circle")
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(L10n.tr("panel.quitApp.warning"))
+    }
+
+    /// The warning shown the instant the pointer reaches the controls.
+    ///
+    /// Deliberately not AppKit's tooltip: `.help` only appears after the
+    /// pointer has rested on the control for a while, which is far too slow
+    /// for something the user is meant to read before clicking.
+    ///
+    /// The width is exact rather than a maximum — a Text given only a maxWidth
+    /// truncates instead of wrapping — and the height is exact too: inside an
+    /// overlay the text is offered the row's height, and without a definite
+    /// height of its own it lays out on one line and clips. Both together keep
+    /// the bubble the same size whatever the language.
+    ///
+    /// It covers the app name while it shows. A row's content is only 292pt
+    /// wide and the warning needs most of it, so there is no room for both;
+    /// the name returns the moment the pointer leaves the controls.
+    private var quitHint: some View {
+        Text(verbatim: L10n.tr("panel.quitApp.warning"))
+            .font(.system(size: 10))
+            .foregroundStyle(.primary)
+            .lineLimit(2)
+            .multilineTextAlignment(.leading)
+            .frame(width: 210, height: 26, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(.primary.opacity(0.12), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
+            .allowsHitTesting(false)
     }
 }
 

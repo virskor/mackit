@@ -59,14 +59,14 @@ def tokenize(d: str):
                 current = None
                 continue
         if current is None:
-            raise ValueError("path 以数字开头，缺少 M 命令")
+            raise ValueError("path starts with a number, missing M command")
         want = {"M": 2, "L": 2, "H": 1, "V": 1, "C": 6}[current.upper()]
         nums = []
         while i < len(tokens) and len(nums) < want and not re.fullmatch(r"[MmLlHhVvCcZz]", tokens[i]):
             nums.append(tokens[i])
             i += 1
         if len(nums) != want:
-            raise ValueError(f"命令 {current} 参数不足：{nums}")
+            raise ValueError(f"command {current} has too few arguments: {nums}")
         out.append((current, nums))
         # After M, implicit commands are treated as L
         if current.upper() == "M":
@@ -102,7 +102,7 @@ def to_swift(commands):
         elif cmd == "Z":
             lines.append("path.closeSubpath()")
         else:
-            raise ValueError(f"不支持的命令 {cmd}")
+            raise ValueError(f"unsupported command {cmd}")
     return lines
 
 
@@ -204,7 +204,7 @@ def main():
     # Path order: 0=back star (origin) 1=back star clone (blur) 2=front star (blur) 3=highlight
     ds = re.findall(r'<path\s+d="([^"]+)"', svg)
     if len(ds) < 3:
-        sys.exit(f"期望至少 3 个 path，实际 {len(ds)}")
+        sys.exit(f"expected at least 3 paths, got {len(ds)}")
     back, front = ds[0], ds[2]
 
     back_body = "\n".join(["        " + line for line in to_swift(tokenize(back))])

@@ -33,6 +33,19 @@ struct JunkItem: Identifiable, Hashable, Sendable {
     let bundleID: String?
     /// Kind of an uninstall entry; nil for non-app entries.
     let appKind: AppItemKind?
+    /// Display name of the app an entry belongs to, for rows that group their
+    /// entries per app (the general module's app-junk sub-rows) and for the
+    /// language packs, whose own title is the language code rather than the
+    /// app. nil for entries with no owning app.
+    let appName: String?
+    /// Deleting this entry while its app is running would pull live data out
+    /// from under the process: the app's own bundle, and residue that holds
+    /// user data (preferences, Application Support, containers, cookies…).
+    /// The clean engine refuses those. Regenerable caches and unused language
+    /// packs are false here — an app rebuilds a cache on demand, and a
+    /// localization the system language never selects is never loaded, so
+    /// both are safe to remove at any time.
+    let holdsLiveAppData: Bool
     /// Precomputed abbreviated path (home prefix replaced with ~).
     let abbreviatedPath: String
     /// Precomputed lowercased search text, covering name, description, and path.
@@ -52,6 +65,8 @@ struct JunkItem: Identifiable, Hashable, Sendable {
         command: [String] = [],
         bundleID: String? = nil,
         appKind: AppItemKind? = nil,
+        appName: String? = nil,
+        holdsLiveAppData: Bool = false,
         searchExtra: String? = nil
     ) {
         self.ruleID = ruleID
@@ -69,6 +84,8 @@ struct JunkItem: Identifiable, Hashable, Sendable {
         self.command = command
         self.bundleID = bundleID
         self.appKind = appKind
+        self.appName = appName
+        self.holdsLiveAppData = holdsLiveAppData
         self.abbreviatedPath = Self.abbreviate(path)
         let extra = searchExtra.map { "\n\($0)" } ?? ""
         self.searchBlob = "\(title)\n\(detail)\n\(path)\(extra)".lowercased()

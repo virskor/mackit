@@ -3329,19 +3329,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用"
+            "value": "应用卸载"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apps"
+            "value": "App Uninstall"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "應用"
+            "value": "應用卸載"
           }
         }
       }
@@ -6189,19 +6189,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在「应用」分类中列出 /Applications 与 ~/Applications 下的应用及其残留文件，可逐个卸载"
+            "value": "在「应用卸载」分类中列出 /Applications 与 ~/Applications 下的应用及其残留文件，可逐个卸载"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lists apps from /Applications and ~/Applications with their leftover files in the Apps category, ready to uninstall"
+            "value": "Lists apps from /Applications and ~/Applications with their leftover files in the App Uninstall category, ready to uninstall"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在「應用程式」分類中列出 /Applications 與 ~/Applications 下的應用程式及其殘留檔案，可逐個卸載"
+            "value": "在「應用卸載」分類中列出 /Applications 與 ~/Applications 下的應用程式及其殘留檔案，可逐個卸載"
           }
         }
       }
@@ -8670,6 +8670,28 @@
         }
       }
     },
+    "settings.menubar.logo": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示图标"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show icon"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示圖示"
+          }
+        }
+      }
+    },
     "settings.menubar.temperature": {
       "localizations": {
         "zh-Hans": {
@@ -8697,19 +8719,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "CPU 与内存取自系统公开接口。macOS 没有公开的温度数值接口，温度行显示的是系统热状态。「释放内存」会请求管理员授权并执行 purge，清空磁盘文件缓存；应用自身占用的内存不会被释放。"
+            "value": "CPU 与内存取自系统公开接口。macOS 没有公开的温度数值接口，温度行显示的是系统热状态。「释放内存」会请求管理员授权并执行 purge，清空磁盘文件缓存；应用自身占用的内存不会被释放。关闭图标后，若三项数值也全部关闭，菜单栏仍会保留图标，否则应用将从菜单栏消失。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "CPU and memory come from public system APIs. macOS exposes no numeric temperature reading, so the temperature row shows the system thermal state. “Free Up Memory” asks for administrator authorization and runs purge, which flushes the disk file cache; memory held by apps is not released."
+            "value": "CPU and memory come from public system APIs. macOS exposes no numeric temperature reading, so the temperature row shows the system thermal state. “Free Up Memory” asks for administrator authorization and runs purge, which flushes the disk file cache; memory held by apps is not released. With the icon off and every value off as well, the icon is kept anyway — otherwise the app would disappear from the menu bar."
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "CPU 與記憶體取自系統公開介面。macOS 沒有公開的溫度數值介面，溫度列顯示的是系統熱狀態。「釋放記憶體」會請求管理員授權並執行 purge，清空磁碟檔案快取；應用程式本身佔用的記憶體不會被釋放。"
+            "value": "CPU 與記憶體取自系統公開介面。macOS 沒有公開的溫度數值介面，溫度列顯示的是系統熱狀態。「釋放記憶體」會請求管理員授權並執行 purge，清空磁碟檔案快取；應用程式本身佔用的記憶體不會被釋放。關閉圖示後，若三項數值也全部關閉，選單列仍會保留圖示，否則應用程式將從選單列消失。"
           }
         }
       }
@@ -9863,19 +9885,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用内置的非中英语言包，删除后界面回退为英文，重装应用可恢复"
+            "value": "只清理系统显示语言与中英之外的语言包，删除后界面回退为英文，重装应用可恢复"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Localizations bundled inside apps for languages you do not use; apps fall back to English and reinstalling restores them"
+            "value": "Only localizations beyond your system languages and Chinese/English; apps fall back to English and reinstalling restores them"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "應用內建的非中英語言包，刪除後介面回復為英文，重新安裝應用可復原"
+            "value": "只清理系統顯示語言與中英之外的語言包，刪除後介面回復為英文，重新安裝應用可復原"
           }
         }
       }
@@ -11020,6 +11042,270 @@
           "stringUnit": {
             "state": "translated",
             "value": "點按可全選或取消本組所有項目"
+          }
+        }
+      }
+    },
+    "category.appJunk.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用垃圾"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Junk"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "應用垃圾"
+          }
+        }
+      }
+    },
+    "category.appJunk.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装应用的缓存与网络数据，删除后应用会按需重建"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caches and web data of installed apps; apps rebuild what they need"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安裝應用程式的快取與網路資料，刪除後應用程式會按需重建"
+          }
+        }
+      }
+    },
+    "general.remember.action": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记住勾选"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remember"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "記住勾選"
+          }
+        }
+      }
+    },
+    "general.remember.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下次扫描垃圾清理时，按照本次的勾选自动选择相同的清理项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pre-check these rows automatically on every later scan"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下次掃描垃圾清理時，按照本次的勾選自動選擇相同的清理項"
+          }
+        }
+      }
+    },
+    "general.restoreDefault": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复默认"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Defaults"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢復預設"
+          }
+        }
+      }
+    },
+    "general.restoreDefault.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前使用记住的勾选；点击恢复内置默认（自动勾选“很干净”和“建议清理”）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your remembered selection is in use; click to go back to the built-in default (very clean + recommended)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前使用記住的勾選；點擊恢復內建預設（自動勾選「很乾淨」和「建議清理」）"
+          }
+        }
+      }
+    },
+    "toast.generalDefaultsRestored": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已恢复默认勾选"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default selection restored"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已恢復預設勾選"
+          }
+        }
+      }
+    },
+    "general.group.appJunk": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用垃圾"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Junk"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "應用垃圾"
+          }
+        }
+      }
+    },
+    "panel.quitApp": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關閉"
+          }
+        }
+      }
+    },
+    "panel.quitApp.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "退出 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "退出 %@"
+          }
+        }
+      }
+    },
+    "panel.quitApp.warning": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭将直接退出程序，请先保存重要数据"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitting closes the app right away — save important data first"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關閉將直接退出程式，請先儲存重要資料"
+          }
+        }
+      }
+    },
+    "toast.generalSelectionRemembered": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已记住本次勾选，下次扫描按此自动选择"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selection remembered for future scans"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已記住本次勾選，下次掃描按此自動選擇"
           }
         }
       }

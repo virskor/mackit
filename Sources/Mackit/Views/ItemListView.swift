@@ -44,11 +44,10 @@ struct ItemListView: View {
                 table
             }
         }
-        .overlay(alignment: .bottom) {
-            if vm.cleanPhase == .cleaning {
-                CleanProgressView()
-            }
-        }
+        // The cleaning progress overlay lives in ContentView, not here: it has
+        // to cover whichever page the clean started from — the general
+        // module's rows never render this view, so an overlay hung off it
+        // would leave a general-module clean running with no progress at all.
     }
 
     // MARK: - Table

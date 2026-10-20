@@ -55,6 +55,7 @@ struct SettingsView: View {
         .onChange(of: vm.showMenuBarCPU) { _, _ in vm.saveSettings() }
         .onChange(of: vm.showMenuBarMemory) { _, _ in vm.saveSettings() }
         .onChange(of: vm.showMenuBarTemperature) { _, _ in vm.saveSettings() }
+        .onChange(of: vm.showMenuBarLogo) { _, _ in vm.saveSettings() }
         .onChange(of: vm.showDesktopStats) { _, _ in vm.saveSettings() }
     }
 
@@ -329,6 +330,12 @@ struct SettingsView: View {
     /// monitor area collapses. The temperature row can only show thermal state:
     /// macOS has no public API for temperature values, so the explanation text
     /// makes it clear, to avoid users thinking the display is broken.
+    ///
+    /// The logo switch is the odd one out: it controls the icon rather than a
+    /// value, so it is listed after the three values and footed separately —
+    /// it stays effective while all three values are off (the item then shows
+    /// the icon alone), which the footer says outright so nobody turns
+    /// everything off and thinks the app has disappeared.
     private var menubarForm: some View {
         @Bindable var vm = vm
 
@@ -337,6 +344,7 @@ struct SettingsView: View {
                 Toggle(L10n.tr("settings.menubar.cpu"), isOn: $vm.showMenuBarCPU)
                 Toggle(L10n.tr("settings.menubar.memory"), isOn: $vm.showMenuBarMemory)
                 Toggle(L10n.tr("settings.menubar.temperature"), isOn: $vm.showMenuBarTemperature)
+                Toggle(L10n.tr("settings.menubar.logo"), isOn: $vm.showMenuBarLogo)
             } header: {
                 Label(L10n.tr("settings.menubar.header"), systemImage: "menubar.rectangle")
             } footer: {

@@ -229,10 +229,10 @@ enum AppBridge {
             // Running the executable in .build directly (not assembled
             // into a .app) means there is no embedded agent, which is
             // expected; just log it.
-            MackitLog.ui.info("未找到内嵌 agent，跳过拉起")
+            MackitLog.ui.info("embedded agent not found, skipping launch")
             return
         }
-        MackitLog.ui.info("拉起托盘 agent")
+        MackitLog.ui.info("launching tray agent")
         NSWorkspace.shared.openApplication(at: agentURL, configuration: .init())
     }
 

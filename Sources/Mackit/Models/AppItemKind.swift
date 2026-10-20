@@ -50,4 +50,22 @@ enum ResidueKind: String, Sendable, Hashable, CaseIterable {
             return .review
         }
     }
+
+    /// Whether this kind is regenerable junk rather than app data.
+    ///
+    /// The split decides which cleanup module an entry belongs to: junk kinds
+    /// roll up into the general module's app-junk row, where they are
+    /// pre-checked like every other safe row, while data kinds stay with the
+    /// app bundle in the uninstall flow. Cookies are deliberately *not* junk
+    /// despite their `.safe` risk: they carry sign-in sessions, so emptying
+    /// them logs the user out of the apps they still use.
+    var isRegenerableJunk: Bool {
+        switch self {
+        case .caches, .httpStorages, .webKit, .logs, .crashReports, .diagnosticReports:
+            return true
+        case .applicationSupport, .containers, .preferences, .savedState,
+             .cookies, .applicationScripts, .launchAgents:
+            return false
+        }
+    }
 }

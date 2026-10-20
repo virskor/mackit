@@ -1,9 +1,12 @@
 import SwiftUI
 
 /// A group on the general cleanup page, following Lemon's grouping: system
-/// junk first, browsing junk second.
+/// junk, app junk, and browsing junk, each a top-level section of the same
+/// weight — a user who only wants their apps' caches should not have to find
+/// them buried inside the system group.
 enum GeneralCleanGroup: String, CaseIterable, Identifiable, Sendable {
     case system
+    case appJunk
     case browser
 
     var id: String { rawValue }
@@ -15,6 +18,7 @@ enum GeneralCleanGroup: String, CaseIterable, Identifiable, Sendable {
     var tint: Color {
         switch self {
         case .system: return .orange
+        case .appJunk: return .purple
         case .browser: return .blue
         }
     }
@@ -22,6 +26,7 @@ enum GeneralCleanGroup: String, CaseIterable, Identifiable, Sendable {
     var symbol: String {
         switch self {
         case .system: return "internaldrive"
+        case .appJunk: return "square.stack.3d.up.fill"
         case .browser: return "globe"
         }
     }
@@ -30,6 +35,7 @@ enum GeneralCleanGroup: String, CaseIterable, Identifiable, Sendable {
     var categories: [JunkCategory] {
         switch self {
         case .system: return [.system, .language, .downloads, .trash]
+        case .appJunk: return [.appJunk]
         case .browser: return [.browser]
         }
     }
@@ -51,6 +57,25 @@ struct GeneralRuleRow: Identifiable, Sendable {
     let ruleIDs: [String]
     /// The row's risk level; every aggregated rule shares it.
     let risk: RiskLevel
+    /// How the row's entries are grouped into sub-rows; `.flat` for a row
+    /// that is a single toggle over all of its entries.
+    var subRowMode: GeneralSubRowMode = .flat
+}
+
+/// How a row presents its entries below the row header.
+///
+/// Lemon shows language files one language at a time ("Japanese — 3 apps,
+/// 1.2 MB") instead of one undifferentiated total, and app junk per app. A
+/// flat row is one all-or-nothing toggle; a grouped row lets the user keep
+/// one language, or one app's caches, while sweeping the rest — which is also
+/// the difference between "clean my junk" and "clean my junk except the app I
+/// actually use".
+enum GeneralSubRowMode: Sendable {
+    case flat
+    /// One sub-row per language code, titled with the language's own name.
+    case byLanguage
+    /// One sub-row per owning app, titled with the app's display name.
+    case byApp
 }
 
 /// The row layout of the general cleanup page.
@@ -75,7 +100,7 @@ enum GeneralCleanLayout {
     }
 
     static let rows: [GeneralRuleRow] = [
-        // 系统垃圾
+        // system junk
         ruleRow("system.logs"),
         ruleRow("system.crashreporter"),
         ruleRow("system.saved-state"),
@@ -87,7 +112,8 @@ enum GeneralCleanLayout {
             note: L10n.tr("category.language.summary"),
             category: .language,
             ruleIDs: [LanguageFileScanner.ruleID],
-            risk: .review
+            risk: .review,
+            subRowMode: .byLanguage
         ),
         GeneralRuleRow(
             id: "downloads",
@@ -100,7 +126,18 @@ enum GeneralCleanLayout {
         ruleRow("system.ios-backups"),
         ruleRow("trash.home"),
 
-        // 上网垃圾
+        // app junk
+        GeneralRuleRow(
+            id: "app.junk",
+            title: L10n.tr("category.appJunk.title"),
+            note: L10n.tr("category.appJunk.summary"),
+            category: .appJunk,
+            ruleIDs: [AppScanner.junkRuleID],
+            risk: .safe,
+            subRowMode: .byApp
+        ),
+
+        // browsing junk
         GeneralRuleRow(
             id: "browser.chrome",
             title: L10n.tr("rule.browser.chrome-cache.title"),

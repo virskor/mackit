@@ -51,31 +51,31 @@ AGENT_BUNDLE_ID="cn.mingcui.mackit.agent"
 
 cd "$ROOT"
 if [ -n "${MACKIT_ARCHES:-}" ]; then
-    echo "==> 编译（${CONFIG}，架构：${MACKIT_ARCHES}）"
+    echo "==> Building (${CONFIG}, architectures: ${MACKIT_ARCHES})"
     BUILD_ARGS=()
     for arch in $MACKIT_ARCHES; do
         BUILD_ARGS+=(--arch "$arch")
     done
     swift build -c "$CONFIG" "${BUILD_ARGS[@]}"
 else
-    echo "==> 编译（${CONFIG}）"
+    echo "==> Building (${CONFIG})"
     swift build -c "$CONFIG"
 fi
 
 BINARY="$BUILD_DIR/$CONFIG/Mackit"
 if [ ! -f "$BINARY" ]; then
-    echo "找不到 $BINARY" >&2
+    echo "Cannot find $BINARY" >&2
     exit 1
 fi
 
-echo "==> 生成应用图标"
+echo "==> Generating app icon"
 ICONSET="$BUILD_DIR/AppIcon.iconset"
 ICNS="$BUILD_DIR/AppIcon.icns"
 # When MACKIT_SKIP_ICON=1, reuse the existing icns to speed up repeated builds.
 # Note: do not skip when make-icon.swift has been changed, or the old icon
 # will be used.
 if [ "${MACKIT_SKIP_ICON:-0}" = "1" ] && [ -f "$ICNS" ]; then
-    echo "（复用已有 ${ICNS}）"
+    echo "(reusing existing ${ICNS})"
 else
     rm -rf "$ICONSET"
     swift "$ROOT/Scripts/make-icon.swift" "$ICONSET"
@@ -91,8 +91,8 @@ fi
 # fails the build directly.
 RESOURCE_BUNDLE="$BUILD_DIR/$CONFIG/Mackit_Mackit.bundle"
 if [ ! -d "$RESOURCE_BUNDLE" ]; then
-    echo "找不到本地化资源包 $RESOURCE_BUNDLE" >&2
-    echo "界面文案会全部退化成 key，终止构建。" >&2
+    echo "Cannot find localization resource bundle $RESOURCE_BUNDLE" >&2
+    echo "All UI strings would degrade to keys; aborting the build." >&2
     exit 1
 fi
 
@@ -105,7 +105,7 @@ fi
 # The agent bundle needs a copy too: the two bundles share the same binary and
 # link Sparkle, so the agent cannot even start without the framework (the
 # agent never launches the updater, but its symbols must resolve).
-echo "==> 嵌入 Sparkle.framework"
+echo "==> Embedding Sparkle.framework"
 # Prefer the universal slice (macos-arm64_x86_64); in case the upstream switches
 # to per-architecture releases, fall back to the first slice so the build is
 # not interrupted.
@@ -114,8 +114,8 @@ if [ -z "$SPARKLE_FRAMEWORK" ]; then
     SPARKLE_FRAMEWORK="$(find "$BUILD_DIR/artifacts" -type d -name "Sparkle.framework" 2>/dev/null | head -1)"
 fi
 if [ -z "$SPARKLE_FRAMEWORK" ] || [ ! -d "$SPARKLE_FRAMEWORK" ]; then
-    echo "找不到 Sparkle.framework（$BUILD_DIR/artifacts）。" >&2
-    echo "先执行一次 swift build 解析 Sparkle 依赖后再重试。" >&2
+    echo "Cannot find Sparkle.framework ($BUILD_DIR/artifacts)." >&2
+    echo "Run swift build once to resolve the Sparkle dependency, then retry." >&2
     exit 1
 fi
 
@@ -145,8 +145,8 @@ fi
 # a feed Sparkle does not launch, and writing a bunch of keys would only put
 # unusable switches in the settings page.
 if [ -n "${MACKIT_UPDATE_FEED_URL:-}" ] && [ -z "${MACKIT_UPDATE_PUBLIC_KEY:-}" ]; then
-    echo "警告：设置了 MACKIT_UPDATE_FEED_URL 但未设置 MACKIT_UPDATE_PUBLIC_KEY，" >&2
-    echo "      没有 EdDSA 公钥时 Sparkle 会拒绝所有更新。" >&2
+    echo "Warning: MACKIT_UPDATE_FEED_URL is set but MACKIT_UPDATE_PUBLIC_KEY is not," >&2
+    echo "         Sparkle rejects all updates without an EdDSA public key." >&2
 fi
 
 # Convert switch values to plist boolean literals: use case instead of command
@@ -173,10 +173,10 @@ if [ -n "${MACKIT_UPDATE_FEED_URL:-}" ]; then
     ${AUTO_UPDATE_PLIST}
     <key>SUScheduledCheckInterval</key>
     <integer>${MACKIT_UPDATE_INTERVAL:-86400}</integer>"
-    echo "更新源：${MACKIT_UPDATE_FEED_URL}"
+    echo "Update feed: ${MACKIT_UPDATE_FEED_URL}"
 fi
 
-echo "==> 组装 Mackit.app 与内嵌 MackitAgent.app"
+echo "==> Assembling Mackit.app and embedded MackitAgent.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
@@ -323,7 +323,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <!-- "Open in Terminal" sends Apple Events to Terminal; both the TCC
          authorization prompt and later review require this usage description. -->
     <key>NSAppleEventsUsageDescription</key>
-    <string>Mackit 需要控制「终端」以在所选的路径打开终端窗口。</string>
+    <string>Mackit needs to control Terminal to open a terminal window at the selected path.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 mingcui. All rights reserved.</string>
     <key>NSPrincipalClass</key>
@@ -357,7 +357,7 @@ plutil -lint "$APP/Contents/Info.plist" > /dev/null
 #   → agent's resource bundle → agent app (it lives inside the main app and
 #     must be signed before the main app)
 #   → main app's resource bundle → main app
-echo "==> 签名"
+echo "==> Signing"
 SIGN_ARGS=(--force --sign)
 # Sparkle.framework embeds Updater.app and the two XPC services under
 # XPCServices, and the framework ships with its own ad-hoc signature. Every
@@ -394,7 +394,7 @@ sign_nested_sparkle_adhoc() {
 }
 
 if [ -n "${MACKIT_SIGN_IDENTITY:-}" ]; then
-    echo "（Developer ID：${MACKIT_SIGN_IDENTITY}，启用硬化运行时）"
+    echo "(Developer ID: ${MACKIT_SIGN_IDENTITY}, hardened runtime enabled)"
     IDENTITY="$MACKIT_SIGN_IDENTITY"
     # agent: resource bundle → Sparkle nesting → framework → agent itself
     codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp \
@@ -407,7 +407,7 @@ if [ -n "${MACKIT_SIGN_IDENTITY:-}" ]; then
     sign_nested_sparkle "$APP/Contents/Frameworks/Sparkle.framework"
     codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$APP"
 else
-    echo "（ad-hoc 本地签名；分发请设置 MACKIT_SIGN_IDENTITY）"
+    echo "(ad-hoc local signature; set MACKIT_SIGN_IDENTITY for distribution)"
     IDENTITY="-"
     # agent
     codesign "${SIGN_ARGS[@]}" - "$AGENT/Contents/Resources/Mackit_Mackit.bundle"
@@ -429,10 +429,10 @@ DSYM="$BUILD_DIR/$CONFIG/Mackit.dSYM"
 if [ -d "$DSYM" ]; then
     rm -rf "$APP.dSYM"
     cp -R "$DSYM" "$APP.dSYM"
-    echo "==> dSYM 已拷贝到 $APP.dSYM（agent 共用）"
+    echo "==> dSYM copied to $APP.dSYM (shared by the agent)"
 fi
 
 echo
 # The braces cannot be omitted: bash 3.2 swallows the non-ASCII bytes following $VAR into the variable name
-echo "完成：${APP}（版本 ${VERSION}，构建 ${BUILD_NUMBER}）"
-echo "运行：open \"${APP}\""
+echo "Done: ${APP} (version ${VERSION}, build ${BUILD_NUMBER})"
+echo "Run: open \"${APP}\""

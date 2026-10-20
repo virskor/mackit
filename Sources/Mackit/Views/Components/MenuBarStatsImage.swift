@@ -14,11 +14,14 @@ import SwiftUI
 /// handed over as isTemplate, the system tints it according to the menu bar's
 /// light/dark appearance, using the same channel as MenuBarIcon.
 ///
-/// Percentages always use monospaced digits; temperature is given as a thermal
-/// state word (macOS has no public temperature-value API), whose four possible
-/// values differ in width by a factor of two, so group widths are fixed to the
-/// widest one—the menu bar item does not jitter wider and narrower when the
-/// state switches.
+/// Every value is drawn with monospaced digits, and each group reserves the
+/// widest width it can ever need — the caller lists a value's possible
+/// renderings in `Metric.alternativeValues`. Percentages are clamped to 0–100
+/// with no decimals, so their widest rendering is "100%"; temperature is given
+/// as a thermal state word (macOS has no public temperature-value API), whose
+/// four possible values differ in width by a factor of two. A value whose
+/// length changes with each poll (7% → 47%) would otherwise widen and narrow
+/// the whole menu bar item, which reads as jitter.
 @MainActor
 enum MenuBarStatsImage {
     /// One group of "value + short label".
@@ -53,7 +56,12 @@ enum MenuBarStatsImage {
     /// - Parameter barHeight: Menu bar height. Machines with a notch are about 38pt,
     ///   without about 22pt; the two-line font sizes are tiered accordingly—a
     ///   13 + 8 two-line stack does not fit in a narrow menu bar.
-    static func image(metrics: [Metric], barHeight: CGFloat) -> NSImage {
+    /// - Parameter showIcon: Whether to draw the brand icon in front of the
+    ///   values. Off only takes effect while there is at least one value to
+    ///   show: with the icon off and `metrics` empty as well the item would be
+    ///   an empty image, and the app would vanish from the menu bar with no way
+    ///   back — so in that case the icon is drawn regardless.
+    static func image(metrics: [Metric], barHeight: CGFloat, showIcon: Bool = true) -> NSImage {
         let iconSize: CGFloat = min(17, barHeight * 0.75)
         let valueSize: CGFloat = barHeight >= 30 ? 13 : 11
         let labelSize: CGFloat = barHeight >= 30 ? 8 : 7
@@ -63,15 +71,28 @@ enum MenuBarStatsImage {
         // the two-line block both depend—they cannot be guessed.
         let measured = metrics.map { measure($0, valueSize: valueSize, labelSize: labelSize) }
 
+        let drawIcon = showIcon || measured.isEmpty
+
         let blockHeight = measured.map(\.height).max() ?? 0
-        let contentHeight = max(iconSize, blockHeight)
+        // With the icon gone the item is just the text block, so it centers on
+        // the bar by itself rather than by the icon's box.
+        let contentHeight = drawIcon ? max(iconSize, blockHeight) : blockHeight
         // Content is vertically centered in the menu bar; y is always computed top-down and flipped when drawing.
         let top = (barHeight - contentHeight) / 2
 
         let separators = CGFloat(max(0, measured.count - 1)) * (separatorWidth + separatorPadding * 2)
-        let width = measured.isEmpty
-            ? iconSize
-            : iconSize + iconGap + measured.reduce(0) { $0 + $1.width } + separators
+        let metricsWidth = measured.reduce(0) { $0 + $1.width } + separators
+        // The values' width is their own: dropping the icon must not shrink the
+        // image to the icon's box, or every value gets clipped to its first
+        // glyph or two ("27%" reads as "27", "CPU" as "C").
+        let width: CGFloat
+        if measured.isEmpty {
+            width = iconSize
+        } else if drawIcon {
+            width = iconSize + iconGap + metricsWidth
+        } else {
+            width = metricsWidth
+        }
 
         let pixels = Int((width * scale).rounded())
         let heightPixels = Int((barHeight * scale).rounded())
@@ -95,19 +116,21 @@ enum MenuBarStatsImage {
         // iconSize box. The y-down -> y-up flip is done inside the path transform (d
         // negated), not by flipping the whole context—CoreText text is drawn y-up, so
         // flipping the context would turn the text upside down.
-        let iconTop = top + (contentHeight - iconSize) / 2
-        let pathScale = iconSize / 24
-        var iconTransform = CGAffineTransform(
-            a: pathScale, b: 0, c: 0, d: -pathScale, tx: 0, ty: barHeight - iconTop
-        )
-        context.setFillColor(CGColor(gray: 0, alpha: 1))
-        for path in [MenuBarStarPath.back, MenuBarStarPath.front] {
-            context.addPath(path.copy(using: &iconTransform) ?? path)
-            context.fillPath()
+        if drawIcon {
+            let iconTop = top + (contentHeight - iconSize) / 2
+            let pathScale = iconSize / 24
+            var iconTransform = CGAffineTransform(
+                a: pathScale, b: 0, c: 0, d: -pathScale, tx: 0, ty: barHeight - iconTop
+            )
+            context.setFillColor(CGColor(gray: 0, alpha: 1))
+            for path in [MenuBarStarPath.back, MenuBarStarPath.front] {
+                context.addPath(path.copy(using: &iconTransform) ?? path)
+                context.fillPath()
+            }
         }
 
         // Each group's value and short label: short label centered below the value, thin separator line between groups.
-        var x = iconSize + iconGap
+        var x = drawIcon ? iconSize + iconGap : 0
         for (index, item) in measured.enumerated() {
             let valueBaseline = top + item.valueAscent
             let labelBaseline = valueBaseline + lineGap + item.labelAscent
@@ -171,11 +194,11 @@ enum MenuBarStatsImage {
         // differ in width by a factor of two between Chinese and English (Normal ↔
         // Critical); without a fixed width, the menu bar item would jitter wider and
         // narrower whenever the state changes.
-        let value = line(metric.value, size: valueSize, weight: .semibold, alpha: 1)
+        let value = line(metric.value, size: valueSize, weight: .semibold, alpha: 1, monospacedDigits: true)
         var bounds = typographicBounds(of: value)
         for alternative in metric.alternativeValues {
             let candidate = typographicBounds(
-                of: line(alternative, size: valueSize, weight: .semibold, alpha: 1)
+                of: line(alternative, size: valueSize, weight: .semibold, alpha: 1, monospacedDigits: true)
             )
             if candidate.width > bounds.width { bounds = candidate }
         }
@@ -192,11 +215,19 @@ enum MenuBarStatsImage {
     }
 
     /// One line of text. A template image only takes alpha; lightness is expressed entirely through opacity.
+    ///
+    /// Values pass `monospacedDigits`: every digit then takes up the same advance
+    /// width, so the digits line up on one grid instead of the second digit
+    /// sliding sideways with each glyph's own width as the value refreshes.
     private static func line(
-        _ text: String, size: CGFloat, weight: NSFont.Weight, alpha: CGFloat
+        _ text: String, size: CGFloat, weight: NSFont.Weight, alpha: CGFloat,
+        monospacedDigits: Bool = false
     ) -> CTLine {
+        let font = monospacedDigits
+            ? NSFont.monospacedDigitSystemFont(ofSize: size, weight: weight)
+            : NSFont.systemFont(ofSize: size, weight: weight)
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: size, weight: weight),
+            .font: font,
             .foregroundColor: NSColor(white: 0, alpha: alpha)
         ]
         return CTLineCreateWithAttributedString(

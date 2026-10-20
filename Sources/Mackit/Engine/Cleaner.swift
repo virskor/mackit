@@ -84,12 +84,16 @@ enum CleanEngine {
             return await runCommand(item)
         }
         // Uninstalling a running app risks losing unsaved work, so it is rejected
-        // outright with a message. Associated files (caches, application support,
-        // preferences…) are likewise read and written in real time by the running
-        // app; deleting them pulls live data out from under the process, so they
-        // are rejected too. Residue entries also carry a bundleID, so this is not
-        // limited to the .app bundle itself.
-        if let bundleID = item.bundleID, await isAppRunning(bundleID) {
+        // outright with a message. Associated files that hold live data
+        // (preferences, Application Support, containers…) are likewise read and
+        // written in real time by the running app; deleting them pulls live data
+        // out from under the process, so they are rejected too. Residue entries
+        // also carry a bundleID, so this is not limited to the .app bundle itself.
+        //
+        // Regenerable junk is deliberately exempt (see
+        // `JunkItem.holdsLiveAppData`): an app rebuilds a cache on demand, so
+        // deleting it while the app runs is what every cache cleaner does.
+        if item.holdsLiveAppData, let bundleID = item.bundleID, await isAppRunning(bundleID) {
             return CleanOutcome(
                 id: item.id, itemID: item.id, title: item.title, path: item.path,
                 reclaimed: 0, succeeded: false, message: L10n.fmt("clean.error.appRunning", item.title)
@@ -290,9 +294,9 @@ enum CleanEngine {
     private static func logCommand(_ item: JunkItem, executable: String, exitStatus: Int32) {
         let command = ([executable] + Array(item.command.dropFirst())).joined(separator: " ")
         if exitStatus == 0 {
-            MackitLog.clean.debug("命令成功（\(command, privacy: .public)）")
+            MackitLog.clean.debug("command succeeded: \(command, privacy: .public)")
         } else {
-            MackitLog.clean.error("命令失败（\(command, privacy: .public)）：退出码 \(exitStatus)")
+            MackitLog.clean.error("command failed: \(command, privacy: .public), exit code \(exitStatus)")
         }
     }
 

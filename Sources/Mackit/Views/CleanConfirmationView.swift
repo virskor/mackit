@@ -9,11 +9,14 @@ import SwiftUI
 struct CleanConfirmationView: View {
     @Environment(AppViewModel.self) private var vm
 
-    /// The "remember this selection" prompt, on by default: the user just
-    /// curated the general module's rows, and the common intent is to keep
-    /// that curation. Reset on every presentation because the sheet builds
-    /// its content fresh each time.
-    @State private var rememberSelection = true
+    /// The "remember this selection" prompt, off by default: remembering
+    /// rewrites what every later scan pre-checks, so it has to be the user's
+    /// explicit choice. Defaulted on, a one-off "check the whole group and
+    /// clean once" gesture was silently saved and re-checked the entire page
+    /// on the next scan — the clean looked like it had accomplished nothing.
+    /// Reset on every presentation because the sheet builds its content
+    /// fresh each time.
+    @State private var rememberSelection = false
 
     /// Sorted by size from large to small, largest first for easy verification.
     private var items: [JunkItem] { vm.selectedItems.sorted { $0.size > $1.size } }
@@ -176,7 +179,8 @@ struct CleanConfirmationView: View {
 
             // The user curated the general module's rows differently from
             // what the next scan would pre-check: offer to remember that
-            // curation, defaulted to on so one click keeps it.
+            // curation. Off by default, so a selection made for one clean is
+            // never saved behind the user's back.
             if vm.showsRememberGeneralPrompt {
                 rememberRow
                     .padding(.horizontal, 20)
@@ -200,9 +204,9 @@ struct CleanConfirmationView: View {
                     tint: isUninstall || hasCaution ? .red : .accentColor
                 ) {
                     // Only when the prompt is actually showing: the toggle
-                    // defaults to on, so without the guard every clean —
-                    // including the developer module's and the tray's —
-                    // would silently save a selection.
+                    // is off by default and only ever set on the general
+                    // module's sheet, so without the guard a clean launched
+                    // from elsewhere could still save a selection.
                     if rememberSelection && vm.showsRememberGeneralPrompt {
                         vm.rememberGeneralSelection()
                     }

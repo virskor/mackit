@@ -91,7 +91,7 @@ struct SystemStatsSampler: Sendable {
             }
         }
         guard result == KERN_SUCCESS else {
-            MackitLog.system.error("内存采样失败：host_statistics64 返回 \(result)")
+            MackitLog.system.error("memory sampling failed: host_statistics64 returned \(result)")
             return nil
         }
 
@@ -99,7 +99,7 @@ struct SystemStatsSampler: Sendable {
         // the latter is a global variable, not allowed to be read directly under strict concurrency.
         var pageSize = vm_size_t(0)
         guard host_page_size(mach_host_self(), &pageSize) == KERN_SUCCESS, pageSize > 0 else {
-            MackitLog.system.error("内存采样失败：host_page_size 无效")
+            MackitLog.system.error("memory sampling failed: host_page_size invalid")
             return nil
         }
         let page = Int64(pageSize)

@@ -15,7 +15,7 @@ HOOKS_SRC="$ROOT/Scripts/git-hooks"
 HOOKS_DST="$ROOT/.git/hooks"
 
 if [ ! -d "$HOOKS_DST" ]; then
-    echo "找不到 $HOOKS_DST，当前目录不是 git 仓库？" >&2
+    echo "Cannot find $HOOKS_DST; is the current directory a git repository?" >&2
     exit 1
 fi
 
@@ -23,7 +23,7 @@ for hook in "$HOOKS_SRC"/*; do
     [ -f "$hook" ] || continue
     name="$(basename "$hook")"
     install -m 755 "$hook" "$HOOKS_DST/$name"
-    echo "已安装 $name"
+    echo "Installed $name"
 done
 
-echo "完成。"
+echo "Done."
