@@ -226,7 +226,15 @@ struct DiskAnalysisView: View {
                 .lineLimit(1)
 
             if let entry = model.selectedEntry {
-                summary(entry)
+                // An unreadable folder has no counts to report — the summary
+                // says so rather than claiming "0 folders 0 files".
+                if entry.isUnreadable {
+                    Label(L10n.tr("diskAnalysis.unreadable"), systemImage: "lock.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                } else {
+                    summary(entry)
+                }
             }
 
             Spacer(minLength: 8)
@@ -275,7 +283,8 @@ struct DiskAnalysisView: View {
                     TreemapView(
                         entries: model.selectedChildren,
                         icon: { model.icon(forPath: $0) },
-                        onEnter: { model.enter($0) }
+                        onEnter: { model.enter($0) },
+                        measuringName: model.isMeasuringSelection ? model.selectedEntry?.name : nil
                     )
                 } else {
                     // The toggle's off state: the same data as plain rows.
@@ -347,8 +356,9 @@ struct DiskAnalysisView: View {
     // MARK: - Rows
 
     /// One child row: workspace icon, name with its recursive item count, the
-    /// measured size, and the disclosure chevron. Single click selects,
-    /// double click enters the folder (the chevron is that affordance).
+    /// measured size, and the disclosure chevron on folders. Single click
+    /// selects, double click enters the folder (the chevron is that
+    /// affordance; files have none — there is nothing to enter).
     private func entryRow(_ entry: DiskEntry) -> some View {
         let model = vm.diskAnalysis
         return Button {
@@ -364,24 +374,38 @@ struct DiskAnalysisView: View {
                     if entry.isDirectory {
                         // A pending row keeps the slot with a dash rather than
                         // "0 项", so nothing reflows when the size lands.
-                        Text(verbatim: entry.isMeasured ? L10n.items(entry.itemCount) : "—")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
+                        if entry.isUnreadable {
+                            // Never "0 项": a denied folder enumerates empty,
+                            // and claiming zero items would be a lie.
+                            Label(L10n.tr("diskAnalysis.unreadable"), systemImage: "lock.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(verbatim: entry.isMeasured ? L10n.items(entry.itemCount) : "—")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 Spacer(minLength: 4)
-                Text(verbatim: entry.isMeasured ? Formatters.compactBytes(entry.size) : "—")
+                Text(verbatim: entry.isMeasured && !entry.isUnreadable ? Formatters.compactBytes(entry.size) : "—")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                if entry.isDirectory {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
             }
             .padding(.vertical, 5)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // Still-measuring rows sit back: the measured rows above them are the
+        // answer the user came for, and a full-strength placeholder competes
+        // with them for attention during a long scan.
+        .opacity(entry.isMeasured ? 1 : 0.55)
         // The double-click rides along as a simultaneous gesture rather than
         // an onTapGesture on the button: a Button's own tap handling consumes
         // the first click, so a count-2 onTapGesture attached to it never
@@ -423,6 +447,9 @@ private struct TreemapView: View {
     let entries: [DiskEntry]
     let icon: (String) -> NSImage
     let onEnter: (DiskEntry) -> Void
+    /// The selected folder's name while its children are still measuring —
+    /// drives the in-card progress note before any tile can be drawn.
+    var measuringName: String?
 
     /// Which tile is highlighted. Local to the view on purpose: a tile is a
     /// *grandchild* of the browsed directory (the treemap shows the selected
@@ -450,6 +477,19 @@ private struct TreemapView: View {
                         .position(x: rect.midX, y: rect.midY)
                         .help(L10n.tr("diskAnalysis.reveal.help"))
                     }
+                }
+                // Tiles need sizes, so the card is blank until the first
+                // measurement lands — say what is happening instead of
+                // showing an empty rectangle.
+                if rects.isEmpty, let measuringName {
+                    VStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(verbatim: L10n.fmt("diskAnalysis.measuring", measuringName))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }

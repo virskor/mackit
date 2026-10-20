@@ -372,7 +372,9 @@ final class DiskAnalysisModel {
             return
         }
 
-        if !FileSystem.manager.isReadableFile(atPath: entry.path) {
+        // The measured flag catches TCC-denied folders (which stay POSIX-
+        // readable); isReadableFile catches permission-locked ones.
+        if entry.isUnreadable || !FileSystem.manager.isReadableFile(atPath: entry.path) {
             selectionUnreadable = true
             isMeasuringSelection = false
             return
@@ -442,7 +444,8 @@ final class DiskAnalysisModel {
             size: volumeUsage.used,
             folderCount: 0,
             fileCount: 0,
-            isMeasured: true
+            isMeasured: true,
+            isUnreadable: false
         )
     }
 
@@ -464,7 +467,8 @@ final class DiskAnalysisModel {
                     size: 0,
                     folderCount: 0,
                     fileCount: 0,
-                    isMeasured: true
+                    isMeasured: true,
+                    isUnreadable: false
                 )
             )
         }

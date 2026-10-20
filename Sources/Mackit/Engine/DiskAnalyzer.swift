@@ -22,6 +22,10 @@ struct DiskEntry: Identifiable, Hashable, Sendable {
     /// enumeration finishes — the user sees every folder immediately — and
     /// sizes stream in afterwards, biggest last.
     var isMeasured: Bool
+    /// The folder exists but the process may not read it (a denied TCC
+    /// prompt, or a permission-locked directory). Such a folder enumerates
+    /// as empty, so without this flag its row would claim "0 B".
+    var isUnreadable: Bool
 
     /// Total direct child count: what the left list's "N items" line shows.
     var itemCount: Int { folderCount + fileCount }
@@ -113,7 +117,8 @@ enum DiskAnalyzer {
                 size: 0,
                 folderCount: 0,
                 fileCount: 0,
-                isMeasured: false
+                isMeasured: false,
+                isUnreadable: false
             )
         }))
 
@@ -146,16 +151,34 @@ enum DiskAnalyzer {
     /// Measure one child. Returns nil when it vanished mid-scan.
     private static func measure(_ url: URL) async -> DiskEntry? {
         guard FileSystem.manager.fileExists(atPath: url.path) else { return nil }
-        let counts = FileSystem.allocatedSizeAndCounts(of: url)
+        let isDirectory = FileSystem.isDirectory(url)
+
+        // A folder the process may not read — a denied TCC prompt (Documents /
+        // Desktop / Downloads) or a permission-locked directory — enumerates
+        // as empty once access is refused. Probing it explicitly separates
+        // "denied" from "genuinely empty" so the row can say so instead of
+        // reporting a lying 0 B, and the pointless recursive traversal is
+        // skipped.
+        var unreadable = false
+        if isDirectory {
+            do {
+                _ = try FileSystem.manager.contentsOfDirectory(atPath: url.path)
+            } catch {
+                unreadable = true
+            }
+        }
+
+        let counts = unreadable ? (size: Int64(0), folders: 0, files: 0) : FileSystem.allocatedSizeAndCounts(of: url)
         return DiskEntry(
             id: url.path,
             name: url.lastPathComponent,
             path: url.path,
-            isDirectory: FileSystem.isDirectory(url),
+            isDirectory: isDirectory,
             size: counts.size,
             folderCount: counts.folders,
             fileCount: counts.files,
-            isMeasured: true
+            isMeasured: true,
+            isUnreadable: unreadable
         )
     }
 }

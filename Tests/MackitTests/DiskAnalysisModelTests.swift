@@ -156,7 +156,10 @@ struct DiskAnalysisModelTests {
     @Test func goToHomeJumpsStraightToTheHomeFolder() async throws {
         let fixture = try makeFixture()
         defer { try? FileManager.default.removeItem(at: fixture) }
-        try write(size: 4096, at: fixture.appendingPathComponent("home/notes.txt"))
+        // 64 KB, comfortably above the filesystem block size: a 4 KB file
+        // allocates the same block as small's 1 KB, and equal sizes make the
+        // size-descending order depend on measurement completion order.
+        try write(size: 64 * 1024, at: fixture.appendingPathComponent("home/notes.txt"))
         let model = DiskAnalysisModel(
             rootPath: fixture.path,
             homePath: fixture.appendingPathComponent("home").path

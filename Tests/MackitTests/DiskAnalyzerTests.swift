@@ -98,6 +98,31 @@ struct DiskAnalyzerTests {
         #expect((root?.size ?? 0) > 1_900_000)
     }
 
+    /// A folder the process may not read enumerates as empty once access is
+    /// refused (a denied TCC prompt, or a locked directory). It must be
+    /// marked unreadable — reporting "0 B" for a real folder is a lie the
+    /// user would act on.
+    @Test func unreadableChildIsMarkedInsteadOfReportingZeroBytes() async throws {
+        let base = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: base) }
+        let locked = base.appendingPathComponent("locked")
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+
+        var entries: [String: DiskEntry] = [:]
+        for await event in DiskAnalyzer.children(of: base.path) {
+            if case .measured(let entry) = event { entries[entry.name] = entry }
+        }
+
+        #expect(entries["locked"]?.isUnreadable == true)
+        #expect(entries["locked"]?.size == 0)
+        #expect(entries["locked"]?.itemCount == 0)
+        // Readable siblings are unaffected.
+        #expect(entries["big"]?.isUnreadable == false)
+        #expect(entries["small"]?.isUnreadable == false)
+    }
+
     @Test func missingDirectoryYieldsNoEntries() async {
         var listed: [DiskEntry] = []
         var finished = false
