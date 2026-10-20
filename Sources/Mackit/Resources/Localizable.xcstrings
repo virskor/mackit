@@ -11881,6 +11881,116 @@
           }
         }
       }
+    },
+    "diskAnalysis.skipped": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未扫描"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not scanned"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未掃描"
+          }
+        }
+      }
+    },
+    "diskAnalysis.skipped.explain": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扫描此文件夹需要系统授权。为避免扫描过程中突然弹出的权限对话框，默认跳过；需要时可以手动扫描。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning this folder needs system permission. It is skipped by default so no access dialog pops up mid-scan — you can scan it on demand."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掃描此檔案夾需要系統授權。為避免掃描過程中突然彈出的權限對話框，預設跳過；需要時可以手動掃描。"
+          }
+        }
+      }
+    },
+    "diskAnalysis.skipped.action": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扫描此文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan this folder"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掃描此檔案夾"
+          }
+        }
+      }
+    },
+    "diskAnalysis.openSettings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开系统设置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟系統設定"
+          }
+        }
+      }
+    },
+    "diskAnalysis.openSettings.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在“隐私与安全性 › 完全磁盘访问权限”中允许 Mackit 后，可完整扫描所有文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Mackit under Privacy & Security › Full Disk Access to scan every folder"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在「隱私與安全性 › 完全磁碟存取權限」中允許 Mackit 後，可完整掃描所有檔案夾"
+          }
+        }
+      }
     }
   }
 }

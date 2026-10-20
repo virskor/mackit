@@ -181,6 +181,51 @@ struct DiskAnalysisModelTests {
         #expect(model.breadcrumb == history)
     }
 
+    /// The home's TCC-protected folders are listed but not measured, so no
+    /// access dialog fires mid-scan. Their rows say "not scanned"; entering
+    /// one routes to a selection instead of navigating (there is nothing to
+    /// show yet), and an explicit scan promotes the row to measured.
+    @Test func protectedHomeFoldersAreSkippedUntilScannedOnRequest() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        let home = fixture.appendingPathComponent("home")
+        try write(size: 64 * 1024, at: home.appendingPathComponent("Documents/report.pdf"))
+        try write(size: 32 * 1024, at: home.appendingPathComponent("Desktop/shot.png"))
+        try write(size: 4096, at: home.appendingPathComponent("notes.txt"))
+
+        let model = DiskAnalysisModel(rootPath: fixture.path, homePath: home.path)
+        model.goToHome()
+        await model.waitUntilSettled()
+
+        let documents = model.children.first { $0.name == "Documents" }
+        #expect(documents?.isSkipped == true, "Documents must be listed as skipped")
+        #expect(documents?.size == 0, "a skipped folder is never measured")
+        // Desktop is skipped too; the plain files are measured normally.
+        #expect(model.children.first { $0.name == "Desktop" }?.isSkipped == true)
+        #expect(model.children.first { $0.name == "notes.txt" }?.isMeasured == true)
+
+        // Double-clicking a skipped row does not navigate — it selects, so
+        // the detail can explain and offer the explicit scan.
+        model.enter(documents!)
+        #expect(model.breadcrumb.count == 2, "a skipped folder is not entered")
+        #expect(model.selectedEntry?.name == "Documents")
+
+        // The explicit scan measures it and promotes the row.
+        model.scanSkippedFolder(documents!)
+        await model.waitUntilSettled()
+        #expect(model.selectedChildren.map(\.name) == ["report.pdf"])
+        let promoted = model.children.first { $0.name == "Documents" }
+        #expect(promoted?.isSkipped == false, "the row is promoted after scanning")
+        #expect(promoted?.isMeasured == true)
+        #expect(promoted?.size ?? 0 >= 64 * 1024)
+
+        // With the folder approved, entering it navigates normally now.
+        model.enter(promoted!)
+        await model.waitUntilSettled()
+        #expect(model.breadcrumb.last?.name == "Documents")
+        #expect(model.children.map(\.name) == ["report.pdf"])
+    }
+
     /// A row's double-click fires the button's select *after* the enter
     /// gesture, and that stale id — the folder just entered, no longer among
     /// its own children — must not dangle as a selection: it would blank the

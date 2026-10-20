@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 enum FileSystem {
@@ -210,6 +211,48 @@ enum FileSystem {
         return (total, latest)
     }
 
+    /// Every mount point on the system, from the raw mount table.
+    ///
+    /// `FileManager.mountedVolumeURLs` is not enough — it omits the data
+    /// volume (firmlinked and hidden from the user-visible volume list), and
+    /// crossing into it through /System/Volumes/Data would re-traverse the
+    /// whole disk, double-counting every byte. FileManager's own enumerator
+    /// refuses to cross mount points; the explicit traversal in
+    /// `allocatedSizeAndCounts` must skip them too.
+    static let mountPoints: Set<String> = {
+        var buffer: UnsafeMutablePointer<statfs>?
+        let count = getmntinfo(&buffer, Int32(MNT_NOWAIT))
+        guard count > 0, let buffer else { return [] }
+        var paths: Set<String> = []
+        paths.reserveCapacity(Int(count))
+        for index in 0..<Int(count) {
+            let entry = buffer[index]
+            let path = withUnsafeBytes(of: entry.f_mntonname) { raw -> String in
+                String(decoding: raw.prefix { $0 != 0 }, as: UTF8.self)
+            }
+            if !path.isEmpty { paths.insert(path) }
+        }
+        return paths
+    }()
+
+    /// TCC-protected folders inside the user's home (Documents, Desktop,
+    /// Downloads): macOS pops an authorization dialog — "allow Mackit to
+    /// access Downloads?" — the moment anything enumerates them, so a
+    /// full-disk scan would fire that mid-scan. Lemon-style cleaners never
+    /// touch them either. Resolved through FileManager rather than hardcoded
+    /// names so localized setups work.
+    static let protectedHomePaths: Set<String> = {
+        var paths: Set<String> = []
+        for directory in [FileManager.SearchPathDirectory.documentDirectory,
+                          .desktopDirectory,
+                          .downloadsDirectory] {
+            if let url = FileManager.default.urls(for: directory, in: .userDomainMask).first {
+                paths.insert(canonical(url.path))
+            }
+        }
+        return paths
+    }()
+
     /// Recursively total the allocated size, plus the entry's *direct*
     /// children split into folders and files.
     ///
@@ -226,7 +269,14 @@ enum FileSystem {
     /// media library"). They are system-maintained data the user can't act on
     /// anyway, so skipping them costs no actionable information — the listing
     /// layer (`children(of:)`) filters them the same way.
-    static func allocatedSizeAndCounts(of url: URL) -> (size: Int64, folders: Int, files: Int) {
+    ///
+    /// `protectedPaths` (the home Documents / Desktop / Downloads trio) are
+    /// pruned the same way: entering one pops the access dialog, so a scan
+    /// that traversed the home folder would fire it unprompted.
+    static func allocatedSizeAndCounts(
+        of url: URL,
+        protectedPaths: Set<String> = protectedHomePaths
+    ) -> (size: Int64, folders: Int, files: Int) {
         if (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]))?.isSymbolicLink == true {
             return (0, 0, 0)
         }
@@ -238,30 +288,43 @@ enum FileSystem {
             return (fileSize(of: url), 0, 0)
         }
 
-        let keys: [URLResourceKey] = [.isRegularFileKey, .totalFileAllocatedSizeKey, .fileSizeKey, .isSymbolicLinkKey]
+        let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .totalFileAllocatedSizeKey, .fileSizeKey, .isSymbolicLinkKey]
+        let keySet = Set(keys)
         var total: Int64 = 0
-        if let enumerator = manager.enumerator(
-            at: url,
-            includingPropertiesForKeys: keys,
-            options: [],
-            errorHandler: nil
-        ) {
-            let keySet = Set(keys)
-            for case let entry as URL in enumerator {
-                if isSystemData(entry.lastPathComponent) {
-                    // Prune the whole subtree, not just the entry: the
-                    // enumerator would otherwise descend into it anyway.
-                    enumerator.skipDescendants()
-                    continue
-                }
+
+        // Explicit stack traversal rather than FileManager's enumerator: the
+        // enumerator's internal readahead is opaque — it has been observed to
+        // descend into a TCC-protected subtree before the caller's per-entry
+        // check ever runs, which pops the access dialog mid-scan. Listing one
+        // directory at a time and checking each child *before* touching it
+        // keeps that deterministic: a pruned entry is never stat'd with size
+        // keys and never descended into.
+        var stack: [URL] = [url]
+        while let directory = stack.popLast() {
+            guard let entries = try? manager.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil,
+                options: [.skipsSubdirectoryDescendants, .skipsPackageDescendants]
+            ) else { continue }
+            for entry in entries {
+                let name = entry.lastPathComponent
+                if isSystemData(name) { continue }
+                if protectedPaths.contains(entry.path) { continue }
+                // Mount points are a traversal boundary: descending into one
+                // re-counts a whole other volume (the data volume behind
+                // /System/Volumes/Data being the expensive case).
+                if mountPoints.contains(entry.path) { continue }
                 guard let values = try? entry.resourceValues(forKeys: keySet) else { continue }
                 if values.isSymbolicLink == true { continue }
-                guard values.isRegularFile == true else { continue }
-                if let allocated = values.totalFileAllocatedSize {
-                    total += Int64(allocated)
-                } else if let size = values.fileSize {
-                    total += Int64(size)
+                if values.isRegularFile == true {
+                    if let allocated = values.totalFileAllocatedSize {
+                        total += Int64(allocated)
+                    } else if let size = values.fileSize {
+                        total += Int64(size)
+                    }
+                    continue
                 }
+                if values.isDirectory == true { stack.append(entry) }
             }
         }
         let counts = directChildCounts(of: url)

@@ -96,6 +96,23 @@ final class DiskAnalysisModel {
     private var directoryGeneration = 0
     private var selectionGeneration = 0
 
+    /// Folders the user has explicitly scanned despite the TCC skip. Once
+    /// approved, later scans of the same parent include them without asking
+    /// again — the system's own grant persists, so re-approval is instant.
+    private var approvedPaths: Set<String> = []
+
+    /// The folders this session refuses to scan without an explicit request:
+    /// the TCC-protected home trio, minus any the user has approved. Entering
+    /// one pops the system access dialog, so a full-disk scan skips them and
+    /// their rows say "not scanned" until the user asks.
+    private var skipPaths: Set<String> {
+        let home = homePath
+        let trio = ["Documents", "Desktop", "Downloads"].map {
+            FileSystem.canonical(home + "/" + $0)
+        }
+        return Set(trio).subtracting(approvedPaths)
+    }
+
     init(rootPath: String = "/", homePath: String? = nil) {
         self.rootPath = rootPath
         self.homeOverride = homePath
@@ -161,6 +178,13 @@ final class DiskAnalysisModel {
 
     func enter(_ entry: DiskEntry) {
         guard entry.isDirectory else { return }
+        // A skipped folder isn't navigable until it has been scanned: route
+        // the double-click to a selection so the detail explains and offers
+        // the explicit scan action.
+        if entry.isSkipped {
+            select(entry.id)
+            return
+        }
         backStack.append(breadcrumb)
         forwardStack.removeAll()
         breadcrumb.append(entry)
@@ -225,6 +249,17 @@ final class DiskAnalysisModel {
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: entry.path)])
     }
 
+    /// Scans a folder the default scan skips (a TCC-protected home folder).
+    /// The system's one-time access prompt is now user-initiated — the whole
+    /// point of skipping is that it never fires unprompted mid-scan. Once the
+    /// children land, the row is promoted from "not scanned" to measured.
+    func scanSkippedFolder(_ entry: DiskEntry) {
+        guard entry.isSkipped, entry.isDirectory else { return }
+        approvedPaths.insert(entry.path)
+        selectedID = entry.path
+        measureSelection(entry)
+    }
+
     // MARK: Icons
 
     /// Folder icons, cached per path: `NSWorkspace.icon` is not free, and the
@@ -287,7 +322,7 @@ final class DiskAnalysisModel {
         let generation = directoryGeneration
         directoryTask = Task { [weak self] in
             guard let self else { return }
-            let stream = DiskAnalyzer.children(of: path)
+            let stream = DiskAnalyzer.children(of: path, protectedPaths: self.skipPaths)
             for await event in stream {
                 if Task.isCancelled { return }
                 guard generation == self.directoryGeneration else { return }
@@ -300,7 +335,9 @@ final class DiskAnalysisModel {
         switch event {
         case .listed(let entries):
             totalCount = entries.count
-            measuredCount = 0
+            // Skipped rows count as settled: they will never be measured, so
+            // leaving them out of the total keeps the progress bar honest.
+            measuredCount = entries.count { $0.isSkipped }
             unreadable = false
             pendingChildren = entries.sorted { $0.name < $1.name }
             children = measuredChildren + pendingChildren
@@ -313,10 +350,10 @@ final class DiskAnalysisModel {
 
         case .finished:
             isMeasuring = false
-            // A child that vanished mid-scan never got measured; drop its row
-            // rather than leaving a permanent placeholder.
-            pendingChildren = []
-            children = measuredChildren
+            // Rows still unmeasured at the end are either skipped (they keep
+            // their "not scanned" state) or vanished mid-scan (dropped).
+            pendingChildren = pendingChildren.filter(\.isSkipped)
+            children = measuredChildren + pendingChildren
             storeInCache(path, children)
             autoSelectLargest()
         }
@@ -364,11 +401,22 @@ final class DiskAnalysisModel {
         guard let id = selectedID, let entry = children.first(where: { $0.id == id }) else { return }
         // A file has no children; the detail area shows its info instead.
         guard entry.isDirectory else { return }
+        // A skipped folder is not measured until the user explicitly asks
+        // (see scanSkippedFolder): measuring one pops the access dialog, and
+        // a surprise modal mid-scan is exactly what the skip prevents. The
+        // view shows the placeholder with the explicit action instead.
+        guard !entry.isSkipped else { return }
 
+        measureSelection(entry)
+    }
+
+    /// Measures the selected entry's children, reusing the cache.
+    private func measureSelection(_ entry: DiskEntry) {
         if let cached = cache[entry.path] {
             selectedChildren = cached
             selectedMeasuredChildren = cached
             selectedPendingChildren = []
+            isMeasuringSelection = false
             return
         }
 
@@ -385,7 +433,7 @@ final class DiskAnalysisModel {
         let generation = selectionGeneration
         selectionTask = Task { [weak self] in
             guard let self else { return }
-            let stream = DiskAnalyzer.children(of: entry.path)
+            let stream = DiskAnalyzer.children(of: entry.path, protectedPaths: self.skipPaths)
             for await event in stream {
                 if Task.isCancelled { return }
                 guard generation == self.selectionGeneration else { return }
@@ -398,7 +446,7 @@ final class DiskAnalysisModel {
         switch event {
         case .listed(let entries):
             selectionTotalCount = entries.count
-            selectionMeasuredCount = 0
+            selectionMeasuredCount = entries.count { $0.isSkipped }
             selectionUnreadable = false
             selectedPendingChildren = entries.sorted { $0.name < $1.name }
             selectedChildren = selectedMeasuredChildren + selectedPendingChildren
@@ -414,7 +462,45 @@ final class DiskAnalysisModel {
             selectedPendingChildren = []
             selectedChildren = selectedMeasuredChildren
             storeInCache(path, selectedChildren)
+            promoteScannedFolder()
         }
+    }
+
+    /// A folder scanned on explicit request (a TCC-protected home folder) was
+    /// listed as "not scanned"; now that its children have landed, the row is
+    /// promoted in place — its own size is the sum of its children, and its
+    /// counts are theirs — so it re-sorts into the list as a measured entry.
+    private func promoteScannedFolder() {
+        guard let id = selectedID else { return }
+        // The skipped row sits in the pending block (never measured) — or in
+        // the measured one when the listing came from the cache.
+        let skipped: DiskEntry
+        if let index = pendingChildren.firstIndex(where: { $0.id == id }) {
+            skipped = pendingChildren.remove(at: index)
+        } else if let index = measuredChildren.firstIndex(where: { $0.id == id }) {
+            skipped = measuredChildren.remove(at: index)
+        } else {
+            return
+        }
+        insert(
+            DiskEntry(
+                id: skipped.id,
+                name: skipped.name,
+                path: skipped.path,
+                isDirectory: true,
+                size: selectedMeasuredChildren.reduce(0) { $0 + $1.size },
+                folderCount: selectedMeasuredChildren.count { $0.isDirectory },
+                fileCount: selectedMeasuredChildren.count { !$0.isDirectory },
+                isMeasured: true,
+                isUnreadable: false,
+                isSkipped: false
+            ),
+            into: &measuredChildren
+        )
+        children = measuredChildren + pendingChildren
+        // The parent's cached listing still holds the skipped row; refresh it
+        // so re-entering shows the promoted one.
+        storeInCache(currentPath, children)
     }
 
     // MARK: Cache
@@ -445,7 +531,8 @@ final class DiskAnalysisModel {
             folderCount: 0,
             fileCount: 0,
             isMeasured: true,
-            isUnreadable: false
+            isUnreadable: false,
+            isSkipped: false
         )
     }
 
@@ -468,7 +555,8 @@ final class DiskAnalysisModel {
                     folderCount: 0,
                     fileCount: 0,
                     isMeasured: true,
-                    isUnreadable: false
+                    isUnreadable: false,
+                    isSkipped: false
                 )
             )
         }

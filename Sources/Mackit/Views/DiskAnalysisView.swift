@@ -232,6 +232,10 @@ struct DiskAnalysisView: View {
                     Label(L10n.tr("diskAnalysis.unreadable"), systemImage: "lock.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                } else if entry.isSkipped {
+                    Label(L10n.tr("diskAnalysis.skipped"), systemImage: "hand.raised")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                 } else {
                     summary(entry)
                 }
@@ -277,7 +281,14 @@ struct DiskAnalysisView: View {
         let model = vm.diskAnalysis
         if let entry = model.selectedEntry {
             if entry.isDirectory {
-                if model.selectedChildren.isEmpty && !model.isMeasuringSelection {
+                if entry.isSkipped && model.selectedChildren.isEmpty {
+                    // Skipped folders stay unmeasured until the user asks:
+                    // measuring one pops the access dialog, and the whole
+                    // point of skipping is that it never fires unprompted.
+                    skippedPlaceholder(entry)
+                } else if entry.isUnreadable && model.selectedChildren.isEmpty {
+                    selectionPlaceholder(unreadable: true)
+                } else if model.selectedChildren.isEmpty && !model.isMeasuringSelection {
                     selectionPlaceholder(unreadable: model.selectionUnreadable)
                 } else if model.visualizationMode {
                     TreemapView(
@@ -298,6 +309,50 @@ struct DiskAnalysisView: View {
         } else {
             directoryPlaceholder
         }
+    }
+
+    /// A TCC-protected folder the scan skipped: why, and the two ways
+    /// forward — scan it now (the system's one-time prompt becomes
+    /// user-initiated) or grant full access for good.
+    private func skippedPlaceholder(_ entry: DiskEntry) -> some View {
+        let model = vm.diskAnalysis
+        return VStack(spacing: 12) {
+            Image(systemName: "hand.raised.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(.tertiary)
+
+            Text(verbatim: L10n.tr("diskAnalysis.skipped.explain"))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 300)
+
+            HStack(spacing: 10) {
+                BrandCTAButton(
+                    title: L10n.tr("diskAnalysis.skipped.action"),
+                    systemImage: "arrow.clockwise",
+                    style: .secondary,
+                    compact: true,
+                    glass: true
+                ) {
+                    model.scanSkippedFolder(entry)
+                }
+
+                Button {
+                    // The Full Disk Access pane: granting it removes the
+                    // prompt entirely for every future scan.
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    Text(verbatim: L10n.tr("diskAnalysis.openSettings"))
+                }
+                .buttonStyle(.link)
+                .font(.system(size: 12))
+                .help(L10n.tr("diskAnalysis.openSettings.help"))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var measuringPlaceholder: some View {
@@ -380,6 +435,11 @@ struct DiskAnalysisView: View {
                             Label(L10n.tr("diskAnalysis.unreadable"), systemImage: "lock.fill")
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
+                        } else if entry.isSkipped {
+                            // Deliberately not measured — see scanSkippedFolder.
+                            Label(L10n.tr("diskAnalysis.skipped"), systemImage: "hand.raised")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
                         } else {
                             Text(verbatim: entry.isMeasured ? L10n.items(entry.itemCount) : "—")
                                 .font(.system(size: 11))
@@ -388,7 +448,7 @@ struct DiskAnalysisView: View {
                     }
                 }
                 Spacer(minLength: 4)
-                Text(verbatim: entry.isMeasured && !entry.isUnreadable ? Formatters.compactBytes(entry.size) : "—")
+                Text(verbatim: entry.isMeasured && !entry.isUnreadable && !entry.isSkipped ? Formatters.compactBytes(entry.size) : "—")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -404,8 +464,9 @@ struct DiskAnalysisView: View {
         .buttonStyle(.plain)
         // Still-measuring rows sit back: the measured rows above them are the
         // answer the user came for, and a full-strength placeholder competes
-        // with them for attention during a long scan.
-        .opacity(entry.isMeasured ? 1 : 0.55)
+        // with them for attention during a long scan. Skipped rows sit back
+        // a little less — their state is settled, just not measured.
+        .opacity(entry.isMeasured ? 1 : (entry.isSkipped ? 0.75 : 0.55))
         // The double-click rides along as a simultaneous gesture rather than
         // an onTapGesture on the button: a Button's own tap handling consumes
         // the first click, so a count-2 onTapGesture attached to it never

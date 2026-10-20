@@ -107,6 +107,9 @@ struct LocalizationTests {
             "diskAnalysis.header.total", "diskAnalysis.reveal.help", "diskAnalysis.measuring",
             "diskAnalysis.unreadable", "diskAnalysis.fdaHint", "diskAnalysis.empty",
             "diskAnalysis.selectPrompt", "diskAnalysis.disk",
+            "diskAnalysis.skipped", "diskAnalysis.skipped.explain",
+            "diskAnalysis.skipped.action", "diskAnalysis.openSettings",
+            "diskAnalysis.openSettings.help",
             "format.gigabytes.compact", "format.megabytes.compact", "format.kilobytes.compact",
             "format.terabytes.compact", "format.bytes.compact",
         ]

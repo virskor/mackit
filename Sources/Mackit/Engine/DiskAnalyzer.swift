@@ -26,6 +26,11 @@ struct DiskEntry: Identifiable, Hashable, Sendable {
     /// prompt, or a permission-locked directory). Such a folder enumerates
     /// as empty, so without this flag its row would claim "0 B".
     var isUnreadable: Bool
+    /// A TCC-protected home folder (Documents / Desktop / Downloads): listed
+    /// but deliberately not measured, because measuring it pops the system
+    /// access dialog. The user can scan one explicitly — see
+    /// `DiskAnalysisModel.scanSkippedFolder`.
+    var isSkipped: Bool
 
     /// Total direct child count: what the left list's "N items" line shows.
     var itemCount: Int { folderCount + fileCount }
@@ -76,16 +81,28 @@ enum DiskAnalyzer {
 
     /// Analyze one directory's children. Cancelling the stream's consumer
     /// cancels the underlying measurement task.
-    static func children(of path: String) -> AsyncStream<DiskEvent> {
+    ///
+    /// `protectedPaths` are the folders this scan refuses to enter without an
+    /// explicit request (the TCC-protected home trio by default): they are
+    /// listed as skipped rows and left unmeasured, so no access dialog fires
+    /// mid-scan.
+    static func children(
+        of path: String,
+        protectedPaths: Set<String> = FileSystem.protectedHomePaths
+    ) -> AsyncStream<DiskEvent> {
         AsyncStream(DiskEvent.self) { continuation in
             let task = Task.detached(priority: .userInitiated) {
-                await run(path: path, continuation: continuation)
+                await run(path: path, protectedPaths: protectedPaths, continuation: continuation)
             }
             continuation.onTermination = { _ in task.cancel() }
         }
     }
 
-    private static func run(path: String, continuation: AsyncStream<DiskEvent>.Continuation) async {
+    private static func run(
+        path: String,
+        protectedPaths: Set<String>,
+        continuation: AsyncStream<DiskEvent>.Continuation
+    ) async {
         let startedAt = ContinuousClock.now
         let base = FileSystem.url(path)
         var isDirectory: ObjCBool = false
@@ -118,7 +135,8 @@ enum DiskAnalyzer {
                 folderCount: 0,
                 fileCount: 0,
                 isMeasured: false,
-                isUnreadable: false
+                isUnreadable: false,
+                isSkipped: protectedPaths.contains(url.path)
             )
         }))
 
@@ -127,9 +145,9 @@ enum DiskAnalyzer {
         var totalSize: Int64 = 0
 
         await withTaskGroup(of: DiskEntry?.self) { group in
-            for child in children {
+            for child in children where !protectedPaths.contains(child.path) {
                 group.addTask {
-                    await semaphore.withPermit { await measure(child) }
+                    await semaphore.withPermit { await measure(child, protectedPaths: protectedPaths) }
                 }
             }
             for await entry in group {
@@ -149,7 +167,7 @@ enum DiskAnalyzer {
     }
 
     /// Measure one child. Returns nil when it vanished mid-scan.
-    private static func measure(_ url: URL) async -> DiskEntry? {
+    private static func measure(_ url: URL, protectedPaths: Set<String>) async -> DiskEntry? {
         guard FileSystem.manager.fileExists(atPath: url.path) else { return nil }
         let isDirectory = FileSystem.isDirectory(url)
 
@@ -168,7 +186,9 @@ enum DiskAnalyzer {
             }
         }
 
-        let counts = unreadable ? (size: Int64(0), folders: 0, files: 0) : FileSystem.allocatedSizeAndCounts(of: url)
+        let counts = unreadable
+            ? (size: Int64(0), folders: 0, files: 0)
+            : FileSystem.allocatedSizeAndCounts(of: url, protectedPaths: protectedPaths)
         return DiskEntry(
             id: url.path,
             name: url.lastPathComponent,
@@ -178,7 +198,8 @@ enum DiskAnalyzer {
             folderCount: counts.folders,
             fileCount: counts.files,
             isMeasured: true,
-            isUnreadable: unreadable
+            isUnreadable: unreadable,
+            isSkipped: false
         )
     }
 }
