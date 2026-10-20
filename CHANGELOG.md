@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Auto-update no longer leaves the menu bar on the old version: the tray agent is a separate process embedded in the app bundle, and Sparkle only relaunches the main app, so a resident agent kept running the previous build's code until the next login. The main app now records its bundle version at every launch and restarts the agent when the bundle was replaced since the previous launch — a Sparkle update, a reinstall over an older copy, or a downgrade
+- Auto-update no longer requires checking by hand: Sparkle's scheduled check only runs when a day has passed since the last one, so launches inside that window checked nothing and a newly published version went unnoticed. A background check now runs at every launch, and a found update is offered in the standard update alert instead of being downloaded and installed silently on quit — the auto-download switch still offers that hands-off mode for anyone who wants it
+
 ## [1.0.3] - 2026-10-20
 
 A second cleanup feature aimed at everyday Mac users, plus a brand pass across the whole app.

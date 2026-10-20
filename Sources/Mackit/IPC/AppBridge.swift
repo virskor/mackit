@@ -236,6 +236,63 @@ enum AppBridge {
         NSWorkspace.shared.openApplication(at: agentURL, configuration: .init())
     }
 
+    /// Restarts the resident tray agent so it runs the binary embedded in the
+    /// current app bundle.
+    ///
+    /// The agent is a separate process whose bundle lives inside the main app
+    /// bundle (Contents/Library/LoginItems). When the main app is updated —
+    /// by Sparkle, or by reinstalling a newer copy over an older one — the
+    /// embedded agent on disk is replaced along with it, but an agent that is
+    /// already resident keeps executing the code it was started with. The
+    /// menu bar then keeps showing the previous version's panel and labels
+    /// until the next login. Terminating and relaunching it from the fresh
+    /// bundle closes that gap.
+    static func restartTrayAgent() {
+        let agentURL = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Library/LoginItems/MackitAgent.app")
+        guard FileManager.default.fileExists(atPath: agentURL.path) else {
+            // Running the executable in .build directly (not assembled
+            // into a .app) means there is no embedded agent, which is
+            // expected; just log it.
+            MackitLog.ui.info("embedded agent not found, skipping restart")
+            return
+        }
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: AppIdentity.agentBundleID)
+        // Nothing resident means nothing to refresh; the caller's
+        // ensureAgentRunning brings the agent up from the current bundle.
+        guard !running.isEmpty else { return }
+        MackitLog.ui.info("restarting tray agent to run the updated bundle")
+        for app in running {
+            app.terminate()
+        }
+        // The relaunch runs in a detached shell rather than in this process:
+        // the main app can die at any moment — it quits when its window
+        // closes, and the dev script pkills it between builds — and an
+        // in-process task would die with it, after the old agent has already
+        // been asked to quit, leaving the menu bar empty until the next
+        // login. The shell waits for the old agent to actually exit before
+        // opening the fresh bundle: a new instance exits at startup while
+        // another instance of its bundle ID is still alive (see
+        // MackitEntry.main). Whatever survives the grace period is
+        // force-killed — the agent's only persisted state is the overlay
+        // position, which falls back to its default when its file is
+        // truncated. Matching by executable name rather than pid: a recycled
+        // pid must not be mistaken for the agent that was just asked to quit.
+        let escaped = agentURL.path.replacingOccurrences(of: "'", with: "'\\''")
+        let relaunch = Process()
+        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
+        relaunch.arguments = ["-c", """
+        i=0
+        while [ $i -lt 30 ] && pgrep -x MackitAgent > /dev/null; do
+            sleep 0.1
+            i=$((i + 1))
+        done
+        pkill -9 -x MackitAgent
+        open '\(escaped)'
+        """]
+        try? relaunch.run()
+    }
+
     /// Whether another agent instance with the same bundle ID is already
     /// running.
     ///

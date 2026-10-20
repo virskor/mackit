@@ -459,13 +459,11 @@ struct SettingsView: View {
     /// changes with every release, so the hardcoded sentence was wrong from the
     /// second version on. The real version is in the bundle
     /// (CFBundleShortVersionString / CFBundleVersion, written by the build script
-    /// from the git tag and commit count).
+    /// from the git tag and commit count), formatted by the same helper the
+    /// update controller's bundle-replacement marker uses so the two cannot
+    /// drift apart.
     private static var versionText: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
-        if version.isEmpty { return build.isEmpty ? "—" : build }
-        if build.isEmpty || build == version { return version }
-        return "\(version) (\(build))"
+        AppVersion.display ?? "—"
     }
 
     /// Switch language: write persistence and AppleLanguages, taking effect after

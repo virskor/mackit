@@ -37,8 +37,14 @@
 #   MACKIT_UPDATE_AUTO_CHECK Default for the automatic check switch, default 1
 #                            (true).
 #   MACKIT_UPDATE_AUTO_UPDATE Default for the automatic download switch, default
-#                             1 (true): downloads in the background, and still
-#                             asks for consent before installing.
+#                             0 (false): a found update is offered in the
+#                             standard alert, which asks before downloading.
+#                             Turning it on (here or in the app's Settings)
+#                             makes Sparkle download silently in the background
+#                             and install on quit without ever asking — since
+#                             Sparkle 2.4 that mode shows no prompt at all, so
+#                             the user is never told a new version exists. The
+#                             hands-off choice stays available, but it is opt-in.
 #   MACKIT_UPDATE_INTERVAL   Scheduled check interval (seconds), default 86400.
 set -euo pipefail
 
@@ -156,7 +162,7 @@ case "${MACKIT_UPDATE_AUTO_CHECK:-1}" in
     1) AUTO_CHECK_PLIST="<true/>" ;;
     *) AUTO_CHECK_PLIST="<false/>" ;;
 esac
-case "${MACKIT_UPDATE_AUTO_UPDATE:-1}" in
+case "${MACKIT_UPDATE_AUTO_UPDATE:-0}" in
     1) AUTO_UPDATE_PLIST="<true/>" ;;
     *) AUTO_UPDATE_PLIST="<false/>" ;;
 esac

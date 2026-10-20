@@ -61,4 +61,55 @@ struct UpdateControllerTests {
             #expect(L10n.tr(key) != key, "\(key) not localized")
         }
     }
+
+    // MARK: - Tray agent freshness
+
+    @Test func agentStaleWhenNoPreviousVersionRecorded() {
+        // First launch that tracks bundle versions: nothing is recorded, and a
+        // resident agent can only predate it.
+        #expect(UpdateController.trayAgentIsStale(previousBundleVersion: nil, currentBundleVersion: "1.0.4 (152)"))
+    }
+
+    @Test func agentFreshWhenBundleVersionUnchanged() {
+        #expect(!UpdateController.trayAgentIsStale(
+            previousBundleVersion: "1.0.4 (152)",
+            currentBundleVersion: "1.0.4 (152)"
+        ))
+    }
+
+    @Test func agentStaleWhenBundleVersionChanged() {
+        // A Sparkle update or a reinstall over an older copy...
+        #expect(UpdateController.trayAgentIsStale(
+            previousBundleVersion: "1.0.3 (150)",
+            currentBundleVersion: "1.0.4 (152)"
+        ))
+        // ...and a downgrade: the resident agent is newer than the bundle, so
+        // it is just as stale.
+        #expect(UpdateController.trayAgentIsStale(
+            previousBundleVersion: "1.0.4 (152)",
+            currentBundleVersion: "1.0.3 (150)"
+        ))
+    }
+
+    /// The launch that detects a replaced bundle records the new version, so
+    /// the next launch at the same version finds the agent fresh and leaves it
+    /// alone — otherwise every launch would restart the tray agent.
+    @Test @MainActor func launchRecordsVersionSoNextLaunchKeepsAgent() {
+        let suiteName = "UpdateControllerTests.bundleVersion"
+        let suite = UserDefaults(suiteName: suiteName)!
+        suite.removePersistentDomain(forName: suiteName)
+
+        UpdateController.shared.restartTrayAgentIfBundleReplaced(
+            currentBundleVersion: "1.0.4 (152)", defaults: suite
+        )
+        #expect(suite.string(forKey: UpdateController.previousBundleVersionKey) == "1.0.4 (152)")
+
+        // The test host has no embedded agent, so the restart itself is a
+        // no-op; what matters here is that the marker was written and a second
+        // launch at the same version does not re-trigger it.
+        UpdateController.shared.restartTrayAgentIfBundleReplaced(
+            currentBundleVersion: "1.0.4 (152)", defaults: suite
+        )
+        #expect(suite.string(forKey: UpdateController.previousBundleVersionKey) == "1.0.4 (152)")
+    }
 }
