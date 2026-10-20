@@ -16,13 +16,13 @@ struct RulesCatalogTests {
 
     @Test func everyRuleHasTitleAndNote() {
         for rule in RulesCatalog.scanRules {
-            #expect(!rule.title.isEmpty, "\(rule.id) 缺少标题")
-            #expect(!rule.note.isEmpty, "\(rule.id) 缺少说明")
+            #expect(!rule.title.isEmpty, "\(rule.id) is missing a title")
+            #expect(!rule.note.isEmpty, "\(rule.id) is missing a note")
         }
         for rule in RulesCatalog.cliRules {
-            #expect(!rule.title.isEmpty, "\(rule.id) 缺少标题")
-            #expect(!rule.note.isEmpty, "\(rule.id) 缺少说明")
-            #expect(!rule.arguments.isEmpty, "\(rule.id) 缺少参数")
+            #expect(!rule.title.isEmpty, "\(rule.id) is missing a title")
+            #expect(!rule.note.isEmpty, "\(rule.id) is missing a note")
+            #expect(!rule.arguments.isEmpty, "\(rule.id) is missing arguments")
         }
     }
 
@@ -32,11 +32,15 @@ struct RulesCatalogTests {
         // the static rule table. .language (useless .lproj inside app bundles)
         // and .downloads (installers in ~/Downloads) are produced by their own
         // scanners, whose matching logic can't be expressed as static targets.
+        // .appJunk rides along with the app scan: its entries are the same
+        // ~/Library paths the residue probe already walks, only filed under the
+        // general module instead of the uninstall flow.
         let staticCategories = Set(RulesCatalog.scanRules.map(\.category))
             .union(RulesCatalog.cliRules.map(\.category))
         for category in JunkCategory.allCases
-        where category != .projects && category != .apps && category != .language && category != .downloads {
-            #expect(staticCategories.contains(category), "\(category.rawValue) 没有任何规则")
+        where category != .projects && category != .apps && category != .language
+            && category != .downloads && category != .appJunk {
+            #expect(staticCategories.contains(category), "\(category.rawValue) has no rules")
         }
     }
 
@@ -46,7 +50,7 @@ struct RulesCatalogTests {
         for rule in RulesCatalog.cliRules {
             #expect(
                 pathCategories.contains(rule.category),
-                "\(rule.id) 的分类 \(rule.category.rawValue) 没有对应的路径规则"
+                "\(rule.id)'s category \(rule.category.rawValue) has no matching path rule"
             )
         }
     }
@@ -78,10 +82,10 @@ struct RulesCatalogTests {
 
         let names = Set(found.map(\.title))
         for expected in junkDirs {
-            #expect(names.contains(expected), "未找到 \(expected)")
+            #expect(names.contains(expected), "not found \(expected)")
         }
         for unexpected in keepDirs {
-            #expect(!names.contains(unexpected), "误报 \(unexpected)")
+            #expect(!names.contains(unexpected), "false positive \(unexpected)")
         }
         #expect(found.allSatisfy { $0.category == .projects })
         // target is an artifact that must be re-downloaded/rebuilt, so its risk should be higher than a pure cache
@@ -134,7 +138,7 @@ struct RulesCatalogTests {
     @Test func displayNameIsNeverEmpty() {
         for rule in RulesCatalog.scanRules {
             let url = URL(fileURLWithPath: "/tmp/some-entry")
-            #expect(!rule.displayName(for: url).isEmpty, "\(rule.id) 展示名为空")
+            #expect(!rule.displayName(for: url).isEmpty, "\(rule.id) has an empty display name")
         }
     }
 
@@ -146,7 +150,7 @@ struct RulesCatalogTests {
         // CLI cleaning should not include destructive commands like rm
         let forbidden: Set<String> = ["rm", "rmdir", "mv", "dd", "shred", "kill"]
         for rule in RulesCatalog.cliRules {
-            #expect(!forbidden.contains(rule.executable), "\(rule.id) 使用了危险命令")
+            #expect(!forbidden.contains(rule.executable), "\(rule.id) uses a dangerous command")
         }
     }
 }

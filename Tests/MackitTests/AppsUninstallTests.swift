@@ -10,22 +10,27 @@ import Testing
 /// approach as the menu bar tests.
 @MainActor
 struct AppsUninstallTests {
-    /// One app (Foo) + two residues + one unrelated Xcode cache.
+    /// One app (Foo) + one junk residue (its cache) + one data residue (its
+    /// preferences) + one unrelated Xcode cache. The junk residue belongs to
+    /// the general module's app-junk row, the data residue to the uninstall
+    /// flow — see `AppScanner.items(for:)`.
     private func sampleItems() -> [JunkItem] {
         let app = JunkItem(
-            ruleID: "app.bundle", title: "Foo", detail: "版本 2.0 · 2 个残留文件",
+            ruleID: "app.bundle", title: "Foo", detail: "Version 2.0 · 2 leftover files",
             path: "/Applications/Foo.app", category: .apps, risk: .caution,
-            bundleID: "com.example.foo", appKind: .bundle, searchExtra: "com.example.foo"
+            bundleID: "com.example.foo", appKind: .bundle, holdsLiveAppData: true,
+            searchExtra: "com.example.foo"
         )
         let cache = JunkItem(
-            ruleID: "app.residue", title: "com.example.foo", detail: "Foo 的缓存",
-            path: "/Users/x/Library/Caches/com.example.foo", category: .apps, risk: .safe,
-            bundleID: "com.example.foo", appKind: .residue(.caches)
+            ruleID: "app.junk", title: "com.example.foo", detail: "Foo's cache",
+            path: "/Users/x/Library/Caches/com.example.foo", category: .appJunk, risk: .safe,
+            bundleID: "com.example.foo", appKind: .residue(.caches), appName: "Foo"
         )
         let prefs = JunkItem(
-            ruleID: "app.residue", title: "com.example.foo.plist", detail: "Foo 的偏好设置",
+            ruleID: "app.residue", title: "com.example.foo.plist", detail: "Foo's preferences",
             path: "/Users/x/Library/Preferences/com.example.foo.plist", category: .apps, risk: .review,
-            bundleID: "com.example.foo", appKind: .residue(.preferences)
+            bundleID: "com.example.foo", appKind: .residue(.preferences), appName: "Foo",
+            holdsLiveAppData: true
         )
         let derived = JunkItem(
             ruleID: "xcode.deriveddata", title: "DerivedData", detail: "Xcode",
@@ -58,7 +63,7 @@ struct AppsUninstallTests {
         vm.uninstallApp(app)
 
         #expect(vm.cleanPhase == .confirming)
-        #expect(vm.selection.count == 3, "应用 + 两条残留")
+        #expect(vm.selection.count == 3, "app + two leftovers")
         #expect(vm.selection.contains(app.id))
         #expect(vm.hasSelectedApps)
         // Items from unrelated categories are not pulled in
@@ -101,7 +106,7 @@ struct AppsUninstallTests {
 
         vm.selectAppResidues(app)
 
-        #expect(vm.selection.isEmpty, "没有残留可清时不应进入确认")
+        #expect(vm.selection.isEmpty, "should not enter confirmation when there are no leftovers to clean")
         #expect(vm.cleanPhase == .idle)
     }
 
@@ -120,9 +125,11 @@ struct AppsUninstallTests {
         #expect(app.risk == .caution)
         #expect(app.searchBlob.contains("com.example.foo"))
         #expect(app.id == "app.bundle::/Applications/Foo.app")
-        // The sidebar count includes the app and the two residues
-        #expect(vm.categoryCounts[.apps] == 3)
-        #expect(vm.categoryTotals[.apps] == 0, "内存条目未测量体积")
+        // The uninstall category counts the bundle and the data residue; the
+        // cache belongs to the general module's app-junk row instead
+        #expect(vm.categoryCounts[.apps] == 2)
+        #expect(vm.categoryCounts[.appJunk] == 1)
+        #expect(vm.categoryTotals[.apps] == 0, "in-memory items have no measured size")
     }
 
     @Test func runningAppNamesExcludesNonRunningApps() {
@@ -138,15 +145,15 @@ struct AppsUninstallTests {
         vm.apply(.discovered(sampleItems()))
 
         vm.mergeDiscovered(sampleItems())
-        #expect(vm.items.count == 4, "重复批次不应增加条目")
+        #expect(vm.items.count == 4, "a duplicate batch should not add items")
 
         let extra = JunkItem(
-            ruleID: "app.residue", title: "com.example.foo", detail: "Foo 的日志",
+            ruleID: "app.residue", title: "com.example.foo", detail: "Foo's logs",
             path: "/Users/x/Library/Logs/com.example.foo", category: .apps, risk: .safe,
             bundleID: "com.example.foo", appKind: .residue(.logs)
         )
         vm.mergeDiscovered([extra])
-        #expect(vm.items.count == 5, "新条目应正常合并")
+        #expect(vm.items.count == 5, "a new item should merge normally")
     }
 
     @Test func iconIsOnlyProvidedForAppBundles() {
@@ -181,9 +188,9 @@ struct AppsUninstallTests {
 
         vm.selectResiduesForSelectedApps()
 
-        #expect(vm.selection.count == 3, "应用 + 两条关联文件")
+        #expect(vm.selection.count == 3, "app + two associated files")
         #expect(vm.unselectedAppResidues.isEmpty)
-        #expect(vm.cleanPhase == .idle, "补勾不应直接弹确认面板")
+        #expect(vm.cleanPhase == .idle, "topping up the selection should not directly show the confirmation panel")
     }
 
     @Test func selectResiduesForSelectedAppsKeepsUnrelatedSelections() {
@@ -194,7 +201,7 @@ struct AppsUninstallTests {
 
         vm.selectResiduesForSelectedApps()
 
-        #expect(vm.selection.contains(unrelated.id), "无关条目应保持勾选")
+        #expect(vm.selection.contains(unrelated.id), "unrelated items should stay checked")
         #expect(vm.selection.count == 4)
     }
 
@@ -251,11 +258,11 @@ struct AppsUninstallTests {
         await vm.scanApps(roots: [appsDir.path], home: home.path)
 
         #expect(vm.progressLabel == L10n.tr("scan.apps"))
-        #expect(vm.items.count == 2, "1 个本体 + 1 条缓存残留")
+        #expect(vm.items.count == 2, "1 bundle + 1 cache leftover")
         #expect(vm.items.contains { $0.appKind == .bundle })
         #expect(vm.items.contains { $0.appKind?.isResidue == true })
         // Size has been measured: the cache directory is non-empty
         let residue = vm.items.first { $0.appKind?.isResidue == true }!
-        #expect(residue.size > 0, "扫描后应补上体积")
+        #expect(residue.size > 0, "size should be filled in after the scan")
     }
 }

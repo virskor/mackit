@@ -54,7 +54,7 @@ struct FileSystemTests {
         }
 
         let names = FileSystem.children(of: base.path).map { $0.lastPathComponent }.sorted()
-        #expect(names == ["com.tencent.dieMigration", "go-build"], "com.apple.* 应被跳过，实际：\(names)")
+        #expect(names == ["com.tencent.dieMigration", "go-build"], "com.apple.* should be skipped, got: \(names)")
     }
 
     /// Glob expansion also skips com.apple.*: container cache rules rely on glob
@@ -74,7 +74,7 @@ struct FileSystemTests {
 
         let matches = FileSystem.expand(pattern: base.path + "/*/Cache")
         let names = matches.map { $0.lastPathComponent }.sorted()
-        #expect(names == ["Cache"], "com.apple.* 容器不应被展开，实际：\(matches.map(\.path))")
+        #expect(names == ["Cache"], "com.apple.* containers should not be expanded, got: \(matches.map(\.path))")
         #expect(matches.first?.pathComponents.contains("com.tencent.wechat") == true)
     }
 
@@ -124,7 +124,7 @@ struct FileSystemTests {
         )
 
         let result = FileSystem.allocatedSizeAndDate(of: base)
-        #expect(result.size < 1024 * 1024, "符号链接被跟随了，体积异常：\(result.size)")
+        #expect(result.size < 1024 * 1024, "the symlink was followed, size is abnormal: \(result.size)")
     }
 
     @Test func protectedPathsAreRejected() {
@@ -170,7 +170,7 @@ struct FileSystemTests {
         let link = base.appendingPathComponent("link")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
 
-        #expect(FileSystem.allocatedSize(of: link) < 1024, "符号链接按目标体积计了：\(FileSystem.allocatedSize(of: link))")
+        #expect(FileSystem.allocatedSize(of: link) < 1024, "the symlink was counted at the target's size: \(FileSystem.allocatedSize(of: link))")
         #expect(FileSystem.allocatedSize(of: target) >= 4 * 1024 * 1024)
     }
 

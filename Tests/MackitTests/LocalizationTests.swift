@@ -20,11 +20,11 @@ struct LocalizationTests {
 
     @Test func everyRuleResolvesFromCatalog() {
         for rule in RulesCatalog.scanRules {
-            #expect(!isFallback(rule.title, key: "rule.\(rule.id).title"), "\(rule.id) 标题未本地化")
-            #expect(!isFallback(rule.note, key: "rule.\(rule.id).note"), "\(rule.id) 说明未本地化")
+            #expect(!isFallback(rule.title, key: "rule.\(rule.id).title"), "\(rule.id) title not localized")
+            #expect(!isFallback(rule.note, key: "rule.\(rule.id).note"), "\(rule.id) note not localized")
         }
         for rule in RulesCatalog.cliRules {
-            #expect(!isFallback(rule.note, key: "rule.\(rule.id).note"), "\(rule.id) 说明未本地化")
+            #expect(!isFallback(rule.note, key: "rule.\(rule.id).note"), "\(rule.id) note not localized")
         }
     }
 
@@ -62,6 +62,11 @@ struct LocalizationTests {
             "apps.version", "apps.confirm.title", "apps.confirm.note",
             "language.item.detail", "downloads.installer.detail", "downloads.archive.detail",
             "general.remember.title", "general.remember.message",
+            "general.remember.action", "general.remember.help",
+            "general.restoreDefault", "general.restoreDefault.help",
+            "general.group.system", "general.group.browser", "general.group.appJunk",
+            "toast.generalDefaultsRestored", "toast.generalSelectionRemembered",
+            "category.appJunk.title", "category.appJunk.summary",
             "scope.developer.title", "scope.developer.summary",
             "scope.general.title", "scope.general.summary",
             "category.browser.title", "category.browser.summary",
@@ -77,9 +82,11 @@ struct LocalizationTests {
             "panel.release",
             "settings.tab.menubar", "settings.menubar.header",
             "settings.menubar.cpu", "settings.menubar.memory", "settings.menubar.temperature",
+            "settings.menubar.logo",
             "settings.menubar.footer",
             "settings.overlay.header", "settings.overlay.show", "settings.overlay.footer",
             "menubar.cpu", "menubar.memory", "menubar.temperature",
+            "panel.quitApp", "panel.quitApp.help", "panel.quitApp.warning",
             "toast.memoryReleased", "toast.memoryReleasedNone",
             "toast.memoryReleasedCancelled", "toast.memoryReleaseFailed",
             "format.gigabytes", "format.terabytes",
@@ -94,7 +101,7 @@ struct LocalizationTests {
             "clean.error.trashFailed", "scan.measuring"
         ]
         for key in keys {
-            #expect(!isFallback(L10n.tr(key), key: key), "\(key) 未本地化")
+            #expect(!isFallback(L10n.tr(key), key: key), "\(key) not localized")
         }
     }
 
@@ -129,8 +136,8 @@ struct LocalizationTests {
         #expect(!residueDetail.contains("%1$@"))
         #expect(!residueDetail.contains("%2$@"))
 
-        let leftover = L10n.fmt("apps.confirm.leftoverDetail", "Google Chrome、Xcode", 12, "3.2 GB")
-        #expect(leftover.contains("Google Chrome、Xcode"))
+        let leftover = L10n.fmt("apps.confirm.leftoverDetail", "Google Chrome, Xcode", 12, "3.2 GB")
+        #expect(leftover.contains("Google Chrome, Xcode"))
         #expect(leftover.contains("12"))
         #expect(leftover.contains("3.2 GB"))
         #expect(!leftover.contains("%1$@"))
@@ -169,21 +176,21 @@ struct LocalizationTests {
                 ofType: "strings",
                 inDirectory: "\(language).lproj"
             ) else {
-                Issue.record("缺少 \(language).lproj/Localizable.strings")
+                Issue.record("missing \(language).lproj/Localizable.strings")
                 continue
             }
             guard let dict = NSDictionary(contentsOfFile: path) as? [String: String] else {
-                Issue.record("\(language).lproj/Localizable.strings 解析失败")
+                Issue.record("\(language).lproj/Localizable.strings failed to parse")
                 continue
             }
-            #expect(dict.count > 300, "\(language) 只有 \(dict.count) 条")
+            #expect(dict.count > 300, "\(language) has only \(dict.count) entries")
             keySets.append(Set(dict.keys))
         }
 
         #expect(keySets.count == 3)
         if keySets.count == 3 {
-            #expect(keySets[0] == keySets[1], "zh-Hans 与 en 的 key 集合不一致")
-            #expect(keySets[0] == keySets[2], "zh-Hans 与 zh-Hant 的 key 集合不一致")
+            #expect(keySets[0] == keySets[1], "the key set of zh-Hans and en differ")
+            #expect(keySets[0] == keySets[2], "the key set of zh-Hans and zh-Hant differ")
         }
     }
 
@@ -210,6 +217,7 @@ struct LocalizationTests {
             ("toast.reclaimedWithFailures.other", 2),
             ("welcome.projectRoots.other", 1),
             ("count.items.other", 1),
+            ("panel.quitApp.help", 1),
             ("apps.version", 1),
             ("apps.residue.detail", 2),
             ("language.item.detail", 1),
@@ -233,9 +241,9 @@ struct LocalizationTests {
         let placeholder = /%(?:\d+\$)?(?:@|lld)/
         for (key, argCount) in expectations {
             let value = L10n.tr(key)
-            #expect(!isFallback(value, key: key), "\(key) 未本地化")
+            #expect(!isFallback(value, key: key), "\(key) not localized")
             let count = value.matches(of: placeholder).count
-            #expect(count == argCount, "\(key) 有 \(count) 个占位符，调用处传 \(argCount) 个实参")
+            #expect(count == argCount, "\(key) has \(count) placeholders, the call site passes \(argCount) arguments")
         }
     }
 
@@ -266,9 +274,9 @@ struct LocalizationTests {
         for base in pairs {
             let one = L10n.tr("\(base).one").matches(of: placeholder).map { String($0.output) }
             let other = L10n.tr("\(base).other").matches(of: placeholder).map { String($0.output) }
-            #expect(!isFallback(L10n.tr("\(base).one"), key: "\(base).one"), "\(base).one 未本地化")
-            #expect(!isFallback(L10n.tr("\(base).other"), key: "\(base).other"), "\(base).other 未本地化")
-            #expect(one == other, "\(base) 的 .one 与 .other 占位符不一致：\(one) vs \(other)")
+            #expect(!isFallback(L10n.tr("\(base).one"), key: "\(base).one"), "\(base).one not localized")
+            #expect(!isFallback(L10n.tr("\(base).other"), key: "\(base).other"), "\(base).other not localized")
+            #expect(one == other, "\(base) .one and .other placeholders differ: \(one) vs \(other)")
         }
     }
 
@@ -306,9 +314,9 @@ struct LocalizationTests {
         ]
         for (key, args) in calls {
             let value = String(format: L10n.tr(key), arguments: args)
-            #expect(!isFallback(value, key: key), "\(key) 未本地化")
-            #expect(!value.contains("%@"), "\(key) 残留 %@")
-            #expect(!value.contains("%lld"), "\(key) 残留 %lld")
+            #expect(!isFallback(value, key: key), "\(key) not localized")
+            #expect(!value.contains("%@"), "\(key) leftover %@")
+            #expect(!value.contains("%lld"), "\(key) leftover %lld")
         }
     }
 }

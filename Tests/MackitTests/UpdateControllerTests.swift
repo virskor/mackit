@@ -58,7 +58,7 @@ struct UpdateControllerTests {
             "settings.update.footer",
         ]
         for key in keys {
-            #expect(L10n.tr(key) != key, "\(key) 未本地化")
+            #expect(L10n.tr(key) != key, "\(key) not localized")
         }
     }
 }

@@ -79,7 +79,7 @@ struct AppScannerTests {
 
         let apps = AppScanner.discoverApps(roots: [appsDir.path])
 
-        #expect(apps.count == 2, "只应发现 Foo 与 Bar，实际 \(apps.count)")
+        #expect(apps.count == 2, "should only find Foo and Bar, got \(apps.count)")
         // Sorted by name to keep the list order stable
         #expect(apps.map(\.name) == ["Bar", "Foo"])
         let foo = apps.first { $0.name == "Foo" }!
@@ -87,7 +87,7 @@ struct AppScannerTests {
         #expect(foo.version == "1.2.3")
         #expect(foo.path == appsDir.appendingPathComponent("Foo.app").path)
         let bar = apps.first { $0.name == "Bar" }!
-        #expect(bar.version == "", "缺少 CFBundleShortVersionString 时版本为空")
+        #expect(bar.version == "", "version is empty when CFBundleShortVersionString is missing")
     }
 
     @Test func discoveryDeduplicatesAcrossRoots() {
@@ -118,7 +118,7 @@ struct AppScannerTests {
         makeApp(at: appsDir, name: "Chrome.app", bundleID: "com.google.Chrome", version: "1.0")
 
         let apps = AppScanner.discoverApps(roots: [appsDir.path])
-        #expect(apps.count == 1, "只应发现第三方应用，实际：\(apps.map(\.bundleID))")
+        #expect(apps.count == 1, "should only find third-party apps, got: \(apps.map(\.bundleID))")
         #expect(apps.first?.bundleID == "com.google.Chrome")
     }
 
@@ -130,7 +130,7 @@ struct AppScannerTests {
 
         let apps = AppScanner.discoverApps(roots: [appsDir.path])
         #expect(apps.count == 1)
-        #expect(apps[0].name == "Google Chrome", "展示名应优先，与 Finder 里的名字一致")
+        #expect(apps[0].name == "Google Chrome", "display name takes precedence, matching the name in Finder")
     }
 
     // MARK: - Residue detection
@@ -155,7 +155,7 @@ struct AppScannerTests {
         let found = AppScanner.residuePaths(for: app, home: home.path)
 
         let byPath = Dictionary(uniqueKeysWithValues: found.map { ($0.path, $0.kind) })
-        #expect(byPath.count == found.count, "同一路径不应重复出现")
+        #expect(byPath.count == found.count, "the same path should not appear twice")
 
         let expected: [(String, ResidueKind)] = [
             ("Library/Application Support/com.example.foo", .applicationSupport),
@@ -169,10 +169,10 @@ struct AppScannerTests {
             ("Library/Application Support/CrashReporter/Foo-2024-01-01.ips", .crashReports),
             ("Library/Logs/DiagnosticReports/Foo-2024-01-01.ips", .diagnosticReports)
         ]
-        #expect(found.count == expected.count, "应恰好发现 \(expected.count) 条残留，实际 \(found.count)：\(found.map(\.path))")
+        #expect(found.count == expected.count, "should find exactly \(expected.count) leftovers, got \(found.count): \(found.map(\.path))")
         for (relative, kind) in expected {
             let path = home.appendingPathComponent(relative).path
-            #expect(byPath[path] == kind, "\(relative) 的种类应为 \(kind.rawValue)")
+            #expect(byPath[path] == kind, "\(relative) kind should be \(kind.rawValue)")
         }
         // Someone else's ByHost preference must not be matched
         #expect(byPath[home.appendingPathComponent("Library/Preferences/ByHost/com.other.app.plist").path] == nil)
@@ -189,10 +189,10 @@ struct AppScannerTests {
         let safe: [ResidueKind] = [.caches, .httpStorages, .webKit, .cookies, .logs, .crashReports, .diagnosticReports]
         let review: [ResidueKind] = [.applicationSupport, .containers, .preferences, .savedState, .applicationScripts, .launchAgents]
         for kind in safe {
-            #expect(kind.risk == .safe, "\(kind.rawValue) 应为安全级")
+            #expect(kind.risk == .safe, "\(kind.rawValue) should be safe level")
         }
         for kind in review {
-            #expect(kind.risk == .review, "\(kind.rawValue) 应为留意级")
+            #expect(kind.risk == .review, "\(kind.rawValue) should be review level")
         }
         // CaseIterable matches the localization key coverage; a missing one
         // exposes the key in the UI
@@ -258,7 +258,7 @@ struct AppScannerTests {
         let app = InstalledApp(name: "Foo", bundleID: "com.example.foo", version: "2.0", path: "/Applications/Foo.app")
         let items = AppScanner.items(for: app, home: home.path)
 
-        #expect(items.count == 3, "1 个本体 + 2 条残留")
+        #expect(items.count == 3, "1 bundle + 2 leftovers")
         let bundle = items[0]
         #expect(bundle.appKind == .bundle)
         #expect(bundle.category == .apps)
@@ -275,13 +275,33 @@ struct AppScannerTests {
 
         let residues = items.dropFirst()
         #expect(residues.allSatisfy { $0.appKind?.isResidue == true })
-        #expect(residues.allSatisfy { $0.category == .apps })
         #expect(residues.allSatisfy { $0.bundleID == app.bundleID })
         #expect(residues.allSatisfy { $0.detail.contains("Foo") })
-        #expect(Set(items.map(\.id)).count == items.count, "条目 id 必须唯一")
+        #expect(Set(items.map(\.id)).count == items.count, "item ids must be unique")
         // Residue rows do not show a real icon; the category symbol is the
         // fallback
         #expect(residues.allSatisfy { $0.appKind != .bundle })
+
+        // The split by what a residue holds: the cache is regenerable junk and
+        // belongs to the general module's app-junk row, the preferences file is
+        // app data and stays with the bundle in the uninstall flow. Both still
+        // carry the bundle ID, so uninstalling selects the cache too.
+        let cache = items.first { $0.appKind == .residue(.caches) }!
+        #expect(cache.category == .appJunk)
+        #expect(cache.ruleID == AppScanner.junkRuleID)
+        #expect(cache.risk == .safe)
+        #expect(cache.holdsLiveAppData == false)
+        #expect(cache.appName == "Foo")
+
+        let prefs = items.first { $0.appKind == .residue(.preferences) }!
+        #expect(prefs.category == .apps)
+        #expect(prefs.ruleID == AppScanner.residueRuleID)
+        #expect(prefs.risk == .review)
+        #expect(prefs.holdsLiveAppData == true)
+        #expect(prefs.appName == "Foo")
+
+        // The bundle itself is live data: uninstalling a running app is refused
+        #expect(bundle.holdsLiveAppData)
     }
 
     @Test func scanAppsComposesDiscoveryAndResidues() {
@@ -304,29 +324,41 @@ struct AppScannerTests {
 
     // MARK: - Clean engine running-app checks
 
-    @Test func cleanSkipsRunningAppButKeepsResidues() async throws {
+    /// The running-app guard is scoped to what deleting it would actually
+    /// break: the app's own bundle and residue that holds live data are
+    /// refused, while regenerable junk is deleted — an app rebuilds a cache on
+    /// demand, so refusing it would only make the clean report failures for
+    /// files the app does not need.
+    @Test func runningAppRefusesBundleAndLiveDataButDeletesJunk() async throws {
         let dir = tempDirectory("uninstall")
         defer { cleanup(dir) }
 
         let appPath = dir.appendingPathComponent("Foo.app").path
-        let residuePath = dir.appendingPathComponent("com.example.foo").path
+        let cachePath = dir.appendingPathComponent("com.example.foo").path
+        let prefsPath = dir.appendingPathComponent("com.example.foo.plist").path
         try Data("x".utf8).write(to: URL(fileURLWithPath: appPath))
-        try Data("x".utf8).write(to: URL(fileURLWithPath: residuePath))
+        try Data("x".utf8).write(to: URL(fileURLWithPath: cachePath))
+        try Data("x".utf8).write(to: URL(fileURLWithPath: prefsPath))
 
         let app = JunkItem(
             ruleID: "app.bundle", title: "Foo", detail: "", path: appPath,
             category: .apps, risk: .caution, size: 10,
-            bundleID: "com.example.foo", appKind: .bundle
+            bundleID: "com.example.foo", appKind: .bundle, holdsLiveAppData: true
         )
-        let residue = JunkItem(
-            ruleID: "app.residue", title: "com.example.foo", detail: "", path: residuePath,
-            category: .apps, risk: .safe, size: 5,
-            bundleID: "com.example.foo", appKind: .residue(.caches)
+        let cache = JunkItem(
+            ruleID: "app.junk", title: "com.example.foo", detail: "", path: cachePath,
+            category: .appJunk, risk: .safe, size: 5,
+            bundleID: "com.example.foo", appKind: .residue(.caches), appName: "Foo"
+        )
+        let prefs = JunkItem(
+            ruleID: "app.residue", title: "com.example.foo.plist", detail: "", path: prefsPath,
+            category: .apps, risk: .review, size: 5,
+            bundleID: "com.example.foo", appKind: .residue(.preferences), holdsLiveAppData: true
         )
 
         var outcomes: [CleanOutcome] = []
         let stream = CleanEngine.clean(
-            items: [app, residue],
+            items: [app, cache, prefs],
             moveToTrash: false,
             isAppRunning: { $0 == "com.example.foo" }
         )
@@ -334,18 +366,21 @@ struct AppScannerTests {
             if case .outcome(let outcome) = event { outcomes.append(outcome) }
         }
 
-        #expect(outcomes.count == 2)
+        #expect(outcomes.count == 3)
         let appOutcome = outcomes.first { $0.itemID == app.id }
-        let residueOutcome = outcomes.first { $0.itemID == residue.id }
-        #expect(appOutcome?.succeeded == false, "运行中的应用必须被拒绝")
-        #expect(appOutcome?.message.contains("Foo") == true, "失败信息应点出应用名")
-        // Residue files are refused as well: caches, application support, and
-        // similar data are being read and written by a running process in real
-        // time; protecting only the .app bundle is like pulling live data out
-        // from under the process.
-        #expect(residueOutcome?.succeeded == false, "运行中应用的残留文件也必须被拒绝")
-        #expect(FileManager.default.fileExists(atPath: appPath), "应用本体不应被删除")
-        #expect(FileManager.default.fileExists(atPath: residuePath), "残留文件不应被删除")
+        let cacheOutcome = outcomes.first { $0.itemID == cache.id }
+        let prefsOutcome = outcomes.first { $0.itemID == prefs.id }
+        #expect(appOutcome?.succeeded == false, "a running app must be refused")
+        #expect(appOutcome?.message.contains("Foo") == true, "the failure message should name the app")
+        // Caches, application support, and preferences are being read and
+        // written by a running process in real time; deleting them pulls live
+        // data out from under the process, so they are refused too.
+        #expect(prefsOutcome?.succeeded == false, "a running app's preferences must be refused")
+        #expect(FileManager.default.fileExists(atPath: appPath), "the app bundle should not be deleted")
+        #expect(FileManager.default.fileExists(atPath: prefsPath), "the preferences should not be deleted")
+        // The cache is rebuilt on demand, so it goes even while the app runs
+        #expect(cacheOutcome?.succeeded == true, "a running app's cache can be cleaned")
+        #expect(!FileManager.default.fileExists(atPath: cachePath))
     }
 
     @Test func cleanAllowsNonRunningApp() async throws {

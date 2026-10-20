@@ -21,23 +21,23 @@ struct HardwareProfileTests {
 
         // hw.model is a sysctl present on every Mac; only failing to get the
         // identifier would be a problem
-        #expect(!profile.modelIdentifier.isEmpty, "hw.model 应该取得到")
-        #expect(!profile.modelName.isEmpty, "型号名不能空")
-        #expect(!profile.modelName.contains(" ("), "标题只要系列名，尺寸与年份不该出现")
-        #expect(!profile.osVersion.isEmpty, "kern.osproductversion 应该取得到")
-        #expect(!profile.osBuild.isEmpty, "kern.osversion（构建号）应该取得到")
-        #expect(!profile.cpuName.isEmpty, "处理器名不能空")
-        #expect(!profile.gpuName.isEmpty, "显卡名不能空（最差也会退回处理器名）")
-        #expect(profile.memoryBytes > 0, "物理内存一定大于 0")
+        #expect(!profile.modelIdentifier.isEmpty, "hw.model should be obtainable")
+        #expect(!profile.modelName.isEmpty, "model name must not be empty")
+        #expect(!profile.modelName.contains(" ("), "the title should only have the series name; size and year should not appear")
+        #expect(!profile.osVersion.isEmpty, "kern.osproductversion should be obtainable")
+        #expect(!profile.osBuild.isEmpty, "kern.osversion (build number) should be obtainable")
+        #expect(!profile.cpuName.isEmpty, "CPU name must not be empty")
+        #expect(!profile.gpuName.isEmpty, "GPU name must not be empty (at worst it falls back to the CPU name)")
+        #expect(profile.memoryBytes > 0, "physical memory must be greater than 0")
         #expect(profile.memoryBytes == Int64(ProcessInfo.processInfo.physicalMemory),
-                "内存必须就是物理内存，不能是别的口径")
-        #expect(profile.diskTotal > 0, "启动宗卷的总容量应该取得到")
+                "memory must be the physical memory, not some other measure")
+        #expect(profile.diskTotal > 0, "the startup volume's total capacity should be obtainable")
         #expect(profile.diskAvailable >= 0 && profile.diskAvailable <= profile.diskTotal,
-                "可用空间不能超出总量")
+                "available space cannot exceed the total")
 
         // Resolution looks like 2880x1864
         #expect(profile.displayResolution.firstMatch(of: /^\d+x\d+$/) != nil,
-                "分辨率格式应为 宽x高，实际：\(profile.displayResolution)")
+                "resolution format should be width x height, got: \(profile.displayResolution)")
     }
 
     /// Machines with a battery (laptops) must report a self-consistent battery
@@ -47,12 +47,12 @@ struct HardwareProfileTests {
         let profile = HardwareSampler.profile()
         guard profile.hasBattery else { return }
 
-        #expect(profile.batteryLevel >= 0 && profile.batteryLevel <= 1, "电量必须落在 0...1")
-        #expect(profile.batteryCycles >= 0, "循环次数不能为负")
+        #expect(profile.batteryLevel >= 0 && profile.batteryLevel <= 1, "battery level must fall within 0...1")
+        #expect(profile.batteryCycles >= 0, "cycle count cannot be negative")
         #expect(profile.batteryHealth > 0 && profile.batteryHealth <= 1,
-                "健康度是满充容量 / 设计容量，必须落在 0...1")
+                "health is full charge capacity / design capacity, and must fall within 0...1")
         #expect(profile.batteryHealthStatus == HardwareProfile.healthStatus(profile.batteryHealth),
-                "状态必须由健康度推导")
+                "status must be derived from health")
     }
 
     /// On a desktop (no AppleSmartBattery service) the battery data must be
@@ -111,7 +111,7 @@ struct HardwareProfileTests {
         let cores = HardwareSampler.profile().cpuCores
 
         #expect(!cores.isEmpty)
-        #expect(!cores.contains("%lld"), "核心描述残留占位符：\(cores)")
+        #expect(!cores.contains("%lld"), "leftover placeholder in the core description: \(cores)")
     }
 
     /// "Total Cores" is the label and "%lld cores" is the format string for the value: the two must be different keys.
@@ -119,9 +119,9 @@ struct HardwareProfileTests {
     @Test func coresLabelIsNotTheFormatString() {
         let label = L10n.tr("hw.cpu.coresLabel")
 
-        #expect(!label.contains("%lld"), "标签不该带占位符：\(label)")
+        #expect(!label.contains("%lld"), "the label should not carry a placeholder: \(label)")
         #expect(label != L10n.tr("hw.cpu.cores"))
-        #expect(L10n.tr("hw.cpu.cores").contains("%lld"), "值的格式串必须带占位符")
+        #expect(L10n.tr("hw.cpu.cores").contains("%lld"), "the value's format string must carry a placeholder")
     }
 
     // MARK: - Formats specific to the hardware page
@@ -174,7 +174,7 @@ struct HardwareNavigationTests {
     /// construction time.
     @Test func showHardwareSamplesProfile() {
         let vm = makeVM()
-        #expect(vm.hardwareProfile.modelIdentifier.isEmpty, "未进入页面前不该有数据")
+        #expect(vm.hardwareProfile.modelIdentifier.isEmpty, "there should be no data before entering the page")
 
         vm.showHardware()
 
@@ -192,7 +192,7 @@ struct HardwareNavigationTests {
         vm.analyzeDiskSpace()
 
         #expect(!vm.showsHardware)
-        #expect(vm.selectedCategory == nil, "回到清单时不该停留在某个分类上")
+        #expect(vm.selectedCategory == nil, "returning to the list should not stay on any category")
         #expect(vm.phase == .scanning)
     }
 }

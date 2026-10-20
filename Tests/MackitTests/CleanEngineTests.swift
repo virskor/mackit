@@ -16,17 +16,27 @@ struct CleanEngineTests {
         return url
     }
 
-    private func item(_ path: String, size: Int64 = 0, bundleID: String? = nil, appKind: AppItemKind? = nil) -> JunkItem {
+    private func item(
+        _ path: String,
+        size: Int64 = 0,
+        bundleID: String? = nil,
+        appKind: AppItemKind? = nil,
+        appName: String? = nil,
+        holdsLiveAppData: Bool = false,
+        category: JunkCategory = .system
+    ) -> JunkItem {
         JunkItem(
             ruleID: "test.rule",
             title: (path as NSString).lastPathComponent,
             detail: "Test",
             path: path,
-            category: .system,
+            category: category,
             risk: .safe,
             size: size,
             bundleID: bundleID,
-            appKind: appKind
+            appKind: appKind,
+            appName: appName,
+            holdsLiveAppData: holdsLiveAppData
         )
     }
 
@@ -66,7 +76,7 @@ struct CleanEngineTests {
         let (outcomes, reclaimed, failures) = await run(items: [item(target, size: 1024)])
 
         #expect(outcomes.count == 1)
-        #expect(outcomes[0].succeeded == false, "受保护路径必须被拒绝")
+        #expect(outcomes[0].succeeded == false, "protected paths must be refused")
         #expect(reclaimed == 0)
         #expect(failures == 1)
         #expect(!FileManager.default.fileExists(atPath: target))
@@ -84,7 +94,7 @@ struct CleanEngineTests {
         let (outcomes, reclaimed, _) = await run(items: [item(target, size: 4096)])
 
         #expect(outcomes[0].succeeded == true)
-        #expect(outcomes[0].reclaimed == 0, "不存在的路径不得计入回收量")
+        #expect(outcomes[0].reclaimed == 0, "a non-existent path must not count toward the reclaimed amount")
         #expect(reclaimed == 0)
     }
 
@@ -136,34 +146,63 @@ struct CleanEngineTests {
 
             #expect(failures == 0)
             #expect(outcomes.count == 2)
-            #expect(reclaimed == expected, "同一块空间被重复计入了：\(reclaimed) vs \(expected)")
+            #expect(reclaimed == expected, "the same space was counted twice: \(reclaimed) vs \(expected)")
             #expect(!FileManager.default.fileExists(atPath: parent.path))
         }
     }
 
     // MARK: - Running apps
 
-    @Test func runningAppRefusesBundleAndResidues() async throws {
+    /// The guard covers what deleting would actually break: the app's own
+    /// bundle and residue that holds live data. Regenerable caches are
+    /// deliberately exempt — an app rebuilds them on demand, so refusing them
+    /// would only turn every clean into a list of failures for files the app
+    /// does not need.
+    @Test func runningAppRefusesBundleAndLiveDataOnly() async throws {
         let dir = tempDirectory("running")
         defer { try? FileManager.default.removeItem(at: dir) }
         let bundle = dir.appendingPathComponent("Foo.app", isDirectory: true)
-        let residue = dir.appendingPathComponent("com.example.foo", isDirectory: true)
+        let prefs = dir.appendingPathComponent("com.example.foo.plist", isDirectory: true)
         try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: residue, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: prefs, withIntermediateDirectories: true)
 
-        let bundleItem = item(bundle.path, bundleID: "com.example.foo", appKind: .bundle)
-        let residueItem = item(residue.path, bundleID: "com.example.foo", appKind: .residue(.caches))
+        let bundleItem = item(bundle.path, bundleID: "com.example.foo", appKind: .bundle, holdsLiveAppData: true)
+        let prefsItem = item(prefs.path, bundleID: "com.example.foo", appKind: .residue(.preferences), holdsLiveAppData: true)
 
         let (outcomes, reclaimed, failures) = await run(
-            items: [bundleItem, residueItem],
+            items: [bundleItem, prefsItem],
             isAppRunning: { $0 == "com.example.foo" }
         )
 
-        #expect(outcomes.allSatisfy { !$0.succeeded }, "运行中的应用及其残留都必须被拒绝")
+        #expect(outcomes.allSatisfy { !$0.succeeded }, "a running app and its data residue must be refused")
         #expect(failures == 2)
         #expect(reclaimed == 0)
         #expect(FileManager.default.fileExists(atPath: bundle.path))
-        #expect(FileManager.default.fileExists(atPath: residue.path))
+        #expect(FileManager.default.fileExists(atPath: prefs.path))
+    }
+
+    @Test func runningAppCacheIsStillCleaned() async throws {
+        let dir = tempDirectory("running-cache")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let cache = dir.appendingPathComponent("com.example.foo", isDirectory: true)
+        try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
+
+        let cacheItem = item(
+            cache.path,
+            bundleID: "com.example.foo",
+            appKind: .residue(.caches),
+            appName: "Foo",
+            category: .appJunk
+        )
+
+        let (outcomes, _, failures) = await run(
+            items: [cacheItem],
+            isAppRunning: { $0 == "com.example.foo" }
+        )
+
+        #expect(failures == 0, "a cache can be rebuilt at any time, so it can be cleaned while running")
+        #expect(outcomes[0].succeeded)
+        #expect(!FileManager.default.fileExists(atPath: cache.path))
     }
 
     @Test func nonRunningAppIsCleanedNormally() async throws {
@@ -201,7 +240,7 @@ struct CleanEngineTests {
         let (outcomes, reclaimed, failures) = await run(items: [commandItem])
 
         #expect(outcomes[0].succeeded)
-        #expect(reclaimed == 2048, "命令项的回收量只能报扫描时测得的提示体积")
+        #expect(reclaimed == 2048, "a command item's reclaimed amount can only report the hint size measured at scan time")
         #expect(failures == 0)
     }
 

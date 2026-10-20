@@ -27,7 +27,7 @@ struct StatsOverlayTests {
         vm.showMenuBarCPU = false
         vm.showMenuBarMemory = false
         vm.showMenuBarTemperature = false
-        #expect(!vm.statsOverlayVisible, "三个监控开关全关：悬浮窗空着，应收起")
+        #expect(!vm.statsOverlayVisible, "all three monitor switches off: the floating window is empty, so it should collapse")
 
         // Any single monitor switch on brings the floating window back
         vm.showMenuBarTemperature = true
@@ -48,12 +48,12 @@ struct StatsOverlayTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("overlay-position.plist")
 
-        #expect(OverlayPositionStore.load(fileURL: file) == nil, "没有文件时应返回 nil")
+        #expect(OverlayPositionStore.load(fileURL: file) == nil, "should return nil when there is no file")
 
         OverlayPositionStore.save(NSPoint(x: 120.5, y: 800), fileURL: file)
         #expect(OverlayPositionStore.load(fileURL: file) == NSPoint(x: 120.5, y: 800))
 
         try? "not-a-plist".write(to: file, atomically: true, encoding: .utf8)
-        #expect(OverlayPositionStore.load(fileURL: file) == nil, "坏内容不能给出假位置")
+        #expect(OverlayPositionStore.load(fileURL: file) == nil, "bad content must not yield a fake position")
     }
 }

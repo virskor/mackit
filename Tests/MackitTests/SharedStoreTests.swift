@@ -52,9 +52,33 @@ struct SharedStoreTests {
             try SharedStore.writeAtomically(Data("x".utf8), to: destination, via: temporary)
         }
 
-        #expect(!FileManager.default.fileExists(atPath: temporary.path), "写失败后临时文件残留在目录里")
+        #expect(!FileManager.default.fileExists(atPath: temporary.path), "the temporary file is left behind in the directory after a failed write")
         // Only the blocker file itself remains in the directory
         #expect((try? FileManager.default.contentsOfDirectory(atPath: dir.path))?.sorted() == ["blocker"])
+    }
+
+    // MARK: - The remembered row selection
+
+    /// The general page's row selection lives in this file, so a user's
+    /// checkmarks come back on the next scan. The round trip goes through the
+    /// real plist format — the stored form is `[String]`, read back into a set.
+    @Test func rememberedSelectionRoundTripsThroughTheFile() throws {
+        let dir = tempDirectory("remembered-rows")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("shared-settings.plist")
+
+        SharedStore.saveSettings(["generalSelectedRows": ["browser.chrome", "language"]], to: file)
+        let loaded = SharedStore.loadSettings(from: file)
+        #expect(loaded["generalSelectedRows"] as? [String] == ["browser.chrome", "language"])
+
+        // "Never saved" is stored as an absent key, which the caller reads as
+        // "fall back to the built-in default" — the restore shortcut's path
+        SharedStore.saveSettings(["generalSelectedRows": [String]()], to: file)
+        #expect(SharedStore.loadSettings(from: file)["generalSelectedRows"] as? [String] == [])
+
+        // Other keys in the same file survive a row-selection write
+        SharedStore.saveSettings(["moveToTrash": false], to: file)
+        #expect(SharedStore.loadSettings(from: file)["moveToTrash"] as? Bool == false)
     }
 
     // MARK: - Pending commands
@@ -75,7 +99,7 @@ struct SharedStoreTests {
         writeCommand(.hardware, to: file)
 
         #expect(PendingCommandStore.take(fileURL: file) == .hardware)
-        #expect(!FileManager.default.fileExists(atPath: file.path), "读即删")
+        #expect(!FileManager.default.fileExists(atPath: file.path), "reading deletes it")
     }
 
     /// After the command is persisted, the main app may fail to come up in time
@@ -90,7 +114,7 @@ struct SharedStoreTests {
         backdate(file, by: PendingCommandStore.maxAge + 60)
 
         #expect(PendingCommandStore.take(fileURL: file) == nil)
-        #expect(!FileManager.default.fileExists(atPath: file.path), "过期命令也要清掉，不能留着反复解析")
+        #expect(!FileManager.default.fileExists(atPath: file.path), "an expired command must also be cleared, not left to be parsed repeatedly")
     }
 
     @Test func unknownPendingCommandIsDiscardedAndRemoved() {

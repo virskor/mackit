@@ -214,12 +214,12 @@ struct AppMemoryTests {
 
         #expect(apps.count <= 3)
         for pair in zip(apps, apps.dropFirst()) {
-            #expect(pair.0.bytes >= pair.1.bytes, "排行榜必须降序")
+            #expect(pair.0.bytes >= pair.1.bytes, "the leaderboard must be in descending order")
         }
         for app in apps {
-            #expect(app.bytes > 0, "列出来的应用都该有内存占用")
-            #expect(!app.name.isEmpty, "名字不能为空")
-            #expect(app.pid > 0, "pid 用作行标识，必须有效")
+            #expect(app.bytes > 0, "every listed app should have a memory footprint")
+            #expect(!app.name.isEmpty, "the name must not be empty")
+            #expect(app.pid > 0, "the pid is used as the row identifier and must be valid")
         }
     }
 
@@ -233,7 +233,7 @@ struct AppMemoryTests {
                 .map { $0.processIdentifier }
         )
         for app in apps {
-            #expect(regular.contains(Int32(app.pid)), "\(app.name) 不是常规应用")
+            #expect(regular.contains(Int32(app.pid)), "\(app.name) is not a regular app")
         }
     }
 

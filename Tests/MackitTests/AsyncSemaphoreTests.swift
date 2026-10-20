@@ -23,8 +23,8 @@ struct AsyncSemaphoreTests {
         }
 
         let peak = await counter.peak
-        #expect(peak <= 3, "并发峰值 \(peak) 超过上限 3")
-        #expect(peak > 0, "从未进入临界区")
+        #expect(peak <= 3, "peak concurrency \(peak) exceeds the limit of 3")
+        #expect(peak > 0, "never entered the critical section")
     }
 
     @Test func serialModeDoesNotDeadlock() async throws {
@@ -44,7 +44,7 @@ struct AsyncSemaphoreTests {
         }
 
         let peak = await counter.peak
-        #expect(peak == 1, "max=1 时峰值应为 1，实际 \(peak)")
+        #expect(peak == 1, "peak should be 1 when max=1, got \(peak)")
     }
 
     @Test func allTasksComplete() async throws {
@@ -62,7 +62,7 @@ struct AsyncSemaphoreTests {
         }
 
         let count = await completed.count
-        #expect(count == 25, "应有 25 个任务完成，实际 \(count)")
+        #expect(count == 25, "25 tasks should complete, got \(count)")
     }
 }
 

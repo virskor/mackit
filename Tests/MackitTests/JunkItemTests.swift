@@ -59,7 +59,7 @@ struct JunkItemTests {
         // starts with the current user's name (/Users/weizhang2) must not be
         // abbreviated to ~2
         let sibling = makeItem(path: home + "2/Library/Caches")
-        #expect(sibling.abbreviatedPath == home + "2/Library/Caches", "兄弟 home 目录被错误缩写了：\(sibling.abbreviatedPath)")
+        #expect(sibling.abbreviatedPath == home + "2/Library/Caches", "the sibling home directory was wrongly abbreviated: \(sibling.abbreviatedPath)")
 
         let commandItem = JunkItem(
             ruleID: "go.clean",
