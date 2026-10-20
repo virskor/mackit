@@ -27,9 +27,9 @@ struct HardwareView: View {
                     pair(L10n.tr("hw.disk.available"), Formatters.capacity(profile.diskAvailable))
                     pair(L10n.tr("hw.disk.total"), Formatters.capacity(profile.diskTotal))
                 } trailing: {
-                    // "Analyze Disk Space" = run a scan: list the
-                    // space-occupying items one by one in the list, giving a
-                    // clearer next step than just a single total.
+                    // Opens the disk analysis tool: a treemap and
+                    // drill-down navigation dedicated to answering where the
+                    // space went — a clearer next step than a single total.
                     Button {
                         vm.analyzeDiskSpace()
                     } label: {

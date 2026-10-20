@@ -182,9 +182,11 @@ struct HardwareNavigationTests {
         #expect(!vm.hardwareProfile.modelName.isEmpty)
     }
 
-    /// "Analyze Disk Space" runs one scan pass and returns to the list page:
-    /// the result of the analysis is the list itself.
-    @Test func analyzeDiskSpaceStartsScanAndLeavesHardwarePage() {
+    /// "Analyze Disk Space" opens the disk analysis tool and leaves the
+    /// hardware page — the tool is the real answer to "where did the space
+    /// go", and the cleanup scan this used to trigger answered a different
+    /// question.
+    @Test func analyzeDiskSpaceOpensTheAnalysisTool() {
         let vm = makeVM()
         vm.showHardware()
         vm.selectedCategory = .xcode
@@ -192,7 +194,8 @@ struct HardwareNavigationTests {
         vm.analyzeDiskSpace()
 
         #expect(!vm.showsHardware)
-        #expect(vm.selectedCategory == nil, "returning to the list should not stay on any category")
-        #expect(vm.phase == .scanning)
+        #expect(vm.selectedCategory == nil, "leaving the hardware page should not stay on any category")
+        #expect(vm.showsDiskAnalysis)
+        #expect(vm.phase == .idle, "the analysis tool measures on its own; the cleanup scan must not start")
     }
 }

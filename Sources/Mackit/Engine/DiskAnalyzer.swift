@@ -3,10 +3,11 @@ import Foundation
 /// One child entry of an analyzed directory: the recursive size and entry
 /// counts measured for it.
 ///
-/// `id` is the path — unique per machine and stable across rescans, so the
-/// list selection and the treemap layout can key on it. Paths come from
-/// `contentsOfDirectory`, which returns realpaths, so `/var` and `/private/var`
-/// spellings never produce two entries for the same directory.
+/// `id` is the path — unique within a listing and stable across rescans, so
+/// the list selection and the treemap layout can key on it. Paths are spelled
+/// the way the traversal's base URL was (a firmlinked `/Users` stays `/Users`,
+/// it is not resolved to the data volume), which is why the protected-path
+/// sets carry both spellings.
 struct DiskEntry: Identifiable, Hashable, Sendable {
     let id: String
     let name: String
@@ -142,6 +143,7 @@ enum DiskAnalyzer {
 
         let semaphore = AsyncSemaphore(max: ScanEngine.maxConcurrentMeasurements)
         var measuredCount = 0
+        var vanishedCount = 0
         var totalSize: Int64 = 0
 
         await withTaskGroup(of: DiskEntry?.self) { group in
@@ -152,15 +154,19 @@ enum DiskAnalyzer {
             }
             for await entry in group {
                 if Task.isCancelled { break }
-                guard let entry else { continue }
+                // A child that disappeared mid-scan yields nothing; it is
+                // neither measured nor skipped, so it must not be counted as
+                // either in the summary line.
+                guard let entry else { vanishedCount += 1; continue }
                 measuredCount += 1
                 totalSize += entry.size
                 continuation.yield(.measured(entry))
             }
         }
 
+        let skippedCount = children.count - measuredCount - vanishedCount
         MackitLog.disk.info(
-            "analyzed \(path, privacy: .public): \(measuredCount, privacy: .public) entries, \(totalSize, privacy: .public) bytes, took \(MackitLog.duration(.now - startedAt), privacy: .public)"
+            "analyzed \(path, privacy: .public): \(measuredCount, privacy: .public) entries, \(totalSize, privacy: .public) bytes, \(skippedCount, privacy: .public) skipped, took \(MackitLog.duration(.now - startedAt), privacy: .public)"
         )
         continuation.yield(.finished)
         continuation.finish()

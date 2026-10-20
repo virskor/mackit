@@ -219,7 +219,7 @@ enum FileSystem {
     /// whole disk, double-counting every byte. FileManager's own enumerator
     /// refuses to cross mount points; the explicit traversal in
     /// `allocatedSizeAndCounts` must skip them too.
-    static let mountPoints: Set<String> = {
+    static var mountPoints: Set<String> {
         var buffer: UnsafeMutablePointer<statfs>?
         let count = getmntinfo(&buffer, Int32(MNT_NOWAIT))
         guard count > 0, let buffer else { return [] }
@@ -233,7 +233,7 @@ enum FileSystem {
             if !path.isEmpty { paths.insert(path) }
         }
         return paths
-    }()
+    }
 
     /// TCC-protected folders inside the user's home (Documents, Desktop,
     /// Downloads): macOS pops an authorization dialog — "allow Mackit to
@@ -299,6 +299,7 @@ enum FileSystem {
         // directory at a time and checking each child *before* touching it
         // keeps that deterministic: a pruned entry is never stat'd with size
         // keys and never descended into.
+        let mounts = mountPoints
         var stack: [URL] = [url]
         while let directory = stack.popLast() {
             guard let entries = try? manager.contentsOfDirectory(
@@ -313,7 +314,7 @@ enum FileSystem {
                 // Mount points are a traversal boundary: descending into one
                 // re-counts a whole other volume (the data volume behind
                 // /System/Volumes/Data being the expensive case).
-                if mountPoints.contains(entry.path) { continue }
+                if mounts.contains(entry.path) { continue }
                 guard let values = try? entry.resourceValues(forKeys: keySet) else { continue }
                 if values.isSymbolicLink == true { continue }
                 if values.isRegularFile == true {

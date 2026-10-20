@@ -38,6 +38,7 @@ What Mackit does:
 - **Command-line cleaning**: `go clean -cache`, `npm cache clean`, `brew cleanup`, `dart pub cache clean`, etc.
 - **Menu bar panel**: a resident menu bar icon opens a panel with reclaimable space, CPU / memory / temperature, per-app memory ranking with one-tap "free memory", free disk space and a CPU graph
 - **Desktop stats overlay**: an optional always-on-top bar showing CPU / memory / temperature compactly, readable on any wallpaper, draggable with position memory, living only in the tray process
+- **Disk space analysis**: a tool page (sidebar "Tools" section, below the cleanup entries) answering "where did the space go" — breadcrumb drill-down from the startup disk, every folder's recursive size, and a treemap of the selected folder's breakdown
 - **Hardware info**: model, disks, battery and other static information
 - **Native UI**: SwiftUI sidebar + table + toolbar with native context menus, keyboard shortcuts, search and click-to-sort column headers
 - **Localized**: Simplified Chinese / English / Traditional Chinese, follows the system language by default
@@ -138,7 +139,7 @@ Known limitations: Group Containers (requires reading per-app entitlements), app
 
 ## Permissions
 
-Mackit needs to read `~/Library`, `~/.pub-cache`, `~/.gradle`, `/Applications` and similar locations, so the **App Sandbox is not enabled**. Some paths under `~/Library` require Full Disk Access, which the user can grant manually under "System Settings › Privacy & Security › Full Disk Access". Opening a path in Terminal requests the Apple Events permission to control Terminal (`NSAppleEventsUsageDescription`). "Free memory" in the tray panel requests admin authorization and runs `purge` (drops the file cache; does not affect the memory apps themselves hold). CPU, memory and per-app memory come from public system interfaces (`host_statistics64`, `proc_pid_rusage`); macOS has no public temperature API, so the temperature shown is the system thermal state.
+Mackit needs to read `~/Library`, `~/.pub-cache`, `~/.gradle`, `/Applications` and similar locations, so the **App Sandbox is not enabled**. Some paths under `~/Library` require Full Disk Access, which the user can grant manually under "System Settings › Privacy & Security › Full Disk Access". Opening a path in Terminal requests the Apple Events permission to control Terminal (`NSAppleEventsUsageDescription`). "Free memory" in the tray panel requests admin authorization and runs `purge` (drops the file cache; does not affect the memory apps themselves hold). The disk analysis tool deliberately does not enter `~/Documents`, `~/Desktop` or `~/Downloads` during a scan — enumerating them pops the system's access dialog — so those folders are listed as "not scanned" and can be scanned on demand (one click, or grant Full Disk Access for a complete scan). CPU, memory and per-app memory come from public system interfaces (`host_statistics64`, `proc_pid_rusage`); macOS has no public temperature API, so the temperature shown is the system thermal state.
 
 ## Development
 
@@ -208,14 +209,17 @@ Sources/Mackit/
 │   ├── AppScanner.swift          # installed-app discovery and leftover detection
 │   ├── FileSystem.swift          # size computation, globbing, tool lookup, volume capacity
 │   ├── Scanner.swift             # concurrent scanning + project directory traversal
+│   ├── DiskAnalyzer.swift        # disk space analysis: per-directory listing + recursive measurement
+│   ├── TreemapLayout.swift       # squarified treemap layout (pure function)
 │   └── Cleaner.swift             # delete / trash / command execution
 ├── Monitor/                      # CPU / memory / thermal sampling, hardware info, memory release
 ├── IPC/                          # inter-process command / state / settings channels (distributed notifications + shared plist)
 ├── Updater/
 │   └── UpdateController.swift    # Sparkle auto-update
 ├── ViewModels/
-│   └── AppViewModel.swift        # state machine: scan, selection, clean, settings (one per process)
-├── Views/                        # SwiftUI: main window, tray panel, overlay, settings, hardware page
+│   ├── AppViewModel.swift        # state machine: scan, selection, clean, settings (one per process)
+│   └── DiskAnalysisModel.swift   # disk analysis page: navigation, streaming measurement, cache
+├── Views/                        # SwiftUI: main window, tray panel, overlay, settings, hardware, disk analysis
 │   └── Components/               #   reusable components (badges, progress ring, notice rows, flow layout…)
 └── Utilities/
     ├── AppLanguage.swift         # interface language selection (system + three languages, writes AppleLanguages)

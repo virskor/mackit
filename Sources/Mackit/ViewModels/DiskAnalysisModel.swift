@@ -105,12 +105,20 @@ final class DiskAnalysisModel {
     /// the TCC-protected home trio, minus any the user has approved. Entering
     /// one pops the system access dialog, so a full-disk scan skips them and
     /// their rows say "not scanned" until the user asks.
+    ///
+    /// Both spellings of each path go in: the listing layer yields paths as
+    /// spelled by the traversal's base URL, while `canonical` resolves
+    /// firmlinks and symlinks — on a machine where the two differ, a set
+    /// built from one spelling alone would never match the other.
     private var skipPaths: Set<String> {
-        let home = homePath
-        let trio = ["Documents", "Desktop", "Downloads"].map {
-            FileSystem.canonical(home + "/" + $0)
+        var paths: Set<String> = []
+        for name in ["Documents", "Desktop", "Downloads"] {
+            let raw = homePath + "/" + name
+            paths.insert(raw)
+            let resolved = FileSystem.canonical(raw)
+            if resolved != raw { paths.insert(resolved) }
         }
-        return Set(trio).subtracting(approvedPaths)
+        return paths.subtracting(approvedPaths.flatMap { [$0, FileSystem.canonical($0)] })
     }
 
     init(rootPath: String = "/", homePath: String? = nil) {
@@ -169,7 +177,10 @@ final class DiskAnalysisModel {
     /// levels below get measured as usual once entered.
     func goToHome() {
         let home = homePath
-        guard home != rootPath, home != currentPath else { return }
+        // Guard the prefix: synthesizedEntries(along:) walks the path
+        // components between the root and the target, which is only
+        // meaningful when the home actually lives under the analyzed root.
+        guard home != rootPath, home != currentPath, home.hasPrefix(rootPath) else { return }
         backStack.append(breadcrumb)
         forwardStack.removeAll()
         breadcrumb = [rootEntry()] + synthesizedEntries(along: home)
@@ -470,14 +481,18 @@ final class DiskAnalysisModel {
     /// listed as "not scanned"; now that its children have landed, the row is
     /// promoted in place — its own size is the sum of its children, and its
     /// counts are theirs — so it re-sorts into the list as a measured entry.
+    ///
+    /// Runs after every selection scan, so it must confirm the row really is a
+    /// skipped one: an ordinary folder's row is already measured and rewriting
+    /// it would be wasted work on every selection.
     private func promoteScannedFolder() {
         guard let id = selectedID else { return }
         // The skipped row sits in the pending block (never measured) — or in
         // the measured one when the listing came from the cache.
         let skipped: DiskEntry
-        if let index = pendingChildren.firstIndex(where: { $0.id == id }) {
+        if let index = pendingChildren.firstIndex(where: { $0.id == id && $0.isSkipped }) {
             skipped = pendingChildren.remove(at: index)
-        } else if let index = measuredChildren.firstIndex(where: { $0.id == id }) {
+        } else if let index = measuredChildren.firstIndex(where: { $0.id == id && $0.isSkipped }) {
             skipped = measuredChildren.remove(at: index)
         } else {
             return

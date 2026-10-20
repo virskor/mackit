@@ -614,14 +614,13 @@ final class AppViewModel {
         hardwareProfile = HardwareSampler.profile()
     }
 
-    /// "Disk space analysis" on the hardware page: run a scan so the list
-    /// enumerates the space-occupying items one by one, while leaving the
-    /// hardware page to return to the list — a bare total offers no next
-    /// step.
+    /// "Analyze Disk Space" on the hardware page: open the disk analysis
+    /// tool — a whole page dedicated to answering "where did the space go",
+    /// with a treemap and drill-down navigation. The cleanup scan this used
+    /// to trigger answered a different question and left the user on the
+    /// item list with no overview.
     func analyzeDiskSpace() {
-        showsHardware = false
-        selectedCategory = nil
-        startScan()
+        showDiskAnalysis()
     }
 
     /// Opens the settings page from the sidebar, the ⌘, menu item, or the

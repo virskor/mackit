@@ -16,8 +16,9 @@ import SwiftUI
 ///   largest child is selected automatically so the treemap shows where the
 ///   space went without a second click.
 ///
-/// Measurements stream in: rows appear as their sizes land, so a 200 GB
-/// folder fills the list progressively instead of after a silent wait.
+/// The whole child listing is published up front — the user sees every row
+/// immediately (the 200 GB folder included) — and sizes stream in afterwards,
+/// biggest last, so no long silent wait precedes the first paint.
 struct DiskAnalysisView: View {
     @Environment(AppViewModel.self) private var vm
 
@@ -281,10 +282,12 @@ struct DiskAnalysisView: View {
         let model = vm.diskAnalysis
         if let entry = model.selectedEntry {
             if entry.isDirectory {
-                if entry.isSkipped && model.selectedChildren.isEmpty {
+                if entry.isSkipped && model.selectedChildren.isEmpty && !model.isMeasuringSelection {
                     // Skipped folders stay unmeasured until the user asks:
                     // measuring one pops the access dialog, and the whole
                     // point of skipping is that it never fires unprompted.
+                    // (While an explicit scan is in flight the progress bar
+                    // in the header carries the feedback instead.)
                     skippedPlaceholder(entry)
                 } else if entry.isUnreadable && model.selectedChildren.isEmpty {
                     selectionPlaceholder(unreadable: true)
