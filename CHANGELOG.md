@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-10-20
+
+A second cleanup feature aimed at everyday Mac users, plus a brand pass across the whole app.
+
+### Added
+
+- General cleanup module: a dedicated page (new sidebar row, directly under "All Items") with one big "cleanable files" number, rule rows grouped into system junk and browsing junk, each row showing its size and safety level (very clean / recommended / caution). Rows arrive pre-checked up to "recommended" — caution rows (Trash, Downloads installers, iOS backups) stay unchecked until the user opts in — and cleaning still goes through the confirmation sheet
+- New coverage under the general module: browser caches (Chrome family, Chromium, Edge, Brave, Arc, Opera, Firefox, QQ Browser), useless language files inside app bundles (`LanguageFileScanner` — only ever removes whole `.lproj` directories to keep code signatures valid, whitelisting Chinese in any variant, English and Base), and installers and archives in `~/Downloads` (`DownloadsScanner`)
+- App caches can now be swept without uninstalling: the residue scan splits an app's leftovers into regenerable junk (caches, HTTP storages, WebKit data) that belongs to the general module, while data (preferences, Application Support, containers, cookies) stays with the app in the uninstall flow, where deleting it is the user's explicit intent
+- The general cleanup's row selection can be remembered: when a curation differs from what the next scan would pre-check, the confirmation sheet asks whether to keep it (defaulted on), and later scans pre-check exactly those rows
+- Menu bar memory ranking: a quit button on each running app's row, with the warning drawn by the panel the moment the pointer reaches the controls
+- Settings: a menu bar logo switch
+- Lemon-style brand language across the app: the warm palette, the green call-to-action button with its press-scale response, the shared hero prompt, the gradient scan ring with its sweep arc, and the draw-in success mark — the welcome page and the general module's empty state now share one front-door composition
+- `Scripts/build-all.sh`: one-command release pipeline (tag, build, sign, notarize, DMG, appcast, GitHub release)
+
+### Changed
+
+- The two cleanup features are now fully disjoint: the catch-all rules that made browser and IDE caches count twice (`system.user-caches`, `system.container-caches`) are gone, redundant sibling rules (`system.diagnostic`, `sim.logs`, `ide.vscode-cacheddata`) removed, and discovery deduplicates by path so an app's log directory is listed once
+- General cleanup layout: the clean button moved into the page header beside the scan button (the header sits outside the scroll area so both stay reachable), the bottom-of-page button is gone, and the scan progress title is scoped per cleanup mode — the junk page no longer claims it is scanning caches
+- Rule rows adopt a right-hand layout: the total and the safety level share one baseline ("434.6 MB, very clean"), groups get their own symbols, and pill badges are replaced by tinted level text
+- Menu bar panel values are drawn smaller (16pt reclaimable size, 17pt CPU / memory / temperature) so the panel reads more compactly
+- Animations are one-shot or scan-bound — ambient loops cost real CPU in a hidden-title-bar window — and all honor Reduce Motion
+- Documentation and build scripts moved to English; the Chinese README was dropped in favour of the in-app language switch
+
 ## [1.0.2] - 2026-10-19
 
 ### Changed
