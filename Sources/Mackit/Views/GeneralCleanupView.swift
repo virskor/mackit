@@ -6,11 +6,12 @@ import SwiftUI
 ///
 /// Deliberately a separate page rather than more rows in the developer list:
 /// the two audiences share nothing, and mixing them makes each wade through
-/// categories that mean nothing to them. The layout follows Lemon's: one big
-/// "cleanable files" number with the scan and clean actions beside it, then
-/// groups of rule rows, each row showing its total and a safety level (very
-/// clean / recommended / caution). Rows arrive pre-checked up to
-/// "recommended"; caution rows stay unchecked until the user opts in, and
+/// categories that mean nothing to them. The layout follows Lemon's: before
+/// the first scan the whole page is one hero illustration and one call to
+/// action; after it, one big "cleanable files" number with the scan and clean
+/// actions beside it, then groups of rule rows, each row showing its total and
+/// a safety level (very clean / recommended / caution). Rows arrive pre-checked
+/// up to "recommended"; caution rows stay unchecked until the user opts in, and
 /// cleaning still goes through the confirmation sheet.
 struct GeneralCleanupView: View {
     @Environment(AppViewModel.self) private var vm
@@ -43,22 +44,13 @@ struct GeneralCleanupView: View {
 
     private var header: some View {
         HStack(alignment: .top, spacing: 14) {
-            IconBadge(
-                systemImage: "sparkles",
-                tint: .orange,
-                diameter: 46,
-                symbolSize: 22,
-                cornerRadius: 12,
-                fillOpacity: 0.14
-            )
-
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: L10n.tr("general.header.title"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
 
                 if vm.phase == .scanning {
-                    Text(verbatim: L10n.tr("scan.progress.title"))
+                    Text(verbatim: L10n.tr(vm.cleanupScope.scanProgressTitleKey))
                         .font(.system(size: 24, weight: .bold))
                     ProgressView(value: vm.progressFraction)
                         .progressViewStyle(.linear)
@@ -73,7 +65,7 @@ struct GeneralCleanupView: View {
                         .font(.system(size: 24, weight: .bold))
                 } else {
                     Text(verbatim: Formatters.bytes(vm.generalTotalSize))
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 30, weight: .bold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                 }
@@ -83,8 +75,25 @@ struct GeneralCleanupView: View {
 
             HStack(spacing: 8) {
                 rescanButton
-                if !vm.scopeSelectedItems.isEmpty {
-                    cleanButton
+                // Hidden while scanning: rows stream in and get pre-checked as
+                // the rules run, so a "Clean N kB" button would show a number
+                // that keeps changing and can't be acted on yet. Showing it
+                // disabled only produced a washed-out green blob.
+                if !vm.scopeSelectedItems.isEmpty && vm.phase != .scanning {
+                    BrandCTAButton(
+                        title: L10n.fmt("clean.buttonWithSize", Formatters.bytes(vm.scopeSelectedSize)),
+                        systemImage: "trash",
+                        compact: true
+                    ) {
+                        vm.requestClean()
+                    }
+                    .disabled(vm.isBusy)
+                    .help(L10n.fmt(
+                        vm.scopeSelectedItems.count == 1
+                            ? "clean.helpSelected.one"
+                            : "clean.helpSelected.other",
+                        vm.scopeSelectedItems.count
+                    ))
                 }
             }
         }
@@ -93,92 +102,87 @@ struct GeneralCleanupView: View {
         .padding(.bottom, 14)
     }
 
+    // Same metrics as the green "Clean" button beside it (see BrandCTAButton):
+    // a system small control next to it renders visibly shorter, which makes
+    // the header look misaligned. While scanning the label becomes "Stop" —
+    // the user can always cancel a long scan.
     private var rescanButton: some View {
-        Button {
+        BrandCTAButton(
+            title: vm.phase == .scanning
+                ? L10n.tr("toolbar.stopScan")
+                : L10n.tr("toolbar.rescan"),
+            systemImage: vm.phase == .scanning ? "stop.circle" : "arrow.clockwise",
+            style: .secondary,
+            compact: true,
+            glass: true
+        ) {
             if vm.phase == .scanning {
                 vm.cancelScan()
             } else {
                 vm.startScan()
             }
-        } label: {
-            Label(
-                vm.phase == .scanning
-                    ? L10n.tr("toolbar.stopScan")
-                    : L10n.tr("toolbar.rescan"),
-                systemImage: vm.phase == .scanning ? "stop.circle" : "arrow.clockwise"
-            )
         }
-        .controlSize(.small)
     }
 
-    /// The page's primary action: cleans the current selection (the rows the
-    /// user left checked), through the same confirmation sheet as the
-    /// developer list.
-    private var cleanButton: some View {
-        Button {
-            vm.requestClean()
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "trash")
-                    .font(.system(size: 11, weight: .semibold))
-                Text(verbatim: L10n.fmt("clean.buttonWithSize", Formatters.bytes(vm.scopeSelectedSize)))
-                    .font(.system(size: 12, weight: .semibold))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-            }
-            .padding(.horizontal, 12)
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.small)
-        .disabled(vm.isBusy)
-        .help(L10n.fmt("clean.helpSelected.other", vm.scopeSelectedItems.count))
-    }
-
-    /// Shown before the first scan: the whole page is one call to action.
+    /// Shown before the first scan: the whole page is one call to action, the
+    /// same hero composition as the developer module's welcome page — the
+    /// screen a first-time user of this module sees should feel like the
+    /// product's front door, not an empty state.
     private var startPrompt: some View {
-        VStack(spacing: 12) {
-            Text(verbatim: L10n.tr("welcome.title"))
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-            Button {
-                vm.startScan()
-            } label: {
-                Text(verbatim: L10n.tr("general.header.start"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
+        HeroPromptView(
+            title: L10n.tr("general.hero.title"),
+            message: L10n.tr("general.hero.message"),
+            actionTitle: L10n.tr("general.header.start"),
+            actionImage: "magnifyingglass"
+        ) {
+            vm.startScan()
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
     }
 
     // MARK: - Groups
 
     private func groupSection(_ group: AppViewModel.GeneralRuleGroupState) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Image(systemName: group.group.symbol)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(group.group.tint)
+            // The header is the group-level toggle: one click checks or
+            // unchecks every row in the group, with the same tri-state
+            // checkbox the rows use. Without it, curating a whole group means
+            // clicking each row, and "System Junk" has nine of them.
+            Button {
+                vm.setGroupSelected(group.group, selected: !group.isFullySelected)
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: group.isFullySelected
+                        ? "checkmark.circle.fill"
+                        : (group.isPartiallySelected ? "minus.circle.fill" : "circle"))
+                        .font(.system(size: 13))
+                        .foregroundStyle(group.isFullySelected || group.isPartiallySelected ? .green : .secondary)
+                        .frame(width: 18)
+                        .symbolEffect(.bounce, value: group.isFullySelected)
 
-                Text(verbatim: group.group.title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(group.group.tint)
+                    Image(systemName: group.group.symbol)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(group.group.tint)
 
-                Spacer(minLength: 8)
+                    Text(verbatim: group.group.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(group.group.tint)
 
-                Text(verbatim: L10n.fmt(
-                    "general.group.summary",
-                    Formatters.bytes(group.totalSize),
-                    Formatters.bytes(group.selectedSize)
-                ))
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+                    Spacer(minLength: 8)
+
+                    Text(verbatim: L10n.fmt(
+                        "general.group.summary",
+                        Formatters.bytes(group.totalSize),
+                        Formatters.bytes(group.selectedSize)
+                    ))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(RowPressStyle())
+            .help(L10n.tr("general.group.toggleHelp"))
 
             VStack(spacing: 0) {
                 ForEach(Array(group.rows.enumerated()), id: \.element.row.id) { index, rowState in
@@ -204,6 +208,9 @@ struct GeneralCleanupView: View {
                     .font(.system(size: 15))
                     .foregroundStyle(rowState.isFullySelected || rowState.isPartiallySelected ? .green : .secondary)
                     .frame(width: 18)
+                    // The checkmark bounces as it is checked — a toggle with no
+                    // motion makes the row feel like a label, not a control.
+                    .symbolEffect(.bounce, value: rowState.isFullySelected)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: rowState.row.title)
@@ -223,7 +230,9 @@ struct GeneralCleanupView: View {
             .padding(.vertical, 9)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        // RowPressStyle fully replaces the style (no .plain underneath): it
+        // draws no chrome of its own, only the press fill.
+        .buttonStyle(RowPressStyle())
     }
 
     /// The row's right side, one baseline like Lemon's: the total in primary
@@ -266,5 +275,20 @@ struct GeneralCleanupView: View {
         case .review: return .orange
         case .caution: return .red
         }
+    }
+}
+
+/// Press feedback for the rule rows: a soft fill that fades in while held.
+/// `.plain` rows give no press response on macOS, which makes the list feel
+/// dead; a scale-down would be wrong here — rows are wide, and scaling a wide
+/// row looks broken.
+private struct RowPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                configuration.isPressed ? Color.primary.opacity(0.06) : .clear,
+                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+            )
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

@@ -1,6 +1,9 @@
 import SwiftUI
 
 /// The result summary after cleaning completes.
+///
+/// The success mark draws itself in on appear — the cleanest moment in the
+/// app's flow, and the one place a small celebration earns its keep.
 struct CleanResultView: View {
     @Environment(AppViewModel.self) private var vm
 
@@ -11,12 +14,16 @@ struct CleanResultView: View {
             Spacer()
 
             VStack(spacing: 20) {
-                IconBadge(
-                    systemImage: failures.isEmpty ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
-                    tint: failures.isEmpty ? .green : .orange,
-                    diameter: 64,
-                    symbolSize: 28
-                )
+                if failures.isEmpty {
+                    SuccessMark(diameter: 72)
+                } else {
+                    IconBadge(
+                        systemImage: "exclamationmark.circle.fill",
+                        tint: .orange,
+                        diameter: 64,
+                        symbolSize: 28
+                    )
+                }
 
                 VStack(spacing: 6) {
                     Text(verbatim: failures.isEmpty
@@ -64,7 +71,7 @@ struct CleanResultView: View {
                 }
 
                 HStack(spacing: 10) {
-                    ProminentActionButton(title: L10n.tr("common.done")) {
+                    BrandCTAButton(title: L10n.tr("common.done"), keyboardShortcut: .defaultAction) {
                         vm.dismissCleanResult()
                     }
 

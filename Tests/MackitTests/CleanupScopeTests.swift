@@ -216,6 +216,74 @@ struct CleanupScopeTests {
         #expect(vm.selection.count == 2)
     }
 
+    private func generalGroup(_ group: GeneralCleanGroup, in vm: AppViewModel) -> AppViewModel.GeneralRuleGroupState {
+        vm.generalCleanGroups.first { $0.group == group }!
+    }
+
+    /// The group header is the toggle for all of the group's rows at once:
+    /// every item of every row moves — including the aggregated language-file
+    /// entries — and the other group is untouched.
+    @Test func groupToggleChecksEveryRowOfTheGroup() {
+        let vm = makeVM()
+        vm.apply(.discovered([
+            item("system.logs", "Foo.log", category: .system, risk: .safe, size: 100),
+            item("system.crashreporter", "Foo.crash", category: .system, risk: .safe, size: 60),
+            item("language.lproj", "ja.lproj", category: .language, risk: .review, size: 20),
+            item("browser.chrome-cache", "chromecache", category: .browser, risk: .safe, size: 200),
+        ]))
+
+        vm.setGroupSelected(.system, selected: false)
+        #expect(Set(vm.selection) == ["browser.chrome-cache::/tmp/chromecache"],
+                "Unchecking the system group only moves that group's rows")
+
+        vm.setGroupSelected(.system, selected: true)
+        #expect(vm.selection.count == 4, "Re-checking restores the whole group, language entries included")
+
+        vm.setGroupSelected(.browser, selected: false)
+        #expect(vm.selection.count == 3, "The browser group toggles independently")
+    }
+
+    /// The group header's checkbox mirrors the rows: filled when every row
+    /// with findings is checked, half-filled while any row is partially
+    /// curated, empty once nothing in the group is selected.
+    @Test func groupCheckboxReflectsPartialSelection() {
+        let vm = makeVM()
+        vm.apply(.discovered([
+            item("system.logs", "Foo.log", category: .system, risk: .safe, size: 100),
+            item("system.crashreporter", "Foo.crash", category: .system, risk: .safe, size: 60),
+        ]))
+
+        #expect(generalGroup(.system, in: vm).isFullySelected, "Fully checked under the default pre-check")
+        #expect(!generalGroup(.system, in: vm).isPartiallySelected)
+
+        let crashRow = GeneralCleanLayout.rows(of: .system).first { $0.id == "system.crashreporter" }!
+        vm.setRowSelected(crashRow, selected: false)
+        #expect(!generalGroup(.system, in: vm).isFullySelected)
+        #expect(generalGroup(.system, in: vm).isPartiallySelected, "Half-filled while one row is unchecked")
+
+        vm.setGroupSelected(.system, selected: false)
+        #expect(!generalGroup(.system, in: vm).isFullySelected)
+        #expect(!generalGroup(.system, in: vm).isPartiallySelected, "Empty once nothing is selected")
+    }
+
+    /// A group whose rows found nothing has nothing to toggle: it reads
+    /// unselected rather than "all checked", and the toggle changes nothing.
+    @Test func groupWithNoFindingsReadsUnselected() {
+        let vm = makeVM()
+        vm.apply(.discovered([
+            item("browser.chrome-cache", "chromecache", category: .browser, risk: .safe, size: 200),
+        ]))
+
+        let system = generalGroup(.system, in: vm)
+        #expect(!system.isFullySelected, "A group with no findings is not selected")
+        #expect(!system.isPartiallySelected)
+        #expect(system.rows.allSatisfy { $0.items.isEmpty })
+
+        vm.setGroupSelected(.system, selected: true)
+        #expect(Set(vm.selection) == ["browser.chrome-cache::/tmp/chromecache"],
+                "Toggling an empty group is a no-op")
+    }
+
     /// The same path targeted by two rules — an app's log directory is both a
     /// residue entry of the app scan and a child of the user-logs rule — must
     /// be listed once, or the same bytes count twice.

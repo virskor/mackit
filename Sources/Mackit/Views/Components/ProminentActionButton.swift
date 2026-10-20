@@ -2,8 +2,11 @@ import SwiftUI
 
 /// Large primary action button: borderedProminent + large + default keyboard shortcut.
 ///
-/// The confirmation panel and the results page use an identical primary button style,
-/// differing only in text and tint.
+/// The confirmation panel's primary action. The results page and the general
+/// module's call to action use `BrandCTAButton` instead, which carries the
+/// brand green; this one keeps the window accent, because the confirmation's
+/// primary action turns red for the destructive cases (caution items, app
+/// uninstall).
 struct ProminentActionButton: View {
     let title: String
     var tint: Color = .accentColor

@@ -7086,6 +7086,28 @@
         }
       }
     },
+    "scan.progress.title.general": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在扫描垃圾…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning Junk…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在掃描垃圾…"
+          }
+        }
+      }
+    },
     "scan.progress.cancel": {
       "localizations": {
         "zh-Hans": {
@@ -10545,19 +10567,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "常规清理"
+            "value": "垃圾清理"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "General"
+            "value": "Junk Cleanup"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "一般清理"
+            "value": "垃圾清理"
           }
         }
       }
@@ -10589,19 +10611,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "常规清理"
+            "value": "垃圾清理"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "General Cleanup"
+            "value": "Junk Cleanup"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "一般清理"
+            "value": "垃圾清理"
           }
         }
       }
@@ -10875,19 +10897,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "下次扫描常规清理时，按照本次的勾选自动选择相同的清理项。"
+            "value": "下次扫描垃圾清理时，按照本次的勾选自动选择相同的清理项。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Next time the general cleanup is scanned, the same rows will be pre-checked."
+            "value": "Next time the junk cleanup is scanned, the same rows will be pre-checked."
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "下次掃描一般清理時，按照本次的勾選自動選擇相同的清理項。"
+            "value": "下次掃描垃圾清理時，按照本次的勾選自動選擇相同的清理項。"
           }
         }
       }
@@ -10932,6 +10954,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "，"
+          }
+        }
+      }
+    },
+    "general.hero.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一键扫描，清爽加倍"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One tap, a cleaner Mac"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一鍵掃描，清爽加倍"
+          }
+        }
+      }
+    },
+    "general.hero.message": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览器缓存、无用的语言文件、下载目录里的安装包，一次扫清"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browser caches, unused language files and installers in Downloads — one scan covers them all."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "瀏覽器快取、無用的語言檔案、下載目錄裡的安裝包，一次掃清"
+          }
+        }
+      }
+    },
+    "general.group.toggleHelp": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按可全选或取消本组所有项目"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click to select or deselect every item in this group"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點按可全選或取消本組所有項目"
           }
         }
       }

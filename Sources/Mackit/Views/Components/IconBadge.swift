@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Large icon badge on a tinted background, used on the welcome page, the confirmation
-/// panel, the results page, and the About page.
+/// Large icon badge on a tinted circle, used on the confirmation panel, the
+/// results page, the About page and the menu bar panel.
 struct IconBadge: View {
     let systemImage: String
     /// Brand icon (full-color PNG, see BrandIcon); pass it to use it, and fall back to an SF Symbol when nil.

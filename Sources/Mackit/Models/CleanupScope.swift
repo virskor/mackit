@@ -29,6 +29,17 @@ enum CleanupScope: String, CaseIterable, Identifiable, Sendable {
         L10n.tr("\(key).summary")
     }
 
+    /// Localization key of the "scanning…" title shown while a scan runs.
+    /// The developer mode sweeps toolchain caches and the general mode sweeps
+    /// junk, so each screen must announce its own subject rather than share
+    /// one wording.
+    var scanProgressTitleKey: String {
+        switch self {
+        case .developer: return "scan.progress.title"
+        case .general: return "scan.progress.title.general"
+        }
+    }
+
     var symbol: String {
         switch self {
         case .developer: return "chevron.left.forwardslash.chevron.right"

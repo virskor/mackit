@@ -15,7 +15,7 @@ struct ScanBannerView: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(L10n.tr("scan.progress.title"))
+                    Text(L10n.tr(vm.cleanupScope.scanProgressTitleKey))
                         .font(.system(size: 12, weight: .semibold))
                     Text(verbatim: vm.progressLabel)
                         .font(.system(size: 11))

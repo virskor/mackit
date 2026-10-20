@@ -817,6 +817,17 @@ final class AppViewModel {
         let selectedSize: Int64
 
         var id: String { group.rawValue }
+
+        /// Group-level selection state for the header's tri-state checkbox.
+        /// Rows with nothing found don't count as selected, so a group whose
+        /// rows are all empty reads as unselected rather than "all checked".
+        var isFullySelected: Bool {
+            rows.contains { !$0.items.isEmpty } && rows.allSatisfy { $0.items.isEmpty || $0.isFullySelected }
+        }
+
+        var isPartiallySelected: Bool {
+            !isFullySelected && rows.contains { $0.selectedCount > 0 }
+        }
     }
 
     /// The general cleanup page's content: every layout row, with the items
@@ -863,12 +874,25 @@ final class AppViewModel {
         }
     }
 
-    /// Checks or unchecks every item of a general-page row at once. One
-    /// selection write-back, not one per item: the row can carry hundreds of
-    /// language-file entries.
+    /// Checks or unchecks every item of a general-page row at once.
     func setRowSelected(_ row: GeneralRuleRow, selected: Bool) {
+        setSelected(ruleIDs: Set(row.ruleIDs), selected: selected)
+    }
+
+    /// Checks or unchecks a whole general-page group at once — the group
+    /// header is the toggle, for when the user wants all of "System Junk"
+    /// without clicking each row. A group whose rows found nothing has no
+    /// items to move, so the call is a no-op there.
+    func setGroupSelected(_ group: GeneralCleanGroup, selected: Bool) {
+        setSelected(ruleIDs: Set(GeneralCleanLayout.rows(of: group).flatMap(\.ruleIDs)), selected: selected)
+    }
+
+    /// Checks or unchecks every item whose rule is in `ruleIDs`. One selection
+    /// write-back for the whole set, not one per item: a row can carry
+    /// hundreds of language-file entries.
+    private func setSelected(ruleIDs: Set<String>, selected: Bool) {
         var changed = false
-        for item in items where row.ruleIDs.contains(item.ruleID) {
+        for item in items where ruleIDs.contains(item.ruleID) {
             if selected {
                 if selection.insert(item.id).inserted { changed = true }
             } else if selection.remove(item.id) != nil {

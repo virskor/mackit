@@ -52,7 +52,7 @@ struct LocalizationTests {
             "toolbar.rescan", "toolbar.stopScan", "toolbar.sort",
             "toolbar.searchPlaceholder", "clean.button", "clean.confirm.title",
             "clean.confirm.cleanNow", "clean.progress.title", "clean.result.done",
-            "scan.progress.title", "scan.progress.cancel", "scan.enumerating", "scan.finished",
+            "scan.progress.title", "scan.progress.title.general", "scan.progress.cancel", "scan.enumerating", "scan.finished",
             "welcome.title", "welcome.start", "menubar.quit", "panel.reclaimable",
             "settings.tab.general", "settings.launchAtLogin", "settings.moveToTrash",
             "settings.autoSelect.none", "settings.autoSelectHint.none",
@@ -96,6 +96,18 @@ struct LocalizationTests {
         for key in keys {
             #expect(!isFallback(L10n.tr(key), key: key), "\(key) 未本地化")
         }
+    }
+
+    /// The two cleanup modes announce different subjects while scanning: the
+    /// developer module scans toolchain caches, the general module sweeps
+    /// junk. They once shared one string, so the junk page claimed it was
+    /// scanning caches.
+    @Test func scanProgressTitleIsScopedPerMode() {
+        let developer = L10n.tr(CleanupScope.developer.scanProgressTitleKey)
+        let general = L10n.tr(CleanupScope.general.scanProgressTitleKey)
+        #expect(!isFallback(developer, key: CleanupScope.developer.scanProgressTitleKey))
+        #expect(!isFallback(general, key: CleanupScope.general.scanProgressTitleKey))
+        #expect(developer != general)
     }
 
     @Test func formatStringsSubstituteArguments() {
