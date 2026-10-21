@@ -123,6 +123,40 @@ struct FileSystemTests {
         #expect(entries.reduce(0) { $0 + $1.allocatedSize } >= Int64(count) * 4096)
     }
 
+    /// The joined path a `DirectoryEntry` reports must be the same path the
+    /// entry's URL would give — the measurement switched from URLs to strings,
+    /// and a difference here would silently change which node a path-keyed
+    /// lookup (selection, skip set, graft) resolves to.
+    @Test func entryPathsMatchTheirURLs() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-paths-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        // Names that force the interesting cases: a space and a CJK name have to
+        // survive the round trip, and the plain one is the common case.
+        for name in ["plain.bin", "with space.bin", "中文目录"] {
+            try Data(repeating: 0, count: 8).write(to: base.appendingPathComponent(name))
+        }
+
+        let entries = try #require(FileSystem.entries(of: base.path))
+        for entry in entries {
+            #expect(entry.path == entry.url.path, "\(entry.name): \(entry.path) vs \(entry.url.path)")
+            #expect(entry.path == base.appendingPathComponent(entry.name).path)
+        }
+    }
+
+    /// The joining helpers both special-case the volume root; the disk analysis
+    /// keeps the root's own entry, so a doubled separator there would make it
+    /// unfindable by its own path.
+    @Test func pathHelpersHandleTheVolumeRoot() {
+        #expect(FileSystem.joined("Users", in: "/") == "/Users")
+        #expect(FileSystem.joined("Library", in: "/System") == "/System/Library")
+        #expect(FileSystem.lastComponent(of: "/System/Library") == "Library")
+        #expect(FileSystem.lastComponent(of: "/") == "/", "the root has no last component")
+        #expect(FileSystem.lastComponent(of: "relative") == "relative")
+    }
+
     /// Glob expansion also skips com.apple.*: container cache rules rely on glob
     /// expansion, and without the skip it would recurse into system apps' sandbox containers.
     @Test func expandSkipsSystemDataEntries() throws {

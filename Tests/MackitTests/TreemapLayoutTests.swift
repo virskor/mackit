@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -118,5 +119,161 @@ struct TreemapLayoutTests {
             #expect(rect.minX >= -0.5 && rect.minY >= -0.5, "\(id) outside the top-left")
             #expect(rect.maxX <= 800.5 && rect.maxY <= 600.5, "\(id) outside the bottom-right")
         }
+    }
+
+    // MARK: - Tail aggregation
+
+    /// 300×200 with a 2400pt² floor: anything under 4% of the area is folded.
+    private let floor: CGFloat = 2_400
+
+    /// Eight 1% children cannot carry a label, so they must not each get a
+    /// fragment of the corner: they become one tile, and the big child keeps
+    /// its own.
+    @Test func tailIsFoldedIntoOneAggregateTile() {
+        var items: [Item] = [("big", 92)]
+        items.append(contentsOf: (1...8).map { (id: "t\($0)", size: 1) })
+        let map = TreemapLayout.layout(items: items, in: container, minTileArea: floor)
+
+        #expect(map.rects.keys.sorted() == ["big"])
+        #expect(map.overflow != nil)
+        #expect(map.overflow?.ids.count == 8)
+        #expect(map.overflow?.size == 8)
+        #expect(map.overflow?.ids.contains("big") == false)
+        #expect(map.totalSize == 100)
+    }
+
+    /// Folding redistributes area, it does not create or destroy it: the big
+    /// tile and the aggregate must still cover the container in proportion.
+    @Test func foldedTailKeepsAreasProportional() {
+        var items: [Item] = [("big", 92)]
+        items.append(contentsOf: (1...8).map { (id: "t\($0)", size: 1) })
+        let map = TreemapLayout.layout(items: items, in: container, minTileArea: floor)
+        let containerArea = 300.0 * 200.0
+
+        let bigArea = (map.rects["big"].map { $0.width * $0.height }) ?? 0
+        let tailArea = (map.overflow.map { $0.rect.width * $0.rect.height }) ?? 0
+        #expect(abs(bigArea - 0.92 * containerArea) / containerArea < 0.02)
+        #expect(abs(tailArea - 0.08 * containerArea) / containerArea < 0.02)
+        #expect(abs(bigArea + tailArea - containerArea) / containerArea < 0.02)
+    }
+
+    /// One small child is not noise: a "其余 1 项" tile would be a label the
+    /// user cannot act on, so it keeps its own rect.
+    @Test func singleSmallItemIsNotFolded() {
+        let items: [Item] = [("big", 97), ("small", 3)]
+        let map = TreemapLayout.layout(items: items, in: container, minTileArea: floor)
+        #expect(map.overflow == nil)
+        #expect(map.rects.keys.sorted() == ["big", "small"])
+    }
+
+    @Test func childrenAboveTheFloorKeepTheirOwnTile() {
+        let items: [Item] = [("a", 25), ("b", 25), ("c", 25), ("d", 25)]
+        let map = TreemapLayout.layout(items: items, in: container, minTileArea: floor)
+        #expect(map.overflow == nil)
+        #expect(map.rects.count == 4)
+    }
+
+    /// A window too small to hold even one readable tile collapses the whole
+    /// map into the aggregate: an honest "18 项, go look at the list" beats a
+    /// grid of unreadable slivers.
+    @Test func containerTooSmallForAnyTileFoldsEverything() {
+        let items: [Item] = (1...10).map { (id: "i\($0)", size: 10) }
+        let map = TreemapLayout.layout(
+            items: items,
+            in: CGSize(width: 100, height: 100),
+            minTileArea: floor
+        )
+        #expect(map.rects.isEmpty)
+        #expect(map.overflow?.ids.count == 10)
+        #expect(map.overflow?.rect == CGRect(x: 0, y: 0, width: 100, height: 100))
+    }
+
+    /// The aggregate must behave like a tile of its size: inside the container,
+    /// and clear of every kept tile.
+    @Test func aggregateDoesNotOverlapKeptTiles() {
+        let items: [Item] = [("big", 600), ("mid", 200), ("mid2", 120)]
+            + (1...12).map { (id: "t\($0)", size: Int64($0)) }
+        let map = TreemapLayout.layout(
+            items: items,
+            in: CGSize(width: 480, height: 320),
+            minTileArea: floor
+        )
+        guard let aggregate = map.overflow?.rect else {
+            Issue.record("expected a folded tail")
+            return
+        }
+        #expect(aggregate.minX >= -0.5 && aggregate.minY >= -0.5)
+        #expect(aggregate.maxX <= 480.5 && aggregate.maxY <= 320.5)
+        for (id, rect) in map.rects {
+            let overlap = aggregate.intersection(rect)
+            let area = max(0, overlap.width) * max(0, overlap.height)
+            #expect(area < 0.5, "aggregate overlaps \(id) by \(area)")
+        }
+    }
+}
+
+/// The label rule (`TreemapLabel`) has to agree with the fold threshold
+/// (`TreemapLayout.readableArea`): one decides which children get a tile, the
+/// other decides what that tile can say. Both are pure, so both are pinned
+/// here — including the widths, measured against the real system font, that
+/// the previous fixed-pixel thresholds got wrong.
+struct TreemapLabelTests {
+    @Test func boundaryTilesGetTheLabelTheyCanHold() {
+        #expect(TreemapLabel.room(for: CGSize(width: 96, height: 64)) == .full)
+        #expect(TreemapLabel.room(for: CGSize(width: 95, height: 64)) == .name)
+        // Height alone is not enough for the third line.
+        #expect(TreemapLabel.room(for: CGSize(width: 200, height: 63)) == .name)
+        #expect(TreemapLabel.room(for: CGSize(width: 46, height: 20)) == .name)
+        #expect(TreemapLabel.room(for: CGSize(width: 45, height: 20)) == .none)
+        #expect(TreemapLabel.room(for: CGSize(width: 200, height: 19)) == .none)
+    }
+
+    /// Growing a tile must never take a label away — the layout hands out
+    /// arbitrary rects and a non-monotonic rule would make a resized window
+    /// flip labels on and off.
+    @Test func roomNeverShrinksAsTheTileGrows() {
+        let order: [TreemapLabel.Room] = [.none, .name, .full]
+        func rank(_ room: TreemapLabel.Room) -> Int { order.firstIndex(of: room) ?? 0 }
+
+        var widths = Array(stride(from: CGFloat(4), through: 220, by: 1))
+        widths += [46, 96, 95, 200]
+        for width in widths {
+            var previous = 0
+            for height in stride(from: CGFloat(4), through: 220, by: 1) {
+                let current = rank(TreemapLabel.room(for: CGSize(width: width, height: height)))
+                #expect(current >= previous, "\(width)×\(height) lost its label as it grew")
+                previous = current
+            }
+        }
+    }
+
+    /// The `.full` label's second line is the widest thing a tile draws:
+    /// "999.99GB·100%" at 10pt. If it does not fit the 84pt of text a `.full`
+    /// tile promises, every large tile truncates its size and share. The
+    /// separator carries no spaces for exactly this reason — the spaced form
+    /// needs ~87pt, which the first version of this line silently overflowed.
+    @Test func fullLabelLineFitsTheWidthItPromises() {
+        let textWidth = 96 - TreemapLabel.inset
+        let line = "999.99GB·100%"
+        let measured = (line as NSString).size(withAttributes: [
+            .font: NSFont.systemFont(ofSize: 10)
+        ]).width
+        #expect(measured <= textWidth, "the size/share line needs \(measured)pt, the tile offers \(textWidth)pt")
+
+        let spaced = ("999.99GB · 100%" as NSString).size(withAttributes: [
+            .font: NSFont.systemFont(ofSize: 10)
+        ]).width
+        #expect(spaced > textWidth, "the spaced form must stay out of the tile — it does not fit")
+    }
+
+    /// The `.name` minimum must still show something: at least two glyphs plus
+    /// the ellipsis, or the tile holds a "…" and nothing else.
+    @Test func nameLabelKeepsAFewGlyphsAtItsMinimumWidth() {
+        let textWidth = 46 - TreemapLabel.inset
+        let probe = "元宝…"
+        let measured = (probe as NSString).size(withAttributes: [
+            .font: NSFont.systemFont(ofSize: 11)
+        ]).width
+        #expect(measured <= textWidth, "\(probe) needs \(measured)pt, the tile offers \(textWidth)pt")
     }
 }

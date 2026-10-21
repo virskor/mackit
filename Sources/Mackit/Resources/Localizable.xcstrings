@@ -12212,24 +12212,90 @@
         }
       }
     },
-    "diskAnalysis.tooManyForMap": {
+    "diskAnalysis.others.one": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "项目过多，已改用列表显示"
+            "value": "其余 %lld 项"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Too many items to map — showing a list instead"
+            "value": "%lld other item"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "項目過多，已改用列表顯示"
+            "value": "其餘 %lld 項"
+          }
+        }
+      }
+    },
+    "diskAnalysis.others.other": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其余 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld other items"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其餘 %lld 項"
+          }
+        }
+      }
+    },
+    "diskAnalysis.others.enter.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单击进入文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click to open this folder"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按一下進入資料夾"
+          }
+        }
+      }
+    },
+    "diskAnalysis.others.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看这些小项目"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show these smaller items"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檢視這些小項目"
           }
         }
       }

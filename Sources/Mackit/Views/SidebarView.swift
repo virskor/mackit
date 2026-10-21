@@ -100,6 +100,13 @@ struct SidebarView: View {
     /// Same pattern as the general cleanup and hardware rows (button +
     /// listRowBackground), without count and size — the page reports its own
     /// totals.
+    ///
+    /// A measurement keeps running while the user is on another page, so the
+    /// row carries a spinner: without it a background scan is invisible, and
+    /// "is it still going?" becomes a guess. Only `isScanning` is read here —
+    /// deliberately not the scanned-directory count, which changes several
+    /// times a second and would re-render the whole sidebar for a number the
+    /// row does not show.
     private var diskAnalysisRow: some View {
         Button {
             vm.showDiskAnalysis()
@@ -110,6 +117,11 @@ struct SidebarView: View {
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
                 Spacer(minLength: 4)
+                if vm.diskAnalysis.isScanning {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .help(L10n.tr("diskAnalysis.scan.title"))
+                }
             }
             .padding(.vertical, 3)
             .contentShape(Rectangle())

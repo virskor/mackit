@@ -31,15 +31,6 @@ import SwiftUI
 struct DiskAnalysisView: View {
     @Environment(AppViewModel.self) private var vm
 
-    /// How many children the treemap will draw before the detail column
-    /// switches to the list. The card is a few hundred thousand square points,
-    /// which comfortably maps a home folder's ~140 children; a frameworks
-    /// folder's 340 leaves the small ones as slivers no mouse can hit and the
-    /// map reads as noise rather than as data. The list — every child with its
-    /// size, scrollable — is the honest answer there, and the note in the
-    /// detail column says why the map is not there.
-    private static let treemapItemLimit = 150
-
     var body: some View {
         let model = vm.diskAnalysis
         return VStack(spacing: 0) {
@@ -515,7 +506,7 @@ struct DiskAnalysisView: View {
                     )
                 } else if entry.children.isEmpty {
                     selectionPlaceholder(unreadable: false)
-                } else if model.visualizationMode && entry.children.count <= Self.treemapItemLimit {
+                } else if model.visualizationMode {
                     if entry.children.contains(where: { $0.size > 0 }) {
                         TreemapView(
                             entries: entry.children,
@@ -529,24 +520,8 @@ struct DiskAnalysisView: View {
                         selectionPlaceholder(unreadable: false)
                     }
                 } else {
-                    // Either the toggle is off, or the folder holds more
-                    // children than the card can draw at a readable size: past
-                    // that the tail degenerates into a field of unclickable
-                    // slivers (a frameworks folder, a node_modules), which
-                    // reads as broken rather than as data. The list — every
-                    // row readable, scrollable — is the honest answer, and the
-                    // note says why the map is not there.
-                    VStack(spacing: 0) {
-                        if model.visualizationMode {
-                            Text(verbatim: L10n.tr("diskAnalysis.tooManyForMap"))
-                                .font(.system(size: 11))
-                                .foregroundStyle(.tertiary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 6)
-                        }
-                        entryList(entry.children)
-                    }
+                    // The toggle is off: every child as a row, no map.
+                    entryList(entry.children)
                 }
             } else {
                 fileInfo(entry)
@@ -753,56 +728,40 @@ struct DiskAnalysisView: View {
 
 /// The treemap: the selected folder's children as area-proportional tiles.
 ///
-/// Layout is a pure function (`TreemapLayout`); this only renders the rects
-/// it returns. Tiles too small to carry a label render bare — a directory can
-/// hold hundreds of children, and label collision would be worse than a
-/// blank tile.
+/// Layout is a pure function (`TreemapLayout`); this only renders the result.
+/// Three decisions keep a folder with hundreds of children readable:
+/// - the unreadable tail — every child whose share of the card is under
+///   `TreemapLayout.readableArea` — is folded into one "其余 N 项" tile, so the
+///   corner is a labelled block instead of a field of fragments, and its
+///   popover still lists every merged child;
+/// - a tile's label is measured against the space it actually has, so a name is
+///   drawn whole, truncated once, or not at all — never wrapped mid-word;
+/// - hovering a tile too small to read floats its name, size and share next to
+///   it, without touching the layout.
 private struct TreemapView: View {
     let entries: [DiskEntry]
     let icon: (String) -> NSImage
     let onEnter: (DiskEntry) -> Void
     let onReveal: (DiskEntry) -> Void
 
-    /// Which tile is highlighted. Local to the view on purpose: a tile is a
-    /// *grandchild* of the browsed directory (the treemap shows the selected
-    /// child's children), so it cannot become the model's selection — that
-    /// would re-root the treemap. Clicking highlights, double-clicking enters.
-    @State private var selectedID: String?
-
     var body: some View {
         GeometryReader { geometry in
-            let rects = TreemapLayout.layout(
+            // Laid out here, above the canvas, rather than inside it: hovering
+            // changes the canvas's state, and a body that owned the layout
+            // would re-squarify a thousand children on every pointer move.
+            let map = TreemapLayout.layout(
                 items: entries.map { (id: $0.id, size: $0.size) },
-                in: geometry.size
+                in: geometry.size,
+                minTileArea: TreemapLayout.readableArea
             )
-            // A tile this small is invisible and unclickable; skipping them
-            // keeps a directory with thousands of children (node_modules,
-            // caches) from building thousands of views for nothing.
-            let visibleRects = rects.filter { $0.value.width >= 2 && $0.value.height >= 2 }
-            ZStack(alignment: .topLeading) {
-                ForEach(entries) { entry in
-                    if let rect = visibleRects[entry.id] {
-                        TreemapTile(
-                            entry: entry,
-                            icon: icon(entry.path),
-                            isSelected: entry.id == selectedID,
-                            onSelect: { selectedID = entry.id },
-                            onEnter: { onEnter(entry) },
-                            onReveal: { onReveal(entry) }
-                        )
-                        .frame(width: rect.width, height: rect.height)
-                        .position(x: rect.midX, y: rect.midY)
-                        // Only folders can be entered, so only they advertise
-                        // it. The rows carry a chevron for the same affordance;
-                        // a treemap tile has no room for one, and the old
-                        // "Reveal in Finder" tip described the context menu's
-                        // action, not what a click does.
-                        .help(entry.isDirectory
-                            ? L10n.tr("diskAnalysis.enter.help")
-                            : L10n.tr("diskAnalysis.select.help"))
-                    }
-                }
-            }
+            TreemapCanvas(
+                entries: entries,
+                map: map,
+                size: geometry.size,
+                icon: icon,
+                onEnter: onEnter,
+                onReveal: onReveal
+            )
         }
         .padding(10)
         .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -811,27 +770,328 @@ private struct TreemapView: View {
     }
 }
 
-/// One treemap tile: rounded fill with a 2pt inset (the gap between tiles),
-/// carrying the folder icon, name and size when there is room for them.
-private struct TreemapTile: View {
+/// The tiles, plus the interaction state they need: selection, hover, and the
+/// popover that opens from the "others" tile.
+///
+/// The layout arrives as a value from `TreemapView`, so nothing here recomputes
+/// it — a pointer crossing the card only re-renders rects it was already given.
+private struct TreemapCanvas: View {
+    let entries: [DiskEntry]
+    let map: TreemapLayout.Map
+    let size: CGSize
+    let icon: (String) -> NSImage
+    let onEnter: (DiskEntry) -> Void
+    let onReveal: (DiskEntry) -> Void
+
+    /// Which tile is highlighted, and which one the floating label belongs to.
+    ///
+    /// Local state on purpose: a tile is a *grandchild* of the browsed
+    /// directory (the treemap shows the selected child's children), so it
+    /// cannot become the model's selection — that would re-root the treemap.
+    @State private var selectedID: String?
+    @State private var hovered: Hover?
+    @State private var showsOverflow = false
+
+    /// The hovered tile. Only the entry is kept: the rect is looked up in the
+    /// current map when the label is drawn, because the entries and the card
+    /// size both change underneath it.
+    private struct Hover {
+        let entry: DiskEntry
+    }
+
+    /// Fixed so the label's position can be clamped without measuring it: a
+    /// hover label that ran off the card's edge would be unreadable exactly
+    /// where the small tiles live.
+    private static let labelWidth: CGFloat = 240
+
+    /// Height of one row in the "others" popover — 30pt of content plus 2pt of
+    /// padding above and below. Shared with the popover's height arithmetic so
+    /// the last row is never clipped by a scrollbar it did not need.
+    private static let overflowRowHeight: CGFloat = 34
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(entries) { entry in
+                // A tile this small is invisible and unclickable; skipping them
+                // keeps a directory with thousands of children from building
+                // thousands of views for nothing. Anything that would land here
+                // is already folded into the aggregate tile, apart from a
+                // single straggler.
+                if let rect = map.rects[entry.id], rect.width >= 2, rect.height >= 2 {
+                    TreemapTile(
+                        entry: entry,
+                        icon: icon(entry.path),
+                        share: share(of: entry),
+                        isSelected: entry.id == selectedID,
+                        onSelect: { selectedID = entry.id },
+                        onEnter: { onEnter(entry) },
+                        onReveal: { onReveal(entry) },
+                        onHover: { updateHover($0, entry: entry, rect: rect) }
+                    )
+                    .frame(width: rect.width, height: rect.height)
+                    .position(x: rect.midX, y: rect.midY)
+                    // Only folders can be entered, so only they advertise it.
+                    // The rows carry a chevron for the same affordance; a
+                    // treemap tile has no room for one, and the old "Reveal in
+                    // Finder" tip described the context menu's action, not what
+                    // a click does.
+                    .help(entry.isDirectory
+                        ? L10n.tr("diskAnalysis.enter.help")
+                        : L10n.tr("diskAnalysis.select.help"))
+                }
+            }
+
+            if let overflow = map.overflow {
+                overflowTile(overflow)
+            }
+
+            // Anchored on the rect the *current* map gives this entry, not on
+            // the one recorded at hover time: drilling down replaces every
+            // tile, and a label pinned to a stale rect would hang over the new
+            // map until the pointer moved again.
+            if let hovered, let rect = map.rects[hovered.entry.id] {
+                floatingLabel(for: hovered.entry, rect: rect)
+            }
+        }
+    }
+
+    // MARK: - Tiles
+
+    private func share(of entry: DiskEntry) -> Double {
+        guard map.totalSize > 0 else { return 0 }
+        return Double(max(0, entry.size)) / Double(map.totalSize)
+    }
+
+    /// Hover bookkeeping. Entering a tile too small to read floats a label;
+    /// leaving clears it, but only for the tile that owns it — the exit event
+    /// for the old tile arrives after the entry event for the new one.
+    private func updateHover(_ inside: Bool, entry: DiskEntry, rect: CGRect) {
+        if inside, TreemapLabel.room(for: rect.size) != .full {
+            hovered = Hover(entry: entry)
+        } else if hovered?.entry.id == entry.id {
+            hovered = nil
+        }
+    }
+
+    /// The floating name/size/share card for a tile whose own label is cut
+    /// short — a `.name` tile carries no size or share at all, so this is the
+    /// only place the small tiles can report them. Above the tile, or below it
+    /// when the tile sits on the top edge.
+    private func floatingLabel(for entry: DiskEntry, rect: CGRect) -> some View {
+        let halfWidth = Self.labelWidth / 2
+        let x = min(
+            max(rect.midX, halfWidth + 4),
+            max(halfWidth + 4, size.width - halfWidth - 4)
+        )
+        let y = rect.minY > 52 ? rect.minY - 30 : rect.maxY + 30
+
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: entry.name)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Text(verbatim: "\(Formatters.compactBytes(entry.size)) · \(Formatters.percent(share(of: entry)))")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(width: Self.labelWidth)
+        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.1))
+        }
+        .shadow(color: Color.black.opacity(0.16), radius: 7, y: 2)
+        .position(x: x, y: y)
+        // A label that took the pointer would unhover the tile it describes and
+        // flicker on and off under the cursor.
+        .allowsHitTesting(false)
+    }
+
+    private func overflowTile(_ overflow: TreemapLayout.Overflow) -> some View {
+        TreemapOverflowTile(
+            title: otherItemsLabel(overflow.ids.count),
+            totalSize: overflow.size,
+            rect: overflow.rect,
+            onOpen: { showsOverflow = true }
+        )
+        .frame(width: overflow.rect.width, height: overflow.rect.height)
+        .position(x: overflow.rect.midX, y: overflow.rect.midY)
+        .popover(isPresented: $showsOverflow, arrowEdge: .bottom) {
+            overflowList(overflow)
+        }
+        .help(L10n.tr("diskAnalysis.others.help"))
+    }
+
+    // MARK: - The folded tail
+
+    /// "其余 18 项" — the aggregate tile's caption and the popover's title.
+    private func otherItemsLabel(_ count: Int) -> String {
+        L10n.fmt("diskAnalysis.others.\(count == 1 ? "one" : "other")", count)
+    }
+
+    private func overflowMembers(_ overflow: TreemapLayout.Overflow) -> [DiskEntry] {
+        let ids = Set(overflow.ids)
+        return entries.filter { ids.contains($0.id) }
+    }
+
+    /// What is inside the aggregate tile. Folding must not hide anything: every
+    /// merged child is listed here, in the same size order, and can still be
+    /// entered or revealed from its context menu.
+    @ViewBuilder
+    private func overflowList(_ overflow: TreemapLayout.Overflow) -> some View {
+        let members = overflowMembers(overflow)
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Text(verbatim: otherItemsLabel(members.count))
+                    .font(.system(size: 12, weight: .medium))
+                Text(verbatim: Formatters.compactBytes(overflow.size))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(members) { entry in
+                        TreemapOverflowRow(
+                            entry: entry,
+                            icon: icon(entry.path),
+                            onActivate: {
+                                // Dismiss first: the drill-down must not open
+                                // behind a popover that stays on screen.
+                                showsOverflow = false
+                                if entry.isDirectory {
+                                    onEnter(entry)
+                                } else {
+                                    onReveal(entry)
+                                }
+                            },
+                            onReveal: { onReveal(entry) }
+                        )
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        // The popover has to size itself — a scroll view proposes no height —
+        // and a cap keeps a 4000-child tail from covering the window. Rows are
+        // a fixed height so this arithmetic is exact: too small a frame and the
+        // last row sits half-clipped under a scrollbar it did not need.
+        .frame(
+            width: 320,
+            height: min(CGFloat(members.count) * Self.overflowRowHeight + 42, 360)
+        )
+    }
+}
+
+/// One row of the "其余 N 项" popover.
+///
+/// A row whose only gesture is a double-click reads as dead: `onTapGesture`
+/// draws no press state, so the first click does nothing visible and the list
+/// looks like static text. Hence a real `Button` — hover fill, press dimming,
+/// single-click activation. Folders are entered; a file has no children, so a
+/// click reveals it in Finder, which is the only thing a click on a leaf can
+/// meaningfully do.
+private struct TreemapOverflowRow: View {
     let entry: DiskEntry
     let icon: NSImage
-    let isSelected: Bool
-    let onSelect: () -> Void
-    let onEnter: () -> Void
+    let onActivate: () -> Void
     let onReveal: () -> Void
 
     @State private var isHovered = false
 
-    /// How much label the tile can carry, read off the rect the layout gave
-    /// it: a tile smaller than its own text reads as noise.
-    enum Room {
-        case none, name, full
+    var body: some View {
+        Button(action: onActivate) {
+            HStack(spacing: 8) {
+                Image(nsImage: icon)
+                    .frame(width: 16, height: 16)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: entry.name)
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if entry.isDirectory {
+                        Text(verbatim: L10n.items(entry.itemCount))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 6)
+                Text(verbatim: Formatters.compactBytes(entry.size))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                if entry.isDirectory {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.horizontal, 8)
+            // A minimum, not a fixed height: a two-line folder row is ~29pt, and
+            // clipping it to look tidy would be worse than a row that grows.
+            // The popover's height arithmetic assumes the minimum, which is the
+            // common case; a taller row just scrolls.
+            .frame(minHeight: 30)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                isHovered ? Color.primary.opacity(0.08) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 5, style: .continuous)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .onHover { isHovered = $0 }
+        .contextMenu {
+            Button {
+                onReveal()
+            } label: {
+                Label(L10n.tr("ctx.revealInFinder"), systemImage: "arrow.forward.circle")
+            }
+        }
+        // The tip has to describe what a click does now: this list activates on
+        // a single click, so it must not borrow the tiles' "double-click" copy.
+        .help(entry.isDirectory
+            ? L10n.tr("diskAnalysis.others.enter.help")
+            : L10n.tr("ctx.revealInFinder"))
     }
+}
+
+/// One treemap tile: rounded fill with a 2pt inset (the gap between tiles),
+/// carrying the folder icon, name, size and share when there is room for them.
+private struct TreemapTile: View {
+    let entry: DiskEntry
+    let icon: NSImage
+    /// This tile's share of the folder's total, shown beside the size.
+    let share: Double
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onEnter: () -> Void
+    let onReveal: () -> Void
+    /// Reports hover so the canvas can float a label on tiles too small to read.
+    let onHover: (Bool) -> Void
+
+    @State private var isHovered = false
 
     var body: some View {
         GeometryReader { geometry in
-            let room = Self.room(for: geometry.size)
+            let room = TreemapLabel.room(for: geometry.size)
+            // Every label carries an explicit width. An unconstrained Text in an
+            // overlay lays out at its intrinsic width and breaks mid-word when
+            // the tile is narrower — that is where "元宝.app" became "元宝.ap"
+            // with a "p" under it — while a framed Text truncates once and
+            // stops.
+            let textWidth = max(0, geometry.size.width - TreemapLabel.inset)
             let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
 
             ZStack {
@@ -842,11 +1102,14 @@ private struct TreemapTile: View {
             }
             .padding(2)
             .overlay {
-                label(for: room)
+                label(for: room, width: textWidth)
             }
             .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
-        .onHover { isHovered = $0 }
+        .onHover { inside in
+            isHovered = inside
+            onHover(inside)
+        }
         .onTapGesture { onSelect() }
         // The double-click rides along as a simultaneous gesture — the same
         // composition the list rows use, and for the same reason: a second
@@ -867,15 +1130,11 @@ private struct TreemapTile: View {
                 Label(L10n.tr("ctx.revealInFinder"), systemImage: "arrow.forward.circle")
             }
         }
-        .accessibilityLabel("\(entry.name), \(Formatters.compactBytes(entry.size))")
+        .accessibilityLabel("\(entry.name), \(Formatters.compactBytes(entry.size)), \(Formatters.percent(share))")
     }
 
-    private static func room(for size: CGSize) -> Room {
-        if size.width >= 96, size.height >= 64 { return .full }
-        if size.width >= 48, size.height >= 28 { return .name }
-        return .none
-    }
-
+    /// How much label fits — the rule itself lives in `TreemapLabel`, next to
+    /// the fold threshold it has to agree with.
     private var fill: Color {
         if isSelected { return Color.accentColor.opacity(0.18) }
         if isHovered { return Color.primary.opacity(0.12) }
@@ -883,7 +1142,7 @@ private struct TreemapTile: View {
     }
 
     @ViewBuilder
-    private func label(for room: Room) -> some View {
+    private func label(for room: TreemapLabel.Room, width: CGFloat) -> some View {
         switch room {
         case .full:
             VStack(spacing: 3) {
@@ -894,20 +1153,92 @@ private struct TreemapTile: View {
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Text(verbatim: Formatters.compactBytes(entry.size))
+                // No spaces around the separator: with them this line needs
+                // ~87pt and truncates in a 96pt tile (see TreemapLabel.room).
+                Text(verbatim: "\(Formatters.compactBytes(entry.size))·\(Formatters.percent(share))")
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .lineLimit(1)
             }
-            .padding(.horizontal, 4)
+            .frame(width: width)
         case .name:
             Text(verbatim: entry.name)
                 .font(.system(size: 11))
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .padding(.horizontal, 4)
+                .frame(width: width)
         case .none:
             EmptyView()
         }
     }
 }
+
+/// The "其余 N 项" tile: the area of every child too small for a tile of its
+/// own, drawn as one dashed block that opens a list of everything inside it.
+///
+/// Deliberately unlike a normal tile — dashed border, no icon, no per-item
+/// size — so it reads as "a container for the rest" rather than as one more
+/// app the user might mistake for a 3 GB folder.
+private struct TreemapOverflowTile: View {
+    let title: String
+    let totalSize: Int64
+    let rect: CGRect
+    let onOpen: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+        return ZStack {
+            shape.fill(isHovered ? Color.primary.opacity(0.11) : Color.primary.opacity(0.05))
+            shape.strokeBorder(
+                Color.primary.opacity(isHovered ? 0.3 : 0.2),
+                style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+            )
+        }
+        .padding(2)
+        .overlay { label }
+        .contentShape(shape)
+        .onHover { isHovered = $0 }
+        .onTapGesture { onOpen() }
+        .accessibilityLabel("\(title), \(Formatters.compactBytes(totalSize))")
+        .accessibilityHint(L10n.tr("diskAnalysis.others.help"))
+    }
+
+    /// What this tile can say.
+    ///
+    /// Its own thresholds rather than `TreemapLabel`'s, because its content is
+    /// not a normal tile's: a small symbol and two short lines, where a normal
+    /// tile spends the height on a 22pt file icon. Borrowing that rule would
+    /// drop the size line here long before it had to go. Its one-line form also
+    /// has to hold "其余 18 项" rather than a bare name. The width inset is
+    /// shared, though — same 2pt tile padding and 4pt text gutter as every
+    /// other tile.
+    @ViewBuilder
+    private var label: some View {
+        let textWidth = max(0, rect.width - TreemapLabel.inset)
+        if rect.width >= 92, rect.height >= 54 {
+            VStack(spacing: 3) {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                Text(verbatim: title)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                Text(verbatim: Formatters.compactBytes(totalSize))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            .frame(width: textWidth)
+        } else if rect.width >= 62, rect.height >= 20 {
+            Text(verbatim: title)
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(width: textWidth)
+        }
+    }
+}
+

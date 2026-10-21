@@ -85,8 +85,10 @@ final class AppViewModel {
     private let selectionState = CleanupSelection()
 
     /// State model of the disk analysis tool page. Lives for the whole
-    /// session so its per-directory cache survives page switches.
-    let diskAnalysis = DiskAnalysisModel()
+    /// session so its tree — and the measurement still producing it — survives
+    /// page switches. Injectable so a test can drive the page-switch contract
+    /// against a fixture tree instead of the real disk.
+    let diskAnalysis: DiskAnalysisModel
 
     /// Cleanup result summary.
     var lastReclaimed: Int64 = 0
@@ -250,7 +252,8 @@ final class AppViewModel {
     /// "emit one event, assert one snapshot" in tests. Visible within the
     /// module so tests can drive it directly; the default value is the
     /// app's startup behavior.
-    init(statsPolling: Bool = true) {
+    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel()) {
+        self.diskAnalysis = diskAnalysis
         // A remembered row selection is the one piece of selection state that
         // outlives a process, so the model's user actions route through here
         // to persist it. `loadSettings` below assigns the stored value
@@ -647,13 +650,20 @@ final class AppViewModel {
         diskAnalysis.activate()
     }
 
-    /// Leaves the disk analysis page: cancels its measurement (nobody is
-    /// watching it anymore) while keeping the scanned tree and navigation, so
-    /// coming back shows the results instantly.
+    /// Leaves the disk analysis page.
+    ///
+    /// It deliberately does **not** touch the measurement. The scan belongs to
+    /// the session, not to the page being visible: cancelling here threw away
+    /// minutes of IO whenever the user glanced at another sidebar row, and a
+    /// half-measured whole-disk scan left nothing behind at all — `startScan`
+    /// drops the tree when it starts, so the tool came back to its start screen
+    /// and looked like it had lost its state. The page's own stop button, the
+    /// toolbar's rescan/stop and starting a different scan are the only ways to
+    /// end it; the sidebar row shows a spinner meanwhile, so a background
+    /// measurement is never invisible.
     private func dismissDiskAnalysis() {
         guard showsDiskAnalysis else { return }
         showsDiskAnalysis = false
-        diskAnalysis.cancelScan()
     }
 
     // MARK: - Memory Release

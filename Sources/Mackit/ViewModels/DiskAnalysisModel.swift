@@ -181,8 +181,12 @@ final class DiskAnalysisModel {
     /// Stops the in-flight measurement. The page keeps whatever the tree
     /// already holds: a stopped whole-disk scan leaves the tool unscanned, a
     /// stopped subtree scan leaves that folder unexpanded — both say so and
-    /// offer the scan again. Also called when the user navigates to another
-    /// page: measurement burns IO and CPU, and nobody is watching the result.
+    /// offer the scan again.
+    ///
+    /// Only the user's explicit stop reaches this (`rescanOrStop`, the
+    /// scanning screen's cancel, or a new scan replacing this one). Leaving the
+    /// page does not: the measurement is the model's, and cancelling it on every
+    /// sidebar click threw away the work and left the tool looking reset.
     func cancelScan() {
         scanTask?.cancel()
         scanTask = nil
@@ -426,6 +430,11 @@ final class DiskAnalysisModel {
     /// whole point of skipping is that it never fires unprompted. The detail
     /// area offers the explicit action instead.
     private func ensureCurrentScanned() {
+        // A measurement already in flight is measuring this very folder: the
+        // page is being re-opened while a subtree scan runs, and starting
+        // again here would cancel it and begin from zero — the exact waste
+        // that leaving the page used to cause.
+        guard !isScanning else { return }
         guard let node = breadcrumb.last else { return }
         guard node.isDirectory, !node.isSkipped, !node.isUnreadable, node.isTruncated else { return }
         startScan(at: node.path)
@@ -434,6 +443,7 @@ final class DiskAnalysisModel {
     // MARK: Measurement
 
     private func startScan(at path: String) {
+        scanStartCount += 1
         scanTask?.cancel()
         countTask?.cancel()
         if path == rootPath {
@@ -629,6 +639,15 @@ final class DiskAnalysisModel {
     }
 
     // MARK: Test seam
+
+    /// How many measurements this model has started.
+    ///
+    /// Several behaviors are "did *not* start another scan" — activation
+    /// during a run, coming back to the page — and a count states that
+    /// directly, instead of inferring it from whether results showed up
+    /// (which a fast fixture makes indistinguishable from a restart).
+    /// Observation is ignored: it is bookkeeping, not page state.
+    @ObservationIgnored private(set) var scanStartCount = 0
 
     /// Waits until the current scan goes quiet — the measurement and, when one
     /// is running, the concurrent directory count that supplies the

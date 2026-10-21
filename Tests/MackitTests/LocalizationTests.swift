@@ -116,6 +116,8 @@ struct LocalizationTests {
             "diskAnalysis.skipped", "diskAnalysis.skipped.explain",
             "diskAnalysis.skipped.action", "diskAnalysis.openSettings",
             "diskAnalysis.openSettings.help",
+            "diskAnalysis.others.one", "diskAnalysis.others.other",
+            "diskAnalysis.others.help", "diskAnalysis.others.enter.help",
             "format.gigabytes.compact", "format.megabytes.compact", "format.kilobytes.compact",
             "format.terabytes.compact", "format.bytes.compact",
         ]
@@ -261,7 +263,9 @@ struct LocalizationTests {
             ("diskAnalysis.scan.current", 1),
             ("diskAnalysis.scan.count.other", 1),
             ("diskAnalysis.scan.elapsed", 1),
-            ("diskAnalysis.scan.remaining", 1)
+            ("diskAnalysis.scan.remaining", 1),
+            ("diskAnalysis.others.one", 1),
+            ("diskAnalysis.others.other", 1)
         ]
         // Compatible with positional parameters (%1$@): residue file
         // subtitles use this layout
@@ -298,7 +302,8 @@ struct LocalizationTests {
             "apps.confirm.running",
             "diskAnalysis.header.folders",
             "diskAnalysis.header.files",
-            "diskAnalysis.scan.count"
+            "diskAnalysis.scan.count",
+            "diskAnalysis.others"
         ]
         let placeholder = /%(?:\d+\$)?(?:@|lld)/
         for base in pairs {
@@ -346,7 +351,9 @@ struct LocalizationTests {
             ("diskAnalysis.header.files.one", [1]),
             ("diskAnalysis.header.files.other", [4]),
             ("diskAnalysis.scan.count.one", [1]),
-            ("diskAnalysis.scan.count.other", [7])
+            ("diskAnalysis.scan.count.other", [7]),
+            ("diskAnalysis.others.one", [1]),
+            ("diskAnalysis.others.other", [18])
         ]
         for (key, args) in calls {
             let value = String(format: L10n.tr(key), arguments: args)

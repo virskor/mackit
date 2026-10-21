@@ -549,6 +549,36 @@ struct DiskAnalysisModelTests {
         #expect(longer?.components.seconds == 980)
     }
 
+    /// Re-opening the page while a measurement runs must attach to the running
+    /// scan, not start another one.
+    ///
+    /// This is the regression that stopping the cancel-on-leave exposes:
+    /// `activate()` calls `ensureCurrentScanned()`, which starts a scan for a
+    /// browsed folder whose children are missing. Mid-scan that folder *is*
+    /// unexpanded, so without the in-flight guard the page would cancel a
+    /// live measurement and begin again from zero every time the user looked
+    /// at another sidebar row and came back.
+    @Test func activationDuringASubtreeScanDoesNotRestartIt() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        let model = DiskAnalysisModel(rootPath: fixture.path, maxDepth: 1)
+        model.activate()
+        model.startScan()
+        await model.waitUntilSettled()
+
+        let big = try #require(model.children.first { $0.name == "big" })
+        model.enter(big)
+        #expect(model.isScanning, "entering a truncated folder scans it")
+        let starts = model.scanStartCount
+
+        model.activate()
+        #expect(model.isScanning, "coming back must leave the scan running")
+        #expect(model.scanStartCount == starts, "coming back must not restart the scan")
+
+        await model.waitUntilSettled()
+        #expect(Set(model.children.map(\.name)) == ["a.bin", "b.bin", "nested"])
+    }
+
     /// An isolated UserDefaults domain, so a remembered count never leaks
     /// between tests — or into the app's real history.
     private static func historySuite() -> (ScanProgressHistory, String) {

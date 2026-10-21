@@ -153,11 +153,33 @@ enum FileSystem {
         }
     }
 
+    /// A child's path, joined without an intermediate `URL`.
+    ///
+    /// The disk analysis asks for this once per retained node and once per
+    /// directory the counting walk visits; a URL round trip per entry was
+    /// measurable next to the readdir that produced it. Kept here rather than
+    /// inlined so the two call sites cannot drift on the root case.
+    static func joined(_ name: String, in parent: String) -> String {
+        parent == "/" ? "/" + name : parent + "/" + name
+    }
+
+    /// The last component of an already-joined path.
+    ///
+    /// The volume root spells "/" and has no last component; it falls back to
+    /// the path itself, which is what `URL.lastPathComponent` reports.
+    static func lastComponent(of path: String) -> String {
+        guard let slash = path.lastIndex(of: "/") else { return path }
+        let name = path[path.index(after: slash)...]
+        return name.isEmpty ? path : String(name)
+    }
+
     /// One directory entry with the attributes the disk analysis needs, all
     /// read in the same single `getattrlistbulk` pass as the name.
     struct DirectoryEntry: Sendable {
         let name: String
-        let url: URL
+        /// The directory this entry was found in, spelled as the traversal
+        /// spelled its own path.
+        let parentPath: String
         let isDirectory: Bool
         let isSymbolicLink: Bool
         /// The entry is a mount point — another volume's root. The disk
@@ -168,6 +190,21 @@ enum FileSystem {
         /// Bytes allocated to the entry. Regular files only — the kernel
         /// reports nothing here for directories.
         let allocatedSize: Int64
+
+        /// Full path, computed rather than stored.
+        ///
+        /// A scan sums every file in the tree but retains only the shallow
+        /// ones, so most entries never need a path at all. Building a URL for
+        /// each of them was pure allocation, and the string the analyzer
+        /// actually wanted was then derived from that URL at a second cost.
+        /// Callers that want a URL still get one, at the moment they ask.
+        var path: String {
+            FileSystem.joined(name, in: parentPath)
+        }
+
+        var url: URL {
+            URL(fileURLWithPath: parentPath).appendingPathComponent(name)
+        }
     }
 
     /// The direct children of a directory, each with its attributes. Returns
@@ -175,15 +212,18 @@ enum FileSystem {
     /// whether that means "unreadable" (the measured directory itself) or
     /// "skip" (a directory found mid-traversal).
     static func entries(of path: String) -> [DirectoryEntry]? {
-        let base = url(path)
+        // One URL for the directory instead of one per child. Normalizing here
+        // also keeps child paths spelled as before (no trailing slash, no
+        // duplicate separators) — path comparisons rely on it.
+        let parentPath = url(path).path
         var entries: [DirectoryEntry] = []
-        let readable = enumerateBulk(atPath: base.path) { entry in
+        let readable = enumerateBulk(atPath: parentPath) { entry in
             // com.apple.* system data is TCC-protected; enumerating it pops an authorization dialog, so it is skipped directly
             if isSystemData(entry.name) { return }
             entries.append(
                 DirectoryEntry(
                     name: entry.name,
-                    url: base.appendingPathComponent(entry.name),
+                    parentPath: parentPath,
                     isDirectory: entry.type == VDIR,
                     isSymbolicLink: entry.type == VLNK,
                     isMountPoint: entry.isMountPoint,
@@ -192,7 +232,7 @@ enum FileSystem {
             )
         }
         if !readable {
-            MackitLog.fs.debug("directory not readable, skipped: \(base.path, privacy: .public)")
+            MackitLog.fs.debug("directory not readable, skipped: \(parentPath, privacy: .public)")
         }
         return readable ? entries : nil
     }
@@ -216,11 +256,11 @@ enum FileSystem {
     /// Applies the exclusions the measuring pass applies: `com.apple.*` system
     /// data (TCC-protected), symlinks (a symlinked directory is not one), and
     /// mount points. Returns nil when the directory could not be read at all.
-    static func directories(of path: String) -> [URL]? {
+    static func directories(of path: String) -> [String]? {
         guard let dir = opendir(path) else { return nil }
         defer { closedir(dir) }
-        var directories: [URL] = []
-        let base = url(path)
+        let parentPath = url(path).path
+        var directories: [String] = []
         while let entry = readdir(dir) {
             let name = withUnsafePointer(to: &entry.pointee.d_name) { pointer in
                 pointer.withMemoryRebound(to: CChar.self, capacity: Int(NAME_MAX) + 1) {
@@ -235,12 +275,13 @@ enum FileSystem {
             // cost, and skipping it instead would undercount directories the
             // measurement visits, driving the fraction to 100% early.
             let type = entry.pointee.d_type
-            let isDirectory = type == Int8(DT_DIR)
-                || (type == Int8(DT_UNKNOWN) && Self.isDirectory(base.appendingPathComponent(name).path))
-            guard isDirectory else { continue }
-            let child = base.appendingPathComponent(name)
-            if isMountPoint(child.path) { continue }
-            directories.append(child)
+            guard type == Int8(DT_DIR) || type == Int8(DT_UNKNOWN) else { continue }
+            // Built only for entries that survive: this walk sees every file in
+            // the tree, and a path for each of them would be thrown away.
+            let childPath = Self.joined(name, in: parentPath)
+            if type == Int8(DT_UNKNOWN), !Self.isDirectory(childPath) { continue }
+            if isMountPoint(childPath) { continue }
+            directories.append(childPath)
         }
         return directories
     }

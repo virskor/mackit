@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// One node of the disk analysis tree: a directory or file with its recursive
 /// allocated size, and — for directories — the children the scan retained.
@@ -116,11 +117,13 @@ enum DiskAnalyzer {
     /// time instead of sweeping until the tree has been measured once.
     ///
     /// Enumerated with `FileSystem.directories(of:)` rather than the
-    /// measurement's own `entries(of:)`, because a traversal on the bulk
-    /// attribute call costs as much as the measurement it precedes (measured
-    /// on a real 65 k-directory tree: 5.5 s for each, 7.9 s run together — the
-    /// count would land at the same moment as the measurement and buy
-    /// nothing).
+    /// measurement's own `entries(of:)`: the bulk attribute call reads every
+    /// entry's attributes — the work that makes measuring expensive — so
+    /// counting through it would land no earlier than the measurement it
+    /// follows, while a readdir walk needs only names and types. That walk still
+    /// costs roughly what the measurement does (2.9 s against 2.7 s on a real
+    /// 150 k-directory tree), which is why it runs alongside rather than before,
+    /// and why the result is remembered per tree.
     ///
     /// Parallel through a shared queue rather than a fixed split: on a real
     /// startup disk one child of the root (`/Users`) holds over three quarters
@@ -183,9 +186,9 @@ enum DiskAnalyzer {
             counted += 1
             guard let children = FileSystem.directories(of: path) else { continue }
             for child in children {
-                if systemMarkers.contains(child.lastPathComponent) { continue }
-                if protectedPaths.contains(child.path) { continue }
-                stack.append(child.path)
+                if systemMarkers.contains(FileSystem.lastComponent(of: child)) { continue }
+                if protectedPaths.contains(child) { continue }
+                stack.append(child)
             }
             if stack.count >= Self.shareThreshold {
                 let surplus = Array(stack.suffix(stack.count / 2))
@@ -282,7 +285,7 @@ enum DiskAnalyzer {
                     semaphore: semaphore,
                     progress: progress
                 ) {
-                    let scanned = await progress.scannedCount()
+                    let scanned = progress.scannedCount
                     continuation.yield(.finished(node, directories: scanned))
                     MackitLog.disk.info(
                         "analyzed \(root, privacy: .public): \(scanned, privacy: .public) directories, \(node.size, privacy: .public) bytes, took \(MackitLog.duration(.now - startedAt), privacy: .public)"
@@ -310,12 +313,12 @@ enum DiskAnalyzer {
         progress: ProgressGate
     ) async -> DiskEntry? {
         if Task.isCancelled { return nil }
-        let name = FileSystem.url(path).lastPathComponent
+        let name = FileSystem.lastComponent(of: path)
         // The semaphore gates only the enumeration, never the recursion: a
         // permit held across a child task would deadlock the moment every
         // permit sat on an ancestor waiting for a descendant.
         let entries = await semaphore.withPermit { FileSystem.entries(of: path) }
-        await progress.tick(path)
+        progress.tick(path)
         // An unreadable directory (a denied TCC prompt, a locked folder, or
         // one that vanished mid-scan) enumerates as nothing. Flag it rather
         // than reporting an empty folder — or "0 B" — for a real one.
@@ -339,7 +342,7 @@ enum DiskAnalyzer {
         var folderCount = 0
         var fileCount = 0
         var nodes: [DiskEntry] = []
-        var directories: [URL] = []
+        var directories: [String] = []
 
         for entry in entries {
             if systemMarkers.contains(entry.name) { continue }
@@ -349,11 +352,14 @@ enum DiskAnalyzer {
                 // not entered (see the type comment).
                 if entry.isMountPoint { continue }
                 folderCount += 1
-                if protectedPaths.contains(entry.url.path) {
+                // `entry.path` is computed on demand: a file the budget does
+                // not retain (the deep majority of a whole-disk tree) never
+                // pays for a path it does not need.
+                if protectedPaths.contains(entry.path) {
                     if retain {
                         nodes.append(
                             DiskEntry(
-                                path: entry.url.path,
+                                path: entry.path,
                                 name: entry.name,
                                 isDirectory: true,
                                 size: 0,
@@ -368,14 +374,14 @@ enum DiskAnalyzer {
                     }
                     continue
                 }
-                directories.append(entry.url)
+                directories.append(entry.path)
             } else {
                 fileCount += 1
                 total += entry.allocatedSize
                 if retain {
                     nodes.append(
                         DiskEntry(
-                            path: entry.url.path,
+                            path: entry.path,
                             name: entry.name,
                             isDirectory: false,
                             size: entry.allocatedSize,
@@ -402,7 +408,7 @@ enum DiskAnalyzer {
             let end = min(index + chunkSize, directories.count)
             await withTaskGroup(of: DiskEntry?.self) { group in
                 for position in index..<end {
-                    let childPath = directories[position].path
+                    let childPath = directories[position]
                     group.addTask {
                         await scanDirectory(
                             path: childPath,
@@ -448,12 +454,23 @@ enum DiskAnalyzer {
 ///
 /// The traversal enumerates hundreds of thousands of directories, and one
 /// event per directory would wake the main actor thousands of times a second
-/// for a label that changes too fast to read. An actor rather than a lock
-/// because the ticks come from every concurrent subtree at once.
-private actor ProgressGate {
+/// for a label that changes too fast to read.
+///
+/// A lock rather than an actor: the tick runs once per directory, and an actor
+/// hop costs a suspension plus a resume for what is two integers — one per
+/// directory, so on a 150 k-directory tree the actor version spent 150 k task
+/// switches on a counter. The state is two fields and is never held across a
+/// suspension, so an unfair lock is enough: every stored property is a `let` of
+/// a `Sendable` type and the mutable state lives inside the lock, which is what
+/// makes this class `Sendable` without an exemption.
+private final class ProgressGate: Sendable {
+    private struct State {
+        var scanned = 0
+        var lastYield: ContinuousClock.Instant?
+    }
+
     private let continuation: AsyncStream<DiskScanEvent>.Continuation
-    private var scanned = 0
-    private var lastYield: ContinuousClock.Instant?
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     private let interval: Duration = .milliseconds(120)
 
@@ -462,13 +479,23 @@ private actor ProgressGate {
     }
 
     func tick(_ path: String) {
-        scanned += 1
-        let now = ContinuousClock.now
-        if let lastYield, now - lastYield < interval { return }
-        lastYield = now
-        continuation.yield(.progress(scanned: scanned, current: path))
+        // The decision is made under the lock and the event is handed over
+        // outside it: yielding to the consumer is not something the other
+        // workers should wait behind. The lock body returns what to publish
+        // rather than writing to a captured variable — it runs on whichever
+        // worker took the lock, so it may not touch the caller's stack.
+        let pending: (scanned: Int, current: String)? = state.withLock { state in
+            state.scanned += 1
+            let now = ContinuousClock.now
+            if let lastYield = state.lastYield, now - lastYield < interval { return nil }
+            state.lastYield = now
+            return (state.scanned, path)
+        }
+        if let pending {
+            continuation.yield(.progress(scanned: pending.scanned, current: pending.current))
+        }
     }
 
     /// Directories measured so far, for the completion log.
-    func scannedCount() -> Int { scanned }
+    var scannedCount: Int { state.withLock { $0.scanned } }
 }
