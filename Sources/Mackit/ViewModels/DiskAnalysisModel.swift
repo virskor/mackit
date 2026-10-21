@@ -309,8 +309,19 @@ final class DiskAnalysisModel {
         scanFolder(node)
     }
 
+    /// Shows the entry in Finder.
+    ///
+    /// Revealing *through* Finder is an AppleEvent, and an app that may not
+    /// automate Finder — an ad-hoc build, or a user who declined the prompt
+    /// — gets silence rather than an error, so the click reads as a no-op.
+    /// LaunchServices needs no such permission: a folder opens itself and a
+    /// file opens in its enclosing folder, and either way the target is on
+    /// screen. That is also why the unreadable and skipped folders need no
+    /// special case here — Finder opens them with its own permissions.
     func revealInFinder(_ entry: DiskEntry) {
-        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: entry.path)])
+        let url = URL(fileURLWithPath: entry.path)
+        let target = entry.isDirectory ? url : url.deletingLastPathComponent()
+        NSWorkspace.shared.open(target)
     }
 
     // MARK: Icons

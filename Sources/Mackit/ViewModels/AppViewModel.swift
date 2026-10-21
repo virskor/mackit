@@ -1565,10 +1565,19 @@ final class AppViewModel {
 
     // MARK: - Item Actions
 
+    /// Shows the item in Finder.
+    ///
+    /// Revealing *through* Finder is an AppleEvent, and an app that may not
+    /// automate Finder — an ad-hoc build, or a user who declined the prompt
+    /// — gets silence rather than an error, so the click reads as a no-op.
+    /// LaunchServices needs no such permission: a folder opens itself and a
+    /// file opens in its enclosing folder, and either way the target is on
+    /// screen.
     func revealInFinder(_ item: JunkItem) {
         guard !item.path.isEmpty else { return }
         let url = URL(fileURLWithPath: item.path)
-        NSWorkspace.shared.activateFileViewerSelecting([url])
+        let target = item.isDirectory ? url : url.deletingLastPathComponent()
+        NSWorkspace.shared.open(target)
     }
 
     func openInTerminal(_ item: JunkItem) {

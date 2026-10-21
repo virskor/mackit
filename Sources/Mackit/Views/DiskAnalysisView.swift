@@ -31,6 +31,15 @@ import SwiftUI
 struct DiskAnalysisView: View {
     @Environment(AppViewModel.self) private var vm
 
+    /// How many children the treemap will draw before the detail column
+    /// switches to the list. The card is a few hundred thousand square points,
+    /// which comfortably maps a home folder's ~140 children; a frameworks
+    /// folder's 340 leaves the small ones as slivers no mouse can hit and the
+    /// map reads as noise rather than as data. The list — every child with its
+    /// size, scrollable — is the honest answer there, and the note in the
+    /// detail column says why the map is not there.
+    private static let treemapItemLimit = 150
+
     var body: some View {
         let model = vm.diskAnalysis
         return VStack(spacing: 0) {
@@ -73,23 +82,19 @@ struct DiskAnalysisView: View {
     private var toolbar: some View {
         let model = vm.diskAnalysis
         return HStack(spacing: 8) {
-            Button {
-                model.goBack()
-            } label: {
-                Image(systemName: "chevron.backward")
-            }
-            .buttonStyle(.plain)
-            .disabled(!model.canGoBack)
-            .help(L10n.tr("diskAnalysis.nav.back"))
+            navButton(
+                symbol: "chevron.backward",
+                enabled: model.canGoBack,
+                help: L10n.tr("diskAnalysis.nav.back"),
+                action: { model.goBack() }
+            )
 
-            Button {
-                model.goForward()
-            } label: {
-                Image(systemName: "chevron.forward")
-            }
-            .buttonStyle(.plain)
-            .disabled(!model.canGoForward)
-            .help(L10n.tr("diskAnalysis.nav.forward"))
+            navButton(
+                symbol: "chevron.forward",
+                enabled: model.canGoForward,
+                help: L10n.tr("diskAnalysis.nav.forward"),
+                action: { model.goForward() }
+            )
 
             breadcrumb
 
@@ -135,6 +140,37 @@ struct DiskAnalysisView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+    }
+
+    /// One of the toolbar's back / forward chevrons.
+    ///
+    /// The glyph alone is a 6×11pt target — no mouse hand hits that
+    /// reliably, so the button carries its own hit area. Whether it *will*
+    /// go back has to be readable without a click: an enabled chevron sits
+    /// on a subtle surface at full strength, a disabled one drops to a
+    /// muted tint and no surface, which is a difference you can see rather
+    /// than one you have to guess at by trying the click.
+    private func navButton(
+        symbol: String,
+        enabled: Bool,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(enabled ? Color.primary : Color.secondary)
+                .opacity(enabled ? 1 : 0.45)
+                .frame(width: 30, height: 26)
+                .background(
+                    enabled ? Color.primary.opacity(0.07) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .help(help)
     }
 
     /// The breadcrumb: every segment but the current one is a button that
@@ -479,12 +515,13 @@ struct DiskAnalysisView: View {
                     )
                 } else if entry.children.isEmpty {
                     selectionPlaceholder(unreadable: false)
-                } else if model.visualizationMode {
+                } else if model.visualizationMode && entry.children.count <= Self.treemapItemLimit {
                     if entry.children.contains(where: { $0.size > 0 }) {
                         TreemapView(
                             entries: entry.children,
                             icon: { model.icon(forPath: $0) },
-                            onEnter: { model.enter($0) }
+                            onEnter: { model.enter($0) },
+                            onReveal: { model.revealInFinder($0) }
                         )
                     } else {
                         // Every child measures zero (empty subfolders): there
@@ -492,8 +529,24 @@ struct DiskAnalysisView: View {
                         selectionPlaceholder(unreadable: false)
                     }
                 } else {
-                    // The toggle's off state: the same data as plain rows.
-                    entryList(entry.children)
+                    // Either the toggle is off, or the folder holds more
+                    // children than the card can draw at a readable size: past
+                    // that the tail degenerates into a field of unclickable
+                    // slivers (a frameworks folder, a node_modules), which
+                    // reads as broken rather than as data. The list — every
+                    // row readable, scrollable — is the honest answer, and the
+                    // note says why the map is not there.
+                    VStack(spacing: 0) {
+                        if model.visualizationMode {
+                            Text(verbatim: L10n.tr("diskAnalysis.tooManyForMap"))
+                                .font(.system(size: 11))
+                                .foregroundStyle(.tertiary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 6)
+                        }
+                        entryList(entry.children)
+                    }
                 }
             } else {
                 fileInfo(entry)
@@ -574,7 +627,8 @@ struct DiskAnalysisView: View {
     /// A selected file has no children to break down; its size and name are
     /// all the analysis knows, so that is all this shows.
     private func fileInfo(_ entry: DiskEntry) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let model = vm.diskAnalysis
+        return VStack(alignment: .leading, spacing: 10) {
             LabeledContent(L10n.tr("table.name")) {
                 Text(verbatim: entry.name)
             }
@@ -588,6 +642,15 @@ struct DiskAnalysisView: View {
         .padding(.horizontal, 16)
         .padding(.top, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // A file selected in the treemap or the list has no row of its own
+        // here, so the context menu is the only way to reach Finder from it.
+        .contextMenu {
+            Button {
+                model.revealInFinder(entry)
+            } label: {
+                Label(L10n.tr("ctx.revealInFinder"), systemImage: "arrow.forward.circle")
+            }
+        }
     }
 
     // MARK: - Rows
@@ -698,6 +761,7 @@ private struct TreemapView: View {
     let entries: [DiskEntry]
     let icon: (String) -> NSImage
     let onEnter: (DiskEntry) -> Void
+    let onReveal: (DiskEntry) -> Void
 
     /// Which tile is highlighted. Local to the view on purpose: a tile is a
     /// *grandchild* of the browsed directory (the treemap shows the selected
@@ -723,7 +787,8 @@ private struct TreemapView: View {
                             icon: icon(entry.path),
                             isSelected: entry.id == selectedID,
                             onSelect: { selectedID = entry.id },
-                            onEnter: { onEnter(entry) }
+                            onEnter: { onEnter(entry) },
+                            onReveal: { onReveal(entry) }
                         )
                         .frame(width: rect.width, height: rect.height)
                         .position(x: rect.midX, y: rect.midY)
@@ -754,6 +819,7 @@ private struct TreemapTile: View {
     let isSelected: Bool
     let onSelect: () -> Void
     let onEnter: () -> Void
+    let onReveal: () -> Void
 
     @State private var isHovered = false
 
@@ -782,7 +848,25 @@ private struct TreemapTile: View {
         }
         .onHover { isHovered = $0 }
         .onTapGesture { onSelect() }
-        .onTapGesture(count: 2) { onEnter() }
+        // The double-click rides along as a simultaneous gesture — the same
+        // composition the list rows use, and for the same reason: a second
+        // onTapGesture(count: 2) stacked on the count-1 one is never
+        // recognized, because the count-1 gesture claims the first tap of the
+        // pair and cancels it, so entering a folder from a tile would
+        // silently do nothing. Simultaneous, both fire — the highlight and
+        // the enter.
+        .simultaneousGesture(
+            TapGesture(count: 2).onEnded { onEnter() }
+        )
+        // A tile is the only place a child appears without a row beside it, so
+        // the context menu is the one way to reach "Show in Finder" from here.
+        .contextMenu {
+            Button {
+                onReveal()
+            } label: {
+                Label(L10n.tr("ctx.revealInFinder"), systemImage: "arrow.forward.circle")
+            }
+        }
         .accessibilityLabel("\(entry.name), \(Formatters.compactBytes(entry.size))")
     }
 

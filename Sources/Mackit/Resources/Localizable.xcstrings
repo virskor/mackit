@@ -12211,6 +12211,28 @@
           }
         }
       }
+    },
+    "diskAnalysis.tooManyForMap": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "项目过多，已改用列表显示"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many items to map — showing a list instead"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目過多，已改用列表顯示"
+          }
+        }
+      }
     }
   }
 }
