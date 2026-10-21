@@ -11596,50 +11596,6 @@
         }
       }
     },
-    "diskAnalysis.reveal.help": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "前往 Finder 中查看"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reveal in Finder"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "前往 Finder 中查看"
-          }
-        }
-      }
-    },
-    "diskAnalysis.measuring": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在分析 %@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Analyzing %@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在分析 %@"
-          }
-        }
-      }
-    },
     "diskAnalysis.unreadable": {
       "localizations": {
         "zh-Hans": {
@@ -11706,24 +11662,46 @@
         }
       }
     },
-    "diskAnalysis.selectPrompt": {
+    "diskAnalysis.enter.help": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择一个文件夹查看其内容"
+            "value": "双击进入文件夹"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Select a folder to see its contents"
+            "value": "Double-click to open this folder"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "選擇一個檔案夾以查看其內容"
+            "value": "雙擊進入資料夾"
+          }
+        }
+      }
+    },
+    "diskAnalysis.select.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单击查看详情"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click to see details"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "單擊查看詳細資料"
           }
         }
       }
@@ -11746,6 +11724,248 @@
           "stringUnit": {
             "state": "translated",
             "value": "磁碟"
+          }
+        }
+      }
+    },
+    "diskAnalysis.start.explain": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扫描整个启动磁盘，查看各类文件和文件夹的空间占用，整个过程可能需要几分钟。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan the whole startup disk to see which files and folders are taking up the space. A full scan can take a few minutes."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掃描整個啟動磁碟，查看各類檔案和資料夾的空間佔用，整個過程可能需要幾分鐘。"
+          }
+        }
+      }
+    },
+    "diskAnalysis.scan.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在分析磁盘空间"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyzing disk space"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在分析磁碟空間"
+          }
+        }
+      }
+    },
+    "diskAnalysis.scan.current": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在扫描：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在掃描：%@"
+          }
+        }
+      }
+    },
+    "diskAnalysis.scan.count.one": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已测量 %lld 个文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld folder measured"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已測量 %lld 個資料夾"
+          }
+        }
+      }
+    },
+    "diskAnalysis.scan.count.other": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已测量 %lld 个文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld folders measured"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已測量 %lld 個資料夾"
+          }
+        }
+      }
+    },
+    "diskAnalysis.scan.elapsed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已用 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elapsed %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已用 %@"
+          }
+        }
+      }
+    },
+    "diskAnalysis.scan.remaining": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "约剩 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About %@ left"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "約剩 %@"
+          }
+        }
+      }
+    },
+    "diskAnalysis.notScanned": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未扫描"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not scanned yet"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未掃描"
+          }
+        }
+      }
+    },
+    "diskAnalysis.truncated": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未展开"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not expanded"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未展開"
+          }
+        }
+      }
+    },
+    "diskAnalysis.truncated.explain": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此文件夹的内容尚未展开。扫描后即可查看其中的空间构成。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This folder's contents haven't been expanded yet. Scan it to see where its space went."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此檔案夾的內容尚未展開。掃描後即可查看其中的空間構成。"
+          }
+        }
+      }
+    },
+    "diskAnalysis.truncated.action": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扫描此文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan this folder"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掃描此檔案夾"
           }
         }
       }

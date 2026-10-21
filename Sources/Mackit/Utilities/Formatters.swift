@@ -84,4 +84,21 @@ enum Formatters {
         let clamped = fraction.isNaN ? 0 : max(0, min(1, fraction))
         return String(format: "%.0f%%", clamped * 100)
     }
+
+    /// Elapsed and remaining time as a clock: "m:ss", rolling over to "h:mm:ss"
+    /// past an hour. Both readings come from a measurement whose total is only
+    /// an estimate, so minutes and seconds carry the precision — a rounded
+    /// "2 min" would claim an accuracy the estimate does not have. mm:ss reads
+    /// the same in all three languages, so no unit words are needed.
+    static func clock(_ duration: Duration) -> String {
+        // A duration can go negative when the clock is read across a sleep
+        // boundary; clamp rather than render "-1:-5".
+        let seconds = max(0, duration.components.seconds)
+        let hours = seconds / 3600
+        let minutes = (seconds / 60) % 60
+        let remainder = seconds % 60
+        func padded(_ value: Int64) -> String { value < 10 ? "0\(value)" : "\(value)" }
+        if hours > 0 { return "\(hours):\(padded(minutes)):\(padded(remainder))" }
+        return "\(minutes):\(padded(remainder))"
+    }
 }

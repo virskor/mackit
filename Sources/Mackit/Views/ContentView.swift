@@ -6,9 +6,32 @@ struct ContentView: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     /// The card's rounded shape: shared by both background and content clipping,
-    /// avoiding a separate radius in each place.
+    /// avoiding a separate radius in each place. A full-bleed page gets a plain
+    /// rectangle — with no inset around it, a rounded corner would bite into
+    /// the page's own chrome at the window's corners.
     private var cardShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
+        RoundedRectangle(cornerRadius: isFullBleed ? 0 : 10, style: .continuous)
+    }
+
+    /// Whether the detail area runs edge to edge instead of as an inset card.
+    ///
+    /// The disk analysis page is a Finder-style tool layout: its own title bar,
+    /// toolbar and two columns want the whole detail area, and a card floating
+    /// 12pt off the window edges would fight it. The clean result view swaps in
+    /// over whichever page was showing when a clean finishes, so it keeps the
+    /// card even if the clean was started from the disk analysis page.
+    private var isFullBleed: Bool {
+        vm.showsDiskAnalysis && vm.cleanPhase != .done
+    }
+
+    /// The gap between the card and the window edges / sidebar. Full-bleed
+    /// pages drop it to zero. The negative top inset is unconditional: the
+    /// window top has a non-negligible title bar safe area (about 38pt, where
+    /// the system traffic lights and the sidebar toggle float), and it cancels
+    /// it out so the top gap matches the other three sides in both modes.
+    private var cardInsets: EdgeInsets {
+        let inset: CGFloat = isFullBleed ? 0 : 12
+        return EdgeInsets(top: -26, leading: inset, bottom: inset, trailing: inset)
     }
 
     var body: some View {
@@ -22,7 +45,9 @@ struct ContentView: View {
             // on all sides to the window edge and sidebar, while the sidebar
             // stays flush. The toolbar, list, welcome page, scan progress and
             // clean result all live in this card, so the top control bar also
-            // lands in the white area.
+            // lands in the white area. The one exception is the disk analysis
+            // page (see `isFullBleed`): it draws a Finder-style layout that
+            // wants the full area, so it drops the inset entirely.
             //
             // Modifier order is critical: background must come before padding.
             // Written the other way around (.padding().background()), padding
@@ -46,12 +71,7 @@ struct ContentView: View {
             // into right angles (the top only has the toolbar, which has no
             // such background, so the corners still look rounded there).
             .clipShape(cardShape)
-            .padding([.leading, .trailing, .bottom], 12)
-            // The window top has a non-negligible title bar safe area (about
-            // 38pt, where the system traffic lights and the sidebar toggle
-            // float). A negative padding cancels it out, so the top gap matches
-            // the other three sides.
-            .padding(.top, -26)
+            .padding(cardInsets)
             .navigationSplitViewColumnWidth(min: 520, ideal: 760)
         }
         .frame(minWidth: 780, minHeight: 480)

@@ -647,13 +647,13 @@ final class AppViewModel {
         diskAnalysis.activate()
     }
 
-    /// Leaves the disk analysis page: cancels its measurements (nobody is
-    /// watching them anymore) while keeping its state and cache, so coming
-    /// back resumes where the user left off.
+    /// Leaves the disk analysis page: cancels its measurement (nobody is
+    /// watching it anymore) while keeping the scanned tree and navigation, so
+    /// coming back shows the results instantly.
     private func dismissDiskAnalysis() {
         guard showsDiskAnalysis else { return }
         showsDiskAnalysis = false
-        diskAnalysis.suspend()
+        diskAnalysis.cancelScan()
     }
 
     // MARK: - Memory Release

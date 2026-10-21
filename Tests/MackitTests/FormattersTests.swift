@@ -49,4 +49,22 @@ struct FormattersTests {
         #expect(Formatters.compactBytes(1536) == "1.5KB")
         #expect(Formatters.compactBytes(0) == "0B")
     }
+
+    /// Elapsed and remaining time read as a clock: m:ss, rolling over to
+    /// h:mm:ss past an hour. Seconds are zero-padded so the width doesn't
+    /// jitter as the readout ticks, and a negative duration (a clock read
+    /// across a sleep boundary) clamps to zero rather than rendering "-1:-5".
+    @Test func clockPadsSecondsAndRollsOverToHours() {
+        #expect(Formatters.clock(.zero) == "0:00")
+        #expect(Formatters.clock(.seconds(9)) == "0:09")
+        #expect(Formatters.clock(.seconds(65)) == "1:05")
+        #expect(Formatters.clock(.seconds(599)) == "9:59")
+        #expect(Formatters.clock(.seconds(600)) == "10:00")
+        #expect(Formatters.clock(.seconds(3_600)) == "1:00:00")
+        #expect(Formatters.clock(.seconds(3_725)) == "1:02:05")
+        #expect(Formatters.clock(.seconds(-5)) == "0:00")
+        // Sub-second parts are truncated, not rounded up: 1.9 s must not read
+        // as 0:02 while the next second has not fully elapsed.
+        #expect(Formatters.clock(.milliseconds(1_900)) == "0:01")
+    }
 }

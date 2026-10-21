@@ -104,9 +104,15 @@ struct LocalizationTests {
             "diskAnalysis.visualization", "diskAnalysis.visualization.help",
             "diskAnalysis.header.folders.one", "diskAnalysis.header.folders.other",
             "diskAnalysis.header.files.one", "diskAnalysis.header.files.other",
-            "diskAnalysis.header.total", "diskAnalysis.reveal.help", "diskAnalysis.measuring",
+            "diskAnalysis.header.total", "diskAnalysis.enter.help", "diskAnalysis.select.help",
+            "diskAnalysis.scan.title", "diskAnalysis.scan.current",
+            "diskAnalysis.scan.count.one", "diskAnalysis.scan.count.other",
+            "diskAnalysis.scan.elapsed", "diskAnalysis.scan.remaining",
+            "diskAnalysis.start.explain",
+            "diskAnalysis.notScanned", "diskAnalysis.truncated",
+            "diskAnalysis.truncated.explain", "diskAnalysis.truncated.action",
             "diskAnalysis.unreadable", "diskAnalysis.fdaHint", "diskAnalysis.empty",
-            "diskAnalysis.selectPrompt", "diskAnalysis.disk",
+            "diskAnalysis.disk",
             "diskAnalysis.skipped", "diskAnalysis.skipped.explain",
             "diskAnalysis.skipped.action", "diskAnalysis.openSettings",
             "diskAnalysis.openSettings.help",
@@ -252,7 +258,10 @@ struct LocalizationTests {
             ("diskAnalysis.header.folders.other", 1),
             ("diskAnalysis.header.files.other", 1),
             ("diskAnalysis.header.total", 1),
-            ("diskAnalysis.measuring", 1)
+            ("diskAnalysis.scan.current", 1),
+            ("diskAnalysis.scan.count.other", 1),
+            ("diskAnalysis.scan.elapsed", 1),
+            ("diskAnalysis.scan.remaining", 1)
         ]
         // Compatible with positional parameters (%1$@): residue file
         // subtitles use this layout
@@ -288,7 +297,8 @@ struct LocalizationTests {
             "apps.confirm.summary",
             "apps.confirm.running",
             "diskAnalysis.header.folders",
-            "diskAnalysis.header.files"
+            "diskAnalysis.header.files",
+            "diskAnalysis.scan.count"
         ]
         let placeholder = /%(?:\d+\$)?(?:@|lld)/
         for base in pairs {
@@ -334,7 +344,9 @@ struct LocalizationTests {
             ("diskAnalysis.header.folders.one", [1]),
             ("diskAnalysis.header.folders.other", [3]),
             ("diskAnalysis.header.files.one", [1]),
-            ("diskAnalysis.header.files.other", [4])
+            ("diskAnalysis.header.files.other", [4]),
+            ("diskAnalysis.scan.count.one", [1]),
+            ("diskAnalysis.scan.count.other", [7])
         ]
         for (key, args) in calls {
             let value = String(format: L10n.tr(key), arguments: args)

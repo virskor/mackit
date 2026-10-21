@@ -3,10 +3,12 @@ import Testing
 
 @testable import Mackit
 
-/// The disk analyzer measures one directory's children and streams them. The
-/// fixture pins down the two behaviors the UI depends on: correct recursive
-/// counts/sizes, and skipping symlinked and com.apple.* children (the latter
-/// would otherwise pop a TCC authorization dialog on macOS 26+).
+/// The disk analyzer measures one directory tree in a single pass and hands
+/// the whole tree back when it is done. The fixture pins down the behaviors
+/// the UI depends on: correct recursive sizes and direct-child counts, the
+/// depth budget, and the skip rules — symlinked and `com.apple.*` children
+/// (the latter would pop a TCC authorization dialog on macOS 26+), mount
+/// points, and the TCC-protected home trio.
 struct DiskAnalyzerTests {
     private func write(size: Int, at url: URL) throws {
         try FileManager.default.createDirectory(
@@ -43,65 +45,101 @@ struct DiskAnalyzerTests {
         return base
     }
 
-    @Test func childrenStreamsEveryEntryOnce() async throws {
-        let base = try makeFixture()
-        defer { try? FileManager.default.removeItem(at: base) }
-
-        var listed: [DiskEntry] = []
-        var finished = false
-        var entries: [DiskEntry] = []
-        for await event in DiskAnalyzer.children(of: base.path) {
+    /// Runs a scan to completion and returns the progress-event count, the
+    /// finished tree, and the directory count the finished event carries.
+    private func scan(
+        root: String,
+        maxDepth: Int = DiskAnalyzer.maxDepth,
+        protectedPaths: Set<String> = []
+    ) async -> (progressEvents: Int, node: DiskEntry?, directories: Int) {
+        var progressEvents = 0
+        var node: DiskEntry?
+        var directories = 0
+        for await event in DiskAnalyzer.scan(root: root, protectedPaths: protectedPaths, maxDepth: maxDepth) {
             switch event {
-            case .listed(let pending):
-                listed = pending
-            case .measured(let entry):
-                entries.append(entry)
-            case .finished:
-                finished = true
+            case .progress:
+                progressEvents += 1
+            case .finished(let finished, let finishedDirectories):
+                #expect(node == nil, "the tree is published exactly once, at the end")
+                node = finished
+                directories = finishedDirectories
             }
         }
-
-        #expect(listed.count == 3, "symlink and com.apple.* children must not be listed: \(String(describing: listed.count))")
-        #expect(listed.allSatisfy { !$0.isMeasured }, "listed entries are pending placeholders")
-        #expect(finished)
-        #expect(entries.count == 3)
-        #expect(entries.allSatisfy { $0.isMeasured })
-        #expect(Set(entries.map(\.name)) == ["big", "small", "root.bin"])
+        return (progressEvents, node, directories)
     }
 
-    @Test func measuresRecursiveSizesAndCounts() async throws {
+    @Test func scanMeasuresTheWholeTreeAndPublishesItOnce() async throws {
         let base = try makeFixture()
         defer { try? FileManager.default.removeItem(at: base) }
 
-        var entries: [String: DiskEntry] = [:]
-        for await event in DiskAnalyzer.children(of: base.path) {
-            if case .measured(let entry) = event { entries[entry.name] = entry }
-        }
+        let (progressEvents, node, directories) = await scan(root: base.path)
+        let root = try #require(node)
+        #expect(progressEvents > 0, "progress events precede the finished tree")
+        // The finished event carries the exact count: the progress events are
+        // throttled, so the last of them can lag behind the real total, and
+        // the caller divides by this number on the next scan.
+        #expect(directories == 4, "base, big, big/nested and small are the four measured directories")
+        #expect(root.path == base.path)
+        #expect(root.name == base.lastPathComponent)
+        #expect(root.isDirectory)
 
-        let big = entries["big"]
-        #expect(big?.isDirectory == true)
-        #expect(big?.folderCount == 1, "big contains nested/")
-        #expect(big?.fileCount == 2, "big contains a.bin and b.bin")
-        #expect(big?.itemCount == 3)
-        // 3 MB of payload, allowing for filesystem block rounding
-        #expect((big?.size ?? 0) > 2_900_000)
-        #expect((big?.size ?? 0) < 3_200_000)
+        // Size descending; the symlink and the com.apple.* child are absent.
+        #expect(root.children.map(\.name) == ["big", "root.bin", "small"])
+        #expect(root.folderCount == 2)
+        #expect(root.fileCount == 1)
+        #expect(root.itemCount == 3)
+        // 3 MB + 2 MB + small's 1 KB, allowing for filesystem block rounding.
+        #expect(root.size > 4_900_000)
+        #expect(root.size < 5_300_000)
+        #expect(!root.isTruncated)
+        #expect(!root.isUnreadable)
+        #expect(!root.isSkipped)
 
-        #expect(entries["small"]?.fileCount == 1)
-        #expect(entries["small"]?.folderCount == 0)
-        #expect((entries["small"]?.size ?? 0) < 100_000)
+        let big = try #require(root.children.first)
+        #expect(big.isDirectory)
+        #expect(big.folderCount == 1, "big contains nested/")
+        #expect(big.fileCount == 2, "big contains a.bin and b.bin")
+        #expect(big.itemCount == 3)
+        #expect(big.size > 2_900_000)
+        #expect(big.size < 3_200_000)
+        // Equal sizes fall back to name ascending, so the order is
+        // deterministic rather than a coin flip among the 1 MB children.
+        #expect(big.children.map(\.name) == ["a.bin", "b.bin", "nested"])
+        #expect(big.children.first?.isDirectory == false)
 
-        let root = entries["root.bin"]
-        #expect(root?.isDirectory == false)
-        #expect(root?.folderCount == 0)
-        #expect(root?.fileCount == 0)
-        #expect((root?.size ?? 0) > 1_900_000)
+        let small = try #require(root.children.last)
+        #expect(small.folderCount == 0)
+        #expect(small.fileCount == 1)
+
+        let file = try #require(root.children.first { $0.name == "root.bin" })
+        #expect(!file.isDirectory)
+        #expect(file.children.isEmpty)
+        #expect(file.size > 1_900_000)
+    }
+
+    /// The depth budget bounds how many levels of nodes are retained, not how
+    /// deep the measurement goes: a truncated folder's size and counts are
+    /// still real, only its children are missing.
+    @Test func truncatesBeyondTheDepthBudget() async throws {
+        let base = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        let (_, node, _) = await scan(root: base.path, maxDepth: 1)
+        let root = try #require(node)
+        #expect(root.children.map(\.name) == ["big", "root.bin", "small"])
+
+        let big = try #require(root.children.first)
+        #expect(big.isTruncated)
+        #expect(big.children.isEmpty, "children past the budget are not retained")
+        #expect(big.folderCount == 1, "the cut level is still enumerated")
+        #expect(big.fileCount == 2)
+        #expect(big.size > 2_900_000, "the size is measured past the budget")
     }
 
     /// A folder the process may not read enumerates as empty once access is
     /// refused (a denied TCC prompt, or a locked directory). It must be
-    /// marked unreadable — reporting "0 B" for a real folder is a lie the
-    /// user would act on.
+    /// marked unreadable — reporting "0 B" for a real folder is a lie the user
+    /// would act on.
     @Test func unreadableChildIsMarkedInsteadOfReportingZeroBytes() async throws {
         let base = try makeFixture()
         defer { try? FileManager.default.removeItem(at: base) }
@@ -110,32 +148,72 @@ struct DiskAnalyzerTests {
         try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked.path)
         defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
 
-        var entries: [String: DiskEntry] = [:]
-        for await event in DiskAnalyzer.children(of: base.path) {
-            if case .measured(let entry) = event { entries[entry.name] = entry }
-        }
-
-        #expect(entries["locked"]?.isUnreadable == true)
-        #expect(entries["locked"]?.size == 0)
-        #expect(entries["locked"]?.itemCount == 0)
+        let (_, node, _) = await scan(root: base.path)
+        let root = try #require(node)
+        let entry = try #require(root.children.first { $0.name == "locked" })
+        #expect(entry.isUnreadable)
+        #expect(entry.size == 0)
+        #expect(entry.children.isEmpty)
+        #expect(entry.itemCount == 0)
         // Readable siblings are unaffected.
-        #expect(entries["big"]?.isUnreadable == false)
-        #expect(entries["small"]?.isUnreadable == false)
+        #expect(root.children.first { $0.name == "big" }?.isUnreadable == false)
+        #expect(root.children.first { $0.name == "small" }?.isUnreadable == false)
     }
 
-    @Test func missingDirectoryYieldsNoEntries() async {
-        var listed: [DiskEntry] = []
-        var finished = false
-        var count = 0
-        for await event in DiskAnalyzer.children(of: "/definitely/not/a/real/path") {
-            switch event {
-            case .listed(let pending): listed = pending
-            case .measured: count += 1
-            case .finished: finished = true
-            }
-        }
-        #expect(listed.isEmpty)
-        #expect(count == 0)
-        #expect(finished)
+    /// The TCC-protected home trio is listed as skipped and left unmeasured:
+    /// entering one pops the access dialog, so a full-disk scan must not
+    /// traverse it.
+    @Test func protectedPathsAreListedAsSkippedAndNotMeasured() async throws {
+        let base = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: base) }
+        try write(size: 64 * 1024, at: base.appendingPathComponent("small/d.bin"))
+
+        let (_, node, _) = await scan(
+            root: base.path,
+            protectedPaths: [base.appendingPathComponent("small").path]
+        )
+        let root = try #require(node)
+        let small = try #require(root.children.first { $0.name == "small" })
+        #expect(small.isSkipped)
+        #expect(small.size == 0, "a skipped folder is never measured")
+        #expect(small.children.isEmpty)
+        // The root total is exactly its measured children's: the skipped
+        // folder's 64 KB payload is not counted anywhere.
+        let measured = root.children.filter { $0.name != "small" }.reduce(Int64(0)) { $0 + $1.size }
+        #expect(root.size == measured)
+    }
+
+    /// The counting pass is the denominator the progress fraction divides by,
+    /// so it must visit exactly the directories the measurement visits — a
+    /// count that disagreed would leave the fraction short of 100% and the
+    /// remaining estimate short of the truth.
+    @Test func theCountPassVisitsExactlyWhatTheScanVisits() async throws {
+        let base = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        let (_, node, scanned) = await scan(root: base.path)
+        #expect(node != nil)
+        let counted = await DiskAnalyzer.countDirectories(root: base.path, protectedPaths: [])
+        #expect(counted == scanned, "the count must match the directories the scan visits")
+
+        // A protected folder is listed but never entered, so it is in neither
+        // count — the denominator drops with it.
+        let protected = Set([base.appendingPathComponent("small").path])
+        let (_, protectedNode, protectedScanned) = await scan(root: base.path, protectedPaths: protected)
+        #expect(protectedNode != nil)
+        let protectedCounted = await DiskAnalyzer.countDirectories(root: base.path, protectedPaths: protected)
+        #expect(protectedCounted == protectedScanned)
+        #expect(protectedCounted == counted - 1, "the skipped folder leaves both counts")
+    }
+
+    /// A path that cannot be enumerated at all — missing, or denied — comes
+    /// back as a flagged node rather than an empty one, so the page can say
+    /// "can't read" instead of "empty folder".
+    @Test func missingRootComesBackFlagged() async {
+        let (progressEvents, node, _) = await scan(root: "/definitely/not/a/real/path")
+        #expect(progressEvents >= 1)
+        let root = try? #require(node)
+        #expect(root?.isUnreadable == true)
+        #expect(root?.children.isEmpty == true)
     }
 }

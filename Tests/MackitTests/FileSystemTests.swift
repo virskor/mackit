@@ -38,6 +38,46 @@ struct FileSystemTests {
         #expect(FileSystem.children(of: "/definitely/not/a/real/path").isEmpty)
     }
 
+    @Test func entriesReturnNilForMissingDirectory() {
+        #expect(FileSystem.entries(of: "/definitely/not/a/real/path") == nil)
+    }
+
+    /// The entry attributes the disk analysis walks on: node type, symlink
+    /// flag, and the allocated size the bulk enumeration reads in the same
+    /// syscall as the name. A directory reports no size — the kernel has
+    /// nothing to say about one — and a symlink is flagged rather than
+    /// resolved.
+    @Test func entriesReportTypesSizesAndFlags() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-entries-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        try Data(repeating: 0, count: 64 * 1024).write(to: base.appendingPathComponent("file.bin"))
+        try FileManager.default.createDirectory(at: base.appendingPathComponent("sub"), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            atPath: base.appendingPathComponent("link").path,
+            withDestinationPath: base.appendingPathComponent("sub").path
+        )
+
+        let entries = try #require(FileSystem.entries(of: base.path))
+        let byName = Dictionary(uniqueKeysWithValues: entries.map { ($0.name, $0) })
+
+        let file = try #require(byName["file.bin"])
+        #expect(!file.isDirectory)
+        #expect(!file.isSymbolicLink)
+        #expect(file.allocatedSize >= 64 * 1024)
+
+        let sub = try #require(byName["sub"])
+        #expect(sub.isDirectory)
+        #expect(sub.allocatedSize == 0, "the kernel reports no size for a directory")
+
+        let link = try #require(byName["link"])
+        #expect(link.isSymbolicLink)
+        #expect(!link.isDirectory)
+        #expect(link.allocatedSize == 0, "a symlink is flagged, never resolved")
+    }
+
     /// com.apple.* system data is TCC-protected on macOS 26+: recursive enumeration pops an
     /// "Allow X to access Apple Music's media library" authorization dialog. Enumeration must skip them.
     @Test func childrenSkipsSystemDataEntries() throws {
@@ -55,6 +95,32 @@ struct FileSystemTests {
 
         let names = FileSystem.children(of: base.path).map { $0.lastPathComponent }.sorted()
         #expect(names == ["com.tencent.dieMigration", "go-build"], "com.apple.* should be skipped, got: \(names)")
+    }
+
+    /// A directory wider than one `getattrlistbulk` buffer: the enumeration
+    /// has to keep calling until the kernel reports the directory exhausted.
+    /// Stopping after the first batch silently drops the tail — the defect
+    /// this pins down cost half the files of a wide cache directory.
+    @Test func childrenListsEveryEntryOfAWideDirectory() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-wide-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        let count = 3_000
+        for index in 0..<count {
+            try Data(repeating: 0, count: 8).write(to: base.appendingPathComponent("f\(index).bin"))
+        }
+
+        let names = FileSystem.children(of: base.path)
+        #expect(names.count == count, "every entry must survive the multi-batch enumeration: \(names.count)")
+        #expect(Set(names.map(\.lastPathComponent)).count == count)
+
+        let entries = try #require(FileSystem.entries(of: base.path))
+        #expect(entries.count == count)
+        #expect(entries.allSatisfy { !$0.isDirectory })
+        // 3000 x 8-byte files, each rounding up to a 4 KB block.
+        #expect(entries.reduce(0) { $0 + $1.allocatedSize } >= Int64(count) * 4096)
     }
 
     /// Glob expansion also skips com.apple.*: container cache rules rely on glob
@@ -178,67 +244,5 @@ struct FileSystemTests {
         #expect(!FileSystem.isProtected("~/Library/Caches/go-build"))
         #expect(!FileSystem.isProtected("~/go/pkg/mod"))
         #expect(!FileSystem.isProtected("~/.pub-cache/hosted"))
-    }
-
-    /// The disk analysis page's summary counts: the entry's *direct* children
-    /// split into folders and files — the same numbers the mockup reports
-    /// (Users: 2 folders 1 file = its 3 direct children) — while the size
-    /// stays recursive, since that is what the treemap areas show. A
-    /// symlinked directory is neither followed nor counted: the analysis
-    /// listing skips symlinks, so counting one would report an entry the user
-    /// never sees.
-    @Test func allocatedSizeAndCountsCountsFoldersAndFiles() throws {
-        let base = FileManager.default.temporaryDirectory
-            .appendingPathComponent("mackit-counts-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: base) }
-
-        let mb = 1024 * 1024
-        try Data(repeating: 0, count: mb).write(to: base.appendingPathComponent("a.bin"))
-        try FileManager.default.createDirectory(at: base.appendingPathComponent("sub"), withIntermediateDirectories: true)
-        try Data(repeating: 0, count: mb).write(to: base.appendingPathComponent("sub/b.bin"))
-        try FileManager.default.createSymbolicLink(
-            atPath: base.appendingPathComponent("link").path,
-            withDestinationPath: base.appendingPathComponent("sub").path
-        )
-
-        let counts = FileSystem.allocatedSizeAndCounts(of: base)
-        #expect(counts.folders == 1, "only sub/ is a direct folder; the symlink is skipped")
-        #expect(counts.files == 1, "only a.bin is a direct file; b.bin sits inside sub/")
-        // The size is recursive: it must still cover sub/b.bin.
-        #expect(counts.size > 1_900_000)
-
-        // A plain file has no contents to count, only a size.
-        let fileCounts = FileSystem.allocatedSizeAndCounts(of: base.appendingPathComponent("a.bin"))
-        #expect(fileCounts.files == 0)
-        #expect(fileCounts.folders == 0)
-        #expect(fileCounts.size > 900_000)
-
-        // A missing path reports nothing rather than crashing.
-        let missing = FileSystem.allocatedSizeAndCounts(of: base.appendingPathComponent("nope"))
-        #expect(missing.size == 0 && missing.folders == 0 && missing.files == 0)
-    }
-
-    /// com.apple.* subtrees are pruned mid-traversal: on macOS 26+ enumerating
-    /// them pops a TCC authorization dialog, and the analysis runs full-disk
-    /// traversals where the cleaning engine's listing-level filter alone
-    /// would not reach.
-    @Test func allocatedSizeAndCountsPrunesSystemDataSubtrees() throws {
-        let base = FileManager.default.temporaryDirectory
-            .appendingPathComponent("mackit-prune-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: base) }
-
-        let mb = 1024 * 1024
-        try FileManager.default.createDirectory(at: base.appendingPathComponent("keep"), withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: base.appendingPathComponent("com.apple.Music"), withIntermediateDirectories: true)
-        try Data(repeating: 0, count: mb).write(to: base.appendingPathComponent("keep/a.bin"))
-        try Data(repeating: 0, count: 5 * mb).write(to: base.appendingPathComponent("com.apple.Music/huge.bin"))
-
-        let counts = FileSystem.allocatedSizeAndCounts(of: base)
-        #expect(counts.folders == 1, "only keep/ is a direct folder")
-        #expect(counts.files == 0)
-        #expect(counts.size > 900_000, "keep/a.bin is counted")
-        #expect(counts.size < 2_000_000, "the pruned com.apple.* payload must not be counted: \(counts.size)")
     }
 }

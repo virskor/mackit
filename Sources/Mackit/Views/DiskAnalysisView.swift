@@ -2,35 +2,52 @@ import SwiftUI
 
 /// The disk analysis tool page: where the space went.
 ///
-/// Layout follows the mockup — a page title carrying the volume's free/total,
-/// a toolbar with back/forward, a breadcrumb, rescan and the visualization
-/// toggle, then two columns: the current directory's children (left) and the
-/// selected child's breakdown as a treemap (right).
+/// Three screens: a start screen before anything has been measured (a
+/// whole-disk scan is minutes of IO, so the user presses the button rather
+/// than the page scanning on arrival), a scanning screen while a measurement
+/// runs (ring, the directory being measured, elapsed time and — once this
+/// tree has been scanned before — a remaining estimate, plus a cancel
+/// button), and the results once it lands. There is deliberately no
+/// incremental presentation — a list that fills in while the user reads it
+/// shows numbers that are still moving.
 ///
-/// Interaction model, read off the mockup's three states:
+/// The results layout follows the mockup — a page title carrying the volume's
+/// free/total, a toolbar with back/forward, a breadcrumb, rescan and the
+/// visualization toggle, then two columns: the current directory's children
+/// (left) and the selected child's breakdown as a treemap (right). The toolbar
+/// belongs to the results: before the first scan there is no tree to navigate
+/// and nothing to rescan.
+///
+/// Interaction model:
 /// - the left column lists the breadcrumb's last directory's children, sorted
 ///   by size descending, each row showing its recursive "N items" count;
 /// - clicking a row selects it and the right column shows *its* children as a
 ///   treemap (Users → weizhang; weizhang's Library → Containers, …);
-/// - entering a folder (double-click a row) appends to the breadcrumb, and the
-///   largest child is selected automatically so the treemap shows where the
-///   space went without a second click.
-///
-/// The whole child listing is published up front — the user sees every row
-/// immediately (the 200 GB folder included) — and sizes stream in afterwards,
-/// biggest last, so no long silent wait precedes the first paint.
+/// - entering a folder (double-click a row) appends to the breadcrumb. Every
+///   browsed level is already measured, so the switch is instant — unless the
+///   folder sits past the scan's depth budget, in which case entering scans
+///   it the same way the whole disk was scanned: scanning screen first,
+///   results after.
 struct DiskAnalysisView: View {
     @Environment(AppViewModel.self) private var vm
 
     var body: some View {
-        VStack(spacing: 0) {
+        let model = vm.diskAnalysis
+        return VStack(spacing: 0) {
             titleBar
-            toolbar
-            Divider()
-            HStack(spacing: 0) {
-                listColumn
+            // The toolbar navigates the scanned tree — back/forward, the
+            // breadcrumb, the home shortcut and the rescan all need one —
+            // so it waits for the first scan to land.
+            if model.root != nil {
+                toolbar
                 Divider()
-                detailColumn
+            }
+            if model.isScanning {
+                scanScreen
+            } else if model.root == nil {
+                startScreen
+            } else {
+                results
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
@@ -95,16 +112,15 @@ struct DiskAnalysisView: View {
             // same contract as the general module's rescan button: the user
             // can always cut a long traversal short.
             BrandCTAButton(
-                title: model.isMeasuring || model.isMeasuringSelection
+                title: model.isScanning
                     ? L10n.tr("toolbar.stopScan")
                     : L10n.tr("toolbar.rescan"),
-                systemImage: model.isMeasuring || model.isMeasuringSelection ? "stop.circle" : "arrow.clockwise",
+                systemImage: model.isScanning ? "stop.circle" : "arrow.clockwise",
                 style: .secondary,
                 compact: true,
-                glass: true
-            ) {
-                model.rescanOrStop()
-            }
+                glass: true,
+                action: { model.rescanOrStop() }
+            )
 
             Toggle(isOn: Binding(
                 get: { model.visualizationMode },
@@ -162,13 +178,151 @@ struct DiskAnalysisView: View {
         .truncationMode(.middle)
     }
 
+    // MARK: - Start screen
+
+    /// The screen the page shows before anything has been measured — the first
+    /// visit, and again after a whole-disk scan is stopped. Scanning the
+    /// startup disk is minutes of IO and a wake-up of every cold directory,
+    /// so the page waits for the button instead of starting on arrival: the
+    /// user picked the tool, not a traversal. The page title above already
+    /// names the tool, so this screen explains what the scan does and hands
+    /// over the button.
+    private var startScreen: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 24)
+
+            VStack(spacing: 22) {
+                Image(systemName: "internaldrive")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.secondary)
+
+                Text(verbatim: L10n.tr("diskAnalysis.start.explain"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 320)
+
+                BrandCTAButton(
+                    title: L10n.tr("welcome.start"),
+                    systemImage: "arrow.clockwise",
+                    style: .primary,
+                    glass: true,
+                    action: { vm.diskAnalysis.startScan() }
+                )
+            }
+
+            Spacer(minLength: 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Scanning screen
+
+    /// The screen the page shows while a measurement runs — the whole disk
+    /// from the start screen, a subtree on a drill-down past the depth budget,
+    /// one folder on an explicit request.
+    ///
+    /// What it can say about the wait depends on what is known. The elapsed
+    /// readout is always exact. The remaining time needs a total, and a
+    /// filesystem walk's total is unknowable up front — so the ring sweeps
+    /// until this tree has been scanned once, and from then on divides by the
+    /// directory count that scan ended on: the same tree visits the same
+    /// directories, so the ring fills and the remaining line extrapolates
+    /// from the measured rate. Trees too small to clear the estimate's sample
+    /// floors never get a remaining time at all; for them the elapsed readout
+    /// is the story.
+    private var scanScreen: some View {
+        let model = vm.diskAnalysis
+        return VStack(spacing: 0) {
+            Spacer(minLength: 24)
+
+            VStack(spacing: 22) {
+                if let fraction = model.scanFraction {
+                    ProgressRing(progress: fraction, diameter: 108, lineWidth: 9) {
+                        Text(verbatim: Formatters.percent(fraction))
+                            .font(.system(size: 22, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                    }
+                    .accessibilityElement()
+                    .accessibilityLabel(L10n.tr("scan.progress.label"))
+                } else {
+                    ProgressRing(progress: 0, diameter: 108, lineWidth: 9, isActive: true) {
+                        Text(verbatim: "\(model.scannedDirectories)")
+                            .font(.system(size: 22, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                    }
+                    .accessibilityElement()
+                    .accessibilityLabel(L10n.tr("scan.progress.label"))
+                }
+
+                VStack(spacing: 6) {
+                    Text(L10n.tr("diskAnalysis.scan.title"))
+                        .font(.system(size: 15, weight: .semibold))
+                    Text(verbatim: L10n.fmt("diskAnalysis.scan.current", model.scanCurrentPath))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: 460)
+                    Text(verbatim: L10n.fmt(
+                        "diskAnalysis.scan.count.\(model.scannedDirectories == 1 ? "one" : "other")",
+                        model.scannedDirectories
+                    ))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
+                    Text(verbatim: L10n.fmt("diskAnalysis.scan.elapsed", Formatters.clock(model.scanElapsed)))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                        .monospacedDigit()
+                    if let remaining = model.scanRemaining {
+                        Text(verbatim: L10n.fmt("diskAnalysis.scan.remaining", Formatters.clock(remaining)))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
+                    }
+                }
+
+                Button(L10n.tr("scan.progress.cancel")) { model.cancelScan() }
+                    .buttonStyle(.link)
+                    .font(.system(size: 12))
+            }
+
+            Spacer(minLength: 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Results
+
+    private var results: some View {
+        HStack(spacing: 0) {
+            listColumn
+            Divider()
+            detailColumn
+        }
+    }
+
     // MARK: - Left column: current directory's children
 
     private var listColumn: some View {
         let model = vm.diskAnalysis
         return VStack(spacing: 0) {
-            if model.children.isEmpty && !model.isMeasuring {
-                directoryPlaceholder
+            if model.currentEntry?.isUnreadable == true {
+                directoryPlaceholder(unreadable: true)
+            } else if model.children.isEmpty {
+                if model.currentEntry?.isTruncated == true {
+                    // The folder was entered but its scan was stopped: say so
+                    // and offer it again, rather than claiming "empty folder".
+                    notScannedPlaceholder(
+                        title: L10n.tr("diskAnalysis.truncated.action"),
+                        action: { model.scanCurrentFolder() }
+                    )
+                } else {
+                    directoryPlaceholder(unreadable: false)
+                }
             } else {
                 List {
                     ForEach(model.children) { entry in
@@ -185,20 +339,43 @@ struct DiskAnalysisView: View {
         .frame(width: 300)
     }
 
+    /// Shown where a listing should be but the scan never landed: the browsed
+    /// folder's children were never measured — the depth budget cut them, or
+    /// the scan that would have expanded them was stopped.
+    private func notScannedPlaceholder(title: String, action: @escaping () -> Void) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "internaldrive")
+                .font(.system(size: 28))
+                .foregroundStyle(.tertiary)
+            Text(verbatim: L10n.tr("diskAnalysis.notScanned"))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            BrandCTAButton(
+                title: title,
+                systemImage: "arrow.clockwise",
+                style: .secondary,
+                compact: true,
+                glass: true,
+                action: action
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     /// Shown when the current directory has no children to list: either it
     /// genuinely is empty, or the process may not read it — the two look
     /// identical from the enumeration alone, so they get distinct copy.
     @ViewBuilder
-    private var directoryPlaceholder: some View {
-        let model = vm.diskAnalysis
+    private func directoryPlaceholder(unreadable: Bool) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: model.unreadable ? "lock.fill" : "folder")
+            Image(systemName: unreadable ? "lock.fill" : "folder")
                 .font(.system(size: 28))
                 .foregroundStyle(.tertiary)
-            Text(verbatim: L10n.tr(model.unreadable ? "diskAnalysis.unreadable" : "diskAnalysis.empty"))
+            Text(verbatim: L10n.tr(unreadable ? "diskAnalysis.unreadable" : "diskAnalysis.empty"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-            if model.unreadable {
+            if unreadable {
                 Text(verbatim: L10n.tr("diskAnalysis.fdaHint"))
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
@@ -237,22 +414,16 @@ struct DiskAnalysisView: View {
                     Label(L10n.tr("diskAnalysis.skipped"), systemImage: "hand.raised")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                } else if entry.isTruncated {
+                    Label(L10n.tr("diskAnalysis.truncated"), systemImage: "questionmark.folder")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                 } else {
                     summary(entry)
                 }
             }
 
             Spacer(minLength: 8)
-
-            if model.isMeasuringSelection {
-                ProgressView(
-                    value: Double(model.selectionMeasuredCount),
-                    total: Double(max(1, model.selectionTotalCount))
-                )
-                .progressViewStyle(.linear)
-                .frame(width: 120)
-                .controlSize(.small)
-            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -282,49 +453,73 @@ struct DiskAnalysisView: View {
         let model = vm.diskAnalysis
         if let entry = model.selectedEntry {
             if entry.isDirectory {
-                if entry.isSkipped && model.selectedChildren.isEmpty && !model.isMeasuringSelection {
+                if entry.isSkipped {
                     // Skipped folders stay unmeasured until the user asks:
                     // measuring one pops the access dialog, and the whole
                     // point of skipping is that it never fires unprompted.
-                    // (While an explicit scan is in flight the progress bar
-                    // in the header carries the feedback instead.)
-                    skippedPlaceholder(entry)
-                } else if entry.isUnreadable && model.selectedChildren.isEmpty {
-                    selectionPlaceholder(unreadable: true)
-                } else if model.selectedChildren.isEmpty && !model.isMeasuringSelection {
-                    selectionPlaceholder(unreadable: model.selectionUnreadable)
-                } else if model.visualizationMode {
-                    TreemapView(
-                        entries: model.selectedChildren,
-                        icon: { model.icon(forPath: $0) },
-                        onEnter: { model.enter($0) },
-                        measuringName: model.isMeasuringSelection ? model.selectedEntry?.name : nil
+                    scanPromptPlaceholder(
+                        icon: "hand.raised.fill",
+                        explain: L10n.tr("diskAnalysis.skipped.explain"),
+                        actionTitle: L10n.tr("diskAnalysis.skipped.action"),
+                        action: { model.scanFolder(entry) },
+                        settingsURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
                     )
+                } else if entry.isUnreadable {
+                    selectionPlaceholder(unreadable: true)
+                } else if entry.isTruncated {
+                    // The size is real but the children were not retained, so
+                    // the treemap has nothing to draw until the folder is
+                    // scanned. Selecting a row never starts a scan on its own
+                    // — a single click must not commit to a long traversal.
+                    scanPromptPlaceholder(
+                        icon: "questionmark.folder",
+                        explain: L10n.tr("diskAnalysis.truncated.explain"),
+                        actionTitle: L10n.tr("diskAnalysis.truncated.action"),
+                        action: { model.scanFolder(entry) }
+                    )
+                } else if entry.children.isEmpty {
+                    selectionPlaceholder(unreadable: false)
+                } else if model.visualizationMode {
+                    if entry.children.contains(where: { $0.size > 0 }) {
+                        TreemapView(
+                            entries: entry.children,
+                            icon: { model.icon(forPath: $0) },
+                            onEnter: { model.enter($0) }
+                        )
+                    } else {
+                        // Every child measures zero (empty subfolders): there
+                        // is no area to draw, and a blank card reads as broken.
+                        selectionPlaceholder(unreadable: false)
+                    }
                 } else {
                     // The toggle's off state: the same data as plain rows.
-                    entryList(model.selectedChildren)
+                    entryList(entry.children)
                 }
             } else {
                 fileInfo(entry)
             }
-        } else if model.isMeasuring {
-            measuringPlaceholder
         } else {
-            directoryPlaceholder
+            directoryPlaceholder(unreadable: false)
         }
     }
 
-    /// A TCC-protected folder the scan skipped: why, and the two ways
-    /// forward — scan it now (the system's one-time prompt becomes
-    /// user-initiated) or grant full access for good.
-    private func skippedPlaceholder(_ entry: DiskEntry) -> some View {
-        let model = vm.diskAnalysis
-        return VStack(spacing: 12) {
-            Image(systemName: "hand.raised.fill")
+    /// The detail column's prompt for a folder whose children are not in the
+    /// tree: TCC-protected ones the scan skips by design, and ones the depth
+    /// budget cut. Both offer the explicit scan — the only difference is the
+    /// copy and the settings link the protected one adds.
+    private func scanPromptPlaceholder(
+        icon: String,
+        explain: String,
+        actionTitle: String,
+        action: @escaping () -> Void,
+        settingsURL: URL? = nil
+    ) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
                 .font(.system(size: 28))
                 .foregroundStyle(.tertiary)
 
-            Text(verbatim: L10n.tr("diskAnalysis.skipped.explain"))
+            Text(verbatim: explain)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -332,43 +527,27 @@ struct DiskAnalysisView: View {
 
             HStack(spacing: 10) {
                 BrandCTAButton(
-                    title: L10n.tr("diskAnalysis.skipped.action"),
+                    title: actionTitle,
                     systemImage: "arrow.clockwise",
                     style: .secondary,
                     compact: true,
-                    glass: true
-                ) {
-                    model.scanSkippedFolder(entry)
-                }
+                    glass: true,
+                    action: action
+                )
 
-                Button {
-                    // The Full Disk Access pane: granting it removes the
-                    // prompt entirely for every future scan.
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
-                        NSWorkspace.shared.open(url)
+                if let settingsURL {
+                    Button {
+                        // The Full Disk Access pane: granting it removes the
+                        // prompt entirely for every future scan.
+                        NSWorkspace.shared.open(settingsURL)
+                    } label: {
+                        Text(verbatim: L10n.tr("diskAnalysis.openSettings"))
                     }
-                } label: {
-                    Text(verbatim: L10n.tr("diskAnalysis.openSettings"))
+                    .buttonStyle(.link)
+                    .font(.system(size: 12))
+                    .help(L10n.tr("diskAnalysis.openSettings.help"))
                 }
-                .buttonStyle(.link)
-                .font(.system(size: 12))
-                .help(L10n.tr("diskAnalysis.openSettings.help"))
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var measuringPlaceholder: some View {
-        let model = vm.diskAnalysis
-        return VStack(spacing: 10) {
-            ProgressView()
-                .controlSize(.small)
-            Text(verbatim: L10n.fmt(
-                "diskAnalysis.measuring",
-                model.breadcrumb.last?.name ?? ""
-            ))
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -430,8 +609,6 @@ struct DiskAnalysisView: View {
                         .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
                     if entry.isDirectory {
-                        // A pending row keeps the slot with a dash rather than
-                        // "0 项", so nothing reflows when the size lands.
                         if entry.isUnreadable {
                             // Never "0 项": a denied folder enumerates empty,
                             // and claiming zero items would be a lie.
@@ -439,19 +616,21 @@ struct DiskAnalysisView: View {
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                         } else if entry.isSkipped {
-                            // Deliberately not measured — see scanSkippedFolder.
+                            // Deliberately not measured — see scanFolder.
                             Label(L10n.tr("diskAnalysis.skipped"), systemImage: "hand.raised")
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                         } else {
-                            Text(verbatim: entry.isMeasured ? L10n.items(entry.itemCount) : "—")
+                            // Known even past the depth budget: the level is
+                            // enumerated, only its nodes are not retained.
+                            Text(verbatim: L10n.items(entry.itemCount))
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
                 Spacer(minLength: 4)
-                Text(verbatim: entry.isMeasured && !entry.isUnreadable && !entry.isSkipped ? Formatters.compactBytes(entry.size) : "—")
+                Text(verbatim: entry.isSkipped || entry.isUnreadable ? "—" : Formatters.compactBytes(entry.size))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -461,15 +640,19 @@ struct DiskAnalysisView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
+            // Content inset, selection full-bleed — the sidebar's pattern, and
+            // the page's 16pt rhythm: the icon and the size line up with the
+            // toolbar's padding instead of touching the window edge and the
+            // column divider.
+            .padding(.horizontal, 16)
             .padding(.vertical, 5)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // Still-measuring rows sit back: the measured rows above them are the
-        // answer the user came for, and a full-strength placeholder competes
-        // with them for attention during a long scan. Skipped rows sit back
-        // a little less — their state is settled, just not measured.
-        .opacity(entry.isMeasured ? 1 : (entry.isSkipped ? 0.75 : 0.55))
+        // A row the scan skipped sits back: its state is settled, just not
+        // measured, and a full-strength row competes with the measured ones
+        // for attention.
+        .opacity(entry.isSkipped ? 0.75 : 1)
         // The double-click rides along as a simultaneous gesture rather than
         // an onTapGesture on the button: a Button's own tap handling consumes
         // the first click, so a count-2 onTapGesture attached to it never
@@ -478,7 +661,11 @@ struct DiskAnalysisView: View {
         .simultaneousGesture(
             TapGesture(count: 2).onEnded { model.enter(entry) }
         )
-        .help(L10n.tr("diskAnalysis.reveal.help"))
+        // The tip describes what a click does; revealing in Finder lives in
+        // the context menu and needs no hover hint.
+        .help(entry.isDirectory
+            ? L10n.tr("diskAnalysis.enter.help")
+            : L10n.tr("diskAnalysis.select.help"))
         .contextMenu {
             Button {
                 model.revealInFinder(entry)
@@ -511,9 +698,6 @@ private struct TreemapView: View {
     let entries: [DiskEntry]
     let icon: (String) -> NSImage
     let onEnter: (DiskEntry) -> Void
-    /// The selected folder's name while its children are still measuring —
-    /// drives the in-card progress note before any tile can be drawn.
-    var measuringName: String?
 
     /// Which tile is highlighted. Local to the view on purpose: a tile is a
     /// *grandchild* of the browsed directory (the treemap shows the selected
@@ -543,21 +727,15 @@ private struct TreemapView: View {
                         )
                         .frame(width: rect.width, height: rect.height)
                         .position(x: rect.midX, y: rect.midY)
-                        .help(L10n.tr("diskAnalysis.reveal.help"))
+                        // Only folders can be entered, so only they advertise
+                        // it. The rows carry a chevron for the same affordance;
+                        // a treemap tile has no room for one, and the old
+                        // "Reveal in Finder" tip described the context menu's
+                        // action, not what a click does.
+                        .help(entry.isDirectory
+                            ? L10n.tr("diskAnalysis.enter.help")
+                            : L10n.tr("diskAnalysis.select.help"))
                     }
-                }
-                // Tiles need sizes, so the card is blank until the first
-                // measurement lands — say what is happening instead of
-                // showing an empty rectangle.
-                if visibleRects.isEmpty, let measuringName {
-                    VStack(spacing: 8) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text(verbatim: L10n.fmt("diskAnalysis.measuring", measuringName))
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
