@@ -216,4 +216,62 @@ struct DiskAnalyzerTests {
         #expect(root?.isUnreadable == true)
         #expect(root?.children.isEmpty == true)
     }
+
+    /// A symlink is neither followed nor counted — including one that points
+    /// back at its own parent.
+    ///
+    /// The shared fixture already pins that a symlinked folder is left out of
+    /// the listing; this adds the two things that would actually corrupt a
+    /// number: a cycle (a walk that follows links never terminates) and
+    /// double-counting (the same bytes reached twice through two paths).
+    @Test func symbolicLinksAreNeitherFollowedNorCounted() async throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-links-\(UUID().uuidString)", isDirectory: true)
+        let real = base.appendingPathComponent("real", isDirectory: true)
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        try Data(repeating: 0, count: 64 * 1024).write(to: real.appendingPathComponent("payload.bin"))
+        try FileManager.default.createSymbolicLink(
+            atPath: base.appendingPathComponent("alias").path,
+            withDestinationPath: real.path
+        )
+        // A cycle: a link inside the folder pointing back at its own parent.
+        try FileManager.default.createSymbolicLink(
+            atPath: real.appendingPathComponent("back").path,
+            withDestinationPath: base.path
+        )
+
+        let (_, node, _) = await scan(root: base.path)
+        let root = try #require(node)
+        #expect(root.children.map(\.name) == ["real"], "only the real folder is listed")
+
+        let realNode = try #require(root.children.first)
+        #expect(realNode.children.map(\.name) == ["payload.bin"], "the cyclic link is dropped")
+        // The payload is counted exactly once: through `real`, never again
+        // through `alias`.
+        #expect(root.size == realNode.size)
+        #expect(realNode.size >= 64 * 1024)
+    }
+
+    /// Children come back size-descending, and a tie breaks on the name so the
+    /// list and the treemap never flip two equal entries between renders.
+    @Test func childrenSortBySizeThenName() async throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-sort-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        // Equal sizes, written in reverse alphabetical order.
+        for name in ["c.bin", "b.bin", "a.bin"] {
+            try Data(repeating: 0, count: 16 * 1024).write(to: base.appendingPathComponent(name))
+        }
+        try Data(repeating: 0, count: 256 * 1024).write(to: base.appendingPathComponent("big.bin"))
+
+        let (_, node, _) = await scan(root: base.path)
+        let root = try #require(node)
+        #expect(root.children.map(\.name) == ["big.bin", "a.bin", "b.bin", "c.bin"])
+        #expect(root.fileCount == 4)
+        #expect(root.folderCount == 0)
+    }
 }

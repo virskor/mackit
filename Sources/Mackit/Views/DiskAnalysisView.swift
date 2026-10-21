@@ -1233,10 +1233,15 @@ private struct TreemapOverflowTile: View {
             }
             .frame(width: textWidth)
         } else if rect.width >= 62, rect.height >= 20 {
+            // Two lines when there is height to spare, because the caption is
+            // localized: "其余 18 项" fits a narrow tile, "18 other items" does
+            // not, and truncating it to "18 other i…" is worse than wrapping it
+            // in a tile that is a hundred points tall.
             Text(verbatim: title)
                 .font(.system(size: 11))
-                .lineLimit(1)
+                .lineLimit(rect.height >= 40 ? 2 : 1)
                 .truncationMode(.tail)
+                .multilineTextAlignment(.center)
                 .frame(width: textWidth)
         }
     }

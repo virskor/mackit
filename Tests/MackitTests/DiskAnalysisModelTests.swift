@@ -579,6 +579,49 @@ struct DiskAnalysisModelTests {
         #expect(Set(model.children.map(\.name)) == ["a.bin", "b.bin", "nested"])
     }
 
+    /// Back and forward walk the browsing history the way the toolbar arrows
+    /// do — the one navigation path the breadcrumb tests do not exercise.
+    @Test func backAndForwardFollowTheBrowsingHistory() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        let model = DiskAnalysisModel(rootPath: fixture.path)
+        model.activate()
+        model.startScan()
+        await model.waitUntilSettled()
+
+        let big = try #require(model.children.first { $0.name == "big" })
+        model.enter(big)
+        #expect(model.currentPath == big.path)
+        #expect(model.canGoBack)
+        #expect(!model.canGoForward)
+
+        model.goBack()
+        #expect(model.currentPath == fixture.path)
+        #expect(!model.canGoBack)
+        #expect(model.canGoForward)
+
+        model.goForward()
+        #expect(model.currentPath == big.path)
+        #expect(model.canGoBack)
+        #expect(!model.canGoForward, "forward must be consumed, not replayed")
+    }
+
+    /// The home shortcut only moves inside the analyzed tree. A home folder the
+    /// scan never measured would leave the breadcrumb pointing at a path with
+    /// no node behind it, so the jump is dropped instead.
+    @Test func goToHomeIgnoresAHomeOutsideTheTree() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        let model = DiskAnalysisModel(rootPath: fixture.path, homePath: "/definitely/elsewhere")
+        model.activate()
+        model.startScan()
+        await model.waitUntilSettled()
+
+        model.goToHome()
+        #expect(model.currentPath == fixture.path, "a home outside the tree must not navigate")
+        #expect(!model.canGoBack, "a dropped jump must not touch the history either")
+    }
+
     /// An isolated UserDefaults domain, so a remembered count never leaks
     /// between tests — or into the app's real history.
     private static func historySuite() -> (ScanProgressHistory, String) {
