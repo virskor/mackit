@@ -363,8 +363,11 @@ struct DiskAnalysisModelTests {
         await model.waitUntilSettled()
         #expect(model.children.count == 3)
     }
-    /// Leaving the page stops the measurement but keeps the tree: coming back
-    /// shows the results instantly, with no rescan.
+
+    /// Neither leaving the page nor an explicit stop takes the tree down: the
+    /// browsed folder stays entered, and coming back shows the same results
+    /// with no rescan — activation only scans a folder whose children the
+    /// tree does not hold, and this one is fully measured.
     @Test func cancelKeepsTheTreeAndReactivationDoesNotRescan() async throws {
         let fixture = try makeFixture()
         defer { try? FileManager.default.removeItem(at: fixture) }
