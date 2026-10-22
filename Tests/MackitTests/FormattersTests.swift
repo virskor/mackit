@@ -46,8 +46,26 @@ struct FormattersTests {
         // Below 1 MB falls back to KB / B, never "0 MB"
         #expect(Formatters.compactBytes(512) == "512B")
         #expect(!Formatters.compactBytes(512).contains("MB"))
-        #expect(Formatters.compactBytes(1536) == "1.5KB")
+        #expect(Formatters.compactBytes(1536) == "1.54KB")
         #expect(Formatters.compactBytes(0) == "0B")
+    }
+
+    /// The unit has to agree with the number the user reads: a value that
+    /// rounds up to 1000.00 escalates instead of printing "1000.00GB", and a
+    /// value just under the boundary keeps the smaller unit. Every threshold
+    /// here is checked against the displayed value, so a formatter that
+    /// compared the raw value would fail the first three expectations.
+    @Test func compactBytesEscalatesOnTheRoundedValue() {
+        #expect(Formatters.compactBytes(999_999_000_000) == "1.00TB")
+        #expect(Formatters.compactBytes(999_500_000_000) == "999.50GB")
+        #expect(Formatters.compactBytes(999_400_000_000) == "999.40GB")
+        #expect(Formatters.compactBytes(4_000_000_000_000) == "4.00TB")
+        // The same boundary one unit down: 0.999999999 GB is 1.00GB, not 1000.00MB.
+        #expect(Formatters.compactBytes(999_999_999) == "1.00GB")
+        #expect(Formatters.compactBytes(999_999) == "1.00MB")
+        #expect(Formatters.compactBytes(999) == "1.00KB")
+        // And just under it the smaller unit stays.
+        #expect(Formatters.compactBytes(994) == "994B")
     }
 
     /// Elapsed and remaining time read as a clock: m:ss, rolling over to

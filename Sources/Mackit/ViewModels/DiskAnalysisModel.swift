@@ -567,6 +567,17 @@ final class DiskAnalysisModel {
     /// Replaces the node at `node.path` with `node`, rebuilding only the
     /// spine: Swift arrays are copy-on-write, so a deep graft copies the path
     /// from the root down, not the whole tree.
+    ///
+    /// Two invariants have to survive the swap, because the placeholder the
+    /// scan replaces was measured under different rules:
+    /// - the size difference is carried up the spine. A skipped folder is
+    ///   listed unmeasured, so its ancestors' totals were computed without
+    ///   its bytes; grafting the measured node without them leaves every
+    ///   level above claiming a total that no longer adds up to the children
+    ///   it lists. A truncated folder measures the same either way, so the
+    ///   delta is zero there and the arithmetic is a no-op;
+    /// - the parent's children are re-sorted with the scan's own rule, since
+    ///   the promoted node can outgrow the sibling it is listed behind.
     private static func graft(_ node: DiskEntry, into parent: DiskEntry) -> DiskEntry {
         guard parent.path != node.path else { return node }
         // Only a child on the target's path can hold it; everything else is
@@ -575,10 +586,15 @@ final class DiskAnalysisModel {
             return parent
         }
         var parent = parent
+        var delta: Int64 = 0
         parent.children = parent.children.map { child in
             guard child.path == node.path || node.path.hasPrefix(child.path + "/") else { return child }
-            return child.path == node.path ? node : graft(node, into: child)
+            let replacement = child.path == node.path ? node : graft(node, into: child)
+            delta += replacement.size - child.size
+            return replacement
         }
+        parent.size += delta
+        parent.children.sort(by: DiskEntry.bySizeDescending)
         return parent
     }
 

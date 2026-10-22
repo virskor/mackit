@@ -252,18 +252,26 @@ struct TreemapLabelTests {
     /// tile promises, every large tile truncates its size and share. The
     /// separator carries no spaces for exactly this reason — the spaced form
     /// needs ~87pt, which the first version of this line silently overflowed.
+    ///
+    /// Measured through the catalog rather than a literal: the line is built
+    /// by `L10n.fmt`, so this is the string the view will actually draw. All
+    /// three languages keep the unspaced form, because the 84pt threshold was
+    /// measured against it — a translation that added spaces would fail here.
     @Test func fullLabelLineFitsTheWidthItPromises() {
         let textWidth = 96 - TreemapLabel.inset
-        let line = "999.99GB·100%"
+        let line = L10n.fmt("diskAnalysis.tile.sizeShare", "999.99GB", "100%")
         let measured = (line as NSString).size(withAttributes: [
             .font: NSFont.systemFont(ofSize: 10)
         ]).width
         #expect(measured <= textWidth, "the size/share line needs \(measured)pt, the tile offers \(textWidth)pt")
 
-        let spaced = ("999.99GB · 100%" as NSString).size(withAttributes: [
+        // The hover card's spaced form is what must stay out of the tile.
+        let spaced = L10n.fmt("diskAnalysis.hover.sizeShare", "999.99GB", "100%")
+        #expect(spaced != line, "the two size/share lines must differ in their separator")
+        let spacedWidth = (spaced as NSString).size(withAttributes: [
             .font: NSFont.systemFont(ofSize: 10)
         ]).width
-        #expect(spaced > textWidth, "the spaced form must stay out of the tile — it does not fit")
+        #expect(spacedWidth > textWidth, "the spaced form must stay out of the tile — it does not fit")
     }
 
     /// The `.name` minimum must still show something: at least two glyphs plus

@@ -48,6 +48,15 @@ struct DiskEntry: Identifiable, Sendable {
 
     /// Total direct child count: what the left list's "N items" line shows.
     var itemCount: Int { folderCount + fileCount }
+
+    /// Size descending, name ascending on ties: the order every level of the
+    /// tree is published in. Shared rather than inlined at each sort site so a
+    /// subtree grafted over a placeholder is re-ordered by the rule the scan
+    /// itself used — a promoted folder can outgrow the sibling it is listed
+    /// behind, and a second copy of this comparator would drift from it.
+    static func bySizeDescending(_ lhs: DiskEntry, _ rhs: DiskEntry) -> Bool {
+        lhs.size == rhs.size ? lhs.name < rhs.name : lhs.size > rhs.size
+    }
 }
 
 /// Events while analyzing a directory tree.
@@ -458,7 +467,7 @@ enum DiskAnalyzer {
         // both what the list shows and what the treemap needs, and a stable
         // tiebreak keeps the order deterministic.
         var children = node.retain ? snapshot.children : []
-        children.sort { $0.size == $1.size ? $0.name < $1.name : $0.size > $1.size }
+        children.sort(by: DiskEntry.bySizeDescending)
         return DiskEntry(
             path: node.path,
             name: node.name,

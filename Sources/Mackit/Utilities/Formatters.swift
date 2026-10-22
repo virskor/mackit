@@ -47,14 +47,19 @@ enum Formatters {
     /// style: `bytes` keeps a space and drops trailing zeros ("5 GB"), which
     /// reads too loose inside a treemap tile. Units are localized like
     /// `capacity`'s, but the unit itself carries no surrounding space.
+    ///
+    /// Unit escalation compares the *displayed* value, not the raw one: 999 GB
+    /// and a sliver is 999.999999999 GB, which prints as "1000.00GB" — a unit
+    /// this switch would never have picked. Rounding first keeps the number
+    /// and the unit agreeing, the way ByteCountFormatter does.
     static func compactBytes(_ value: Int64) -> String {
         let gb = Double(value) / 1_000_000_000
-        if gb >= 1000 { return Self.decimal(gb / 1000) + L10n.tr("format.terabytes.compact") }
-        if gb >= 1 { return Self.decimal(gb) + L10n.tr("format.gigabytes.compact") }
+        if Self.displayed(gb) >= 1000 { return Self.decimal(gb / 1000) + L10n.tr("format.terabytes.compact") }
+        if Self.displayed(gb) >= 1 { return Self.decimal(gb) + L10n.tr("format.gigabytes.compact") }
         let mb = Double(value) / 1_000_000
-        if mb >= 1 { return Self.decimal(mb) + L10n.tr("format.megabytes.compact") }
+        if Self.displayed(mb) >= 1 { return Self.decimal(mb) + L10n.tr("format.megabytes.compact") }
         let kb = Double(value) / 1000
-        if kb >= 1 { return String(format: "%.1f", kb) + L10n.tr("format.kilobytes.compact") }
+        if Self.displayed(kb) >= 1 { return Self.decimal(kb) + L10n.tr("format.kilobytes.compact") }
         return "\(value)" + L10n.tr("format.bytes.compact")
     }
 
@@ -62,6 +67,12 @@ enum Formatters {
     /// whereas ByteCountFormatter's "5" makes tiles look inconsistent.
     private static func decimal(_ value: Double) -> String {
         String(format: "%.2f", value)
+    }
+
+    /// A value as the formatter will print it, rounded to the two decimals it
+    /// shows — the basis `compactBytes` escalates units on.
+    private static func displayed(_ value: Double) -> Double {
+        (value * 100).rounded() / 100
     }
 
     /// Relative time, e.g. "3 hours ago".

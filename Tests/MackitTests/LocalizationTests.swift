@@ -118,6 +118,9 @@ struct LocalizationTests {
             "diskAnalysis.openSettings.help",
             "diskAnalysis.others.one", "diskAnalysis.others.other",
             "diskAnalysis.others.help", "diskAnalysis.others.enter.help",
+            "diskAnalysis.sizeNotMeasured",
+            "diskAnalysis.tile.sizeShare", "diskAnalysis.hover.sizeShare",
+            "diskAnalysis.tile.accessibility", "diskAnalysis.overflow.accessibility",
             "format.gigabytes.compact", "format.megabytes.compact", "format.kilobytes.compact",
             "format.terabytes.compact", "format.bytes.compact",
         ]
@@ -168,6 +171,37 @@ struct LocalizationTests {
         let more = L10n.fmt("apps.confirm.leftoverMore", 5)
         #expect(more.contains("5"))
         #expect(!more.contains("%lld"))
+
+        // The disk analysis page's size/share lines and accessibility labels.
+        // The tile line is width-critical: it must keep the unspaced
+        // separator the treemap threshold was measured against, while the
+        // hover card uses the spaced one.
+        let tile = L10n.fmt("diskAnalysis.tile.sizeShare", "206.53GB", "42%")
+        #expect(tile.contains("206.53GB"))
+        #expect(tile.contains("42%"))
+        #expect(!tile.contains("%1$@"))
+        #expect(!tile.contains("%2$@"))
+        #expect(!tile.contains(" · "), "the tile line must not gain spaces around its separator")
+
+        let hover = L10n.fmt("diskAnalysis.hover.sizeShare", "206.53GB", "42%")
+        #expect(hover.contains("206.53GB"))
+        #expect(hover.contains("42%"))
+        #expect(!hover.contains("%1$@"))
+        #expect(!hover.contains("%2$@"))
+
+        let tileLabel = L10n.fmt("diskAnalysis.tile.accessibility", "Library", "206.53GB", "42%")
+        #expect(tileLabel.contains("Library"))
+        #expect(tileLabel.contains("206.53GB"))
+        #expect(tileLabel.contains("42%"))
+        #expect(!tileLabel.contains("%1$@"))
+        #expect(!tileLabel.contains("%2$@"))
+        #expect(!tileLabel.contains("%3$@"))
+
+        let overflowLabel = L10n.fmt("diskAnalysis.overflow.accessibility", "18 other items", "740.35MB")
+        #expect(overflowLabel.contains("18 other items"))
+        #expect(overflowLabel.contains("740.35MB"))
+        #expect(!overflowLabel.contains("%1$@"))
+        #expect(!overflowLabel.contains("%2$@"))
     }
 
     @Test func itemCountHandlesSingularAndPlural() {
@@ -265,7 +299,12 @@ struct LocalizationTests {
             ("diskAnalysis.scan.elapsed", 1),
             ("diskAnalysis.scan.remaining", 1),
             ("diskAnalysis.others.one", 1),
-            ("diskAnalysis.others.other", 1)
+            ("diskAnalysis.others.other", 1),
+            ("diskAnalysis.sizeNotMeasured", 0),
+            ("diskAnalysis.tile.sizeShare", 2),
+            ("diskAnalysis.hover.sizeShare", 2),
+            ("diskAnalysis.tile.accessibility", 3),
+            ("diskAnalysis.overflow.accessibility", 2)
         ]
         // Compatible with positional parameters (%1$@): residue file
         // subtitles use this layout

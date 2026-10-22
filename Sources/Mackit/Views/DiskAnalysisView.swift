@@ -668,7 +668,9 @@ struct DiskAnalysisView: View {
                     }
                 }
                 Spacer(minLength: 4)
-                Text(verbatim: entry.isSkipped || entry.isUnreadable ? "—" : Formatters.compactBytes(entry.size))
+                Text(verbatim: entry.isSkipped || entry.isUnreadable
+                    ? L10n.tr("diskAnalysis.sizeNotMeasured")
+                    : Formatters.compactBytes(entry.size))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -890,7 +892,11 @@ private struct TreemapCanvas: View {
                 .font(.system(size: 12, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.middle)
-            Text(verbatim: "\(Formatters.compactBytes(entry.size)) · \(Formatters.percent(share(of: entry)))")
+            Text(verbatim: L10n.fmt(
+                "diskAnalysis.hover.sizeShare",
+                Formatters.compactBytes(entry.size),
+                Formatters.percent(share(of: entry))
+            ))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
@@ -1130,7 +1136,12 @@ private struct TreemapTile: View {
                 Label(L10n.tr("ctx.revealInFinder"), systemImage: "arrow.forward.circle")
             }
         }
-        .accessibilityLabel("\(entry.name), \(Formatters.compactBytes(entry.size)), \(Formatters.percent(share))")
+        .accessibilityLabel(L10n.fmt(
+            "diskAnalysis.tile.accessibility",
+            entry.name,
+            Formatters.compactBytes(entry.size),
+            Formatters.percent(share)
+        ))
     }
 
     /// How much label fits — the rule itself lives in `TreemapLabel`, next to
@@ -1155,7 +1166,14 @@ private struct TreemapTile: View {
                     .truncationMode(.tail)
                 // No spaces around the separator: with them this line needs
                 // ~87pt and truncates in a 96pt tile (see TreemapLabel.room).
-                Text(verbatim: "\(Formatters.compactBytes(entry.size))·\(Formatters.percent(share))")
+                // The separator lives in the catalog so each language can
+                // adjust it — all three keep the unspaced form because the
+                // width is what the threshold was measured against.
+                Text(verbatim: L10n.fmt(
+                    "diskAnalysis.tile.sizeShare",
+                    Formatters.compactBytes(entry.size),
+                    Formatters.percent(share)
+                ))
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -1202,7 +1220,11 @@ private struct TreemapOverflowTile: View {
         .contentShape(shape)
         .onHover { isHovered = $0 }
         .onTapGesture { onOpen() }
-        .accessibilityLabel("\(title), \(Formatters.compactBytes(totalSize))")
+        .accessibilityLabel(L10n.fmt(
+            "diskAnalysis.overflow.accessibility",
+            title,
+            Formatters.compactBytes(totalSize)
+        ))
         .accessibilityHint(L10n.tr("diskAnalysis.others.help"))
     }
 
