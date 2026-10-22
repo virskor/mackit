@@ -1,5 +1,7 @@
 import Foundation
 import Testing
+import os
+import MachO
 
 @testable import Mackit
 
@@ -274,4 +276,74 @@ struct DiskAnalyzerTests {
         #expect(root.fileCount == 4)
         #expect(root.folderCount == 0)
     }
+
+    /// The measurement's footprint must not grow with the size of the tree.
+    ///
+    /// An earlier design spawned a task per directory. A parent task stays
+    /// alive waiting for its children however deep the tree runs, so the
+    /// semaphore that capped concurrent *enumerations* capped nothing about
+    /// how many tasks exist at once: measured on a real startup disk (1.7 M
+    /// directories) that peaked at 871 k live tasks and 2.7 GB resident. The
+    /// fixture here is deep and leaf-poor — the shape that grows that
+    /// population fastest — and the ceiling is set from this fixture's own
+    /// measurement: the worker pool grows resident memory by about 31 MB
+    /// here, where a task per directory would add roughly 3 KB per directory,
+    /// some 280 MB.
+    @Test(.serialized)
+    func scanningADeepTreeKeepsItsFootprintBounded() async throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-deep-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        // Depth 10, three-way branching: ~88 k directories of pure nesting.
+        func build(_ url: URL, level: Int) throws {
+            guard level < 10 else { return }
+            for index in 0..<3 {
+                let child = url.appendingPathComponent("d\(index)", isDirectory: true)
+                try FileManager.default.createDirectory(at: child, withIntermediateDirectories: false)
+                try build(child, level: level + 1)
+            }
+        }
+        try build(base, level: 0)
+
+        let baseline = Self.residentSize()
+        let peak = PeakBox(baseline)
+        let sampler = Task {
+            while !Task.isCancelled {
+                peak.record(Self.residentSize())
+                try? await Task.sleep(for: .milliseconds(5))
+            }
+        }
+        let (_, node, _) = await scan(root: base.path)
+        sampler.cancel()
+        let root = try #require(node)
+
+        // The tree really was measured, so the ceiling is not met by a scan
+        // that gave up early.
+        #expect(root.size == 0)
+        #expect(root.folderCount == 3)
+        let growth = peak.value - baseline
+        #expect(growth < 128 * 1_000_000, "resident memory grew by \(growth / 1_000_000) MB during the scan")
+    }
+
+    /// Resident size of this process, for the footprint test.
+    private static func residentSize() -> Int64 {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        return result == KERN_SUCCESS ? Int64(info.resident_size) : 0
+    }
+}
+
+/// A lock-guarded maximum, so the sampler task can record into it.
+private final class PeakBox: @unchecked Sendable {
+    private let lock = OSAllocatedUnfairLock(initialState: Int64(0))
+    init(_ value: Int64) { self.lock.withLock { $0 = value } }
+    func record(_ value: Int64) { lock.withLock { $0 = max($0, value) } }
+    var value: Int64 { lock.withLock { $0 } }
 }

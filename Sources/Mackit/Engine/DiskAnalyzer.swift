@@ -112,6 +112,7 @@ enum DiskAnalyzer {
     /// volume roots and inside `.nofollow`'s mirror of one.
     private static let systemMarkers: Set<String> = [".nofollow", ".resolve", ".vol", ".file"]
 
+
     /// Counts the directories a scan of `root` will visit, applying the same
     /// skip rules, so the scan can publish a real fraction and a remaining
     /// time instead of sweeping until the tree has been measured once.
@@ -268,6 +269,20 @@ enum DiskAnalyzer {
     /// mid-scan. Passed explicitly rather than defaulted: the caller's set
     /// carries its session's approvals, and a stale default would silently
     /// re-skip (or re-enter) folders the user already decided about.
+    ///
+    /// The traversal is a fixed pool of workers over one shared queue of
+    /// directories, not a task per directory. A task per directory looks
+    /// natural — each subtree is its own little computation — but the
+    /// population is not bounded by the concurrency limit: a parent task stays
+    /// alive waiting for its children however deep the tree runs, so the
+    /// semaphore that caps concurrent *enumerations* caps nothing about how
+    /// many tasks exist at once. Measured on a real startup disk (1.7 M
+    /// directories) that peaked at 871 k live tasks and 2.7 GB resident, all
+    /// of it suspended parents and children queued behind the semaphore. Here
+    /// the only tasks are the workers; the tree itself is data — paths in the
+    /// queue, one small aggregation object per directory from the moment its
+    /// job starts until its subtree finishes — so the footprint no longer
+    /// grows with the tree.
     static func scan(
         root: String,
         protectedPaths: Set<String>,
@@ -277,176 +292,326 @@ enum DiskAnalyzer {
             let task = Task.detached(priority: .userInitiated) {
                 let startedAt = ContinuousClock.now
                 let progress = ProgressGate(continuation)
-                let semaphore = AsyncSemaphore(max: ScanEngine.maxConcurrentMeasurements)
-                if let node = await scanDirectory(
-                    path: root,
-                    budget: maxDepth,
-                    protectedPaths: protectedPaths,
-                    semaphore: semaphore,
-                    progress: progress
-                ) {
+                let queue = MeasureQueue()
+                queue.push(MeasureJob(path: root, budget: maxDepth, parent: nil))
+                await withTaskGroup(of: Void.self) { group in
+                    for _ in 0..<ScanEngine.maxConcurrentMeasurements {
+                        group.addTask {
+                            await measureThroughQueue(
+                                queue: queue,
+                                protectedPaths: protectedPaths,
+                                progress: progress
+                            )
+                        }
+                    }
+                }
+                // The group ends when the root's subtree has been finalized
+                // (the walk is over) or the scan was cancelled. A cancelled
+                // scan publishes nothing: its partial tree would be presented
+                // as a finished one.
+                if !Task.isCancelled, let node = queue.finishedEntry {
                     let scanned = progress.scannedCount
                     continuation.yield(.finished(node, directories: scanned))
                     MackitLog.disk.info(
                         "analyzed \(root, privacy: .public): \(scanned, privacy: .public) directories, \(node.size, privacy: .public) bytes, took \(MackitLog.duration(.now - startedAt), privacy: .public)"
                     )
                 }
-                // A cancelled scan publishes nothing: its partial tree would
-                // be presented as a finished one.
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
         }
     }
 
-    /// Measures the subtree at `path`. Returns nil only when the task was
-    /// cancelled mid-scan.
+    /// One worker of the measurement pool: takes batches of directories off
+    /// the shared queue until the whole tree has been measured.
     ///
-    /// `budget` is how many more levels of children to retain; zero (or
-    /// negative) means "measure only" — the level is still enumerated and its
-    /// directories still traversed for their sizes, but no nodes are kept.
-    private static func scanDirectory(
-        path: String,
-        budget: Int,
+    /// An empty queue is not the end of the walk — another worker may be
+    /// mid-enumeration with subdirectories still to push — so a worker that
+    /// finds nothing polls briefly instead of exiting. It exits for good when
+    /// the root's subtree has been finalized (`done`) or the scan was
+    /// cancelled. Polling rather than parking on a continuation keeps a
+    /// cancelled worker waking up, the same choice the counting pass makes.
+    private static func measureThroughQueue(
+        queue: MeasureQueue,
         protectedPaths: Set<String>,
-        semaphore: AsyncSemaphore,
         progress: ProgressGate
-    ) async -> DiskEntry? {
-        if Task.isCancelled { return nil }
-        let name = FileSystem.lastComponent(of: path)
-        // The semaphore gates only the enumeration, never the recursion: a
-        // permit held across a child task would deadlock the moment every
-        // permit sat on an ancestor waiting for a descendant.
-        let entries = await semaphore.withPermit { FileSystem.entries(of: path) }
-        progress.tick(path)
-        // An unreadable directory (a denied TCC prompt, a locked folder, or
-        // one that vanished mid-scan) enumerates as nothing. Flag it rather
-        // than reporting an empty folder — or "0 B" — for a real one.
-        guard let entries else {
-            return DiskEntry(
-                path: path,
-                name: name,
-                isDirectory: true,
-                size: 0,
-                folderCount: 0,
-                fileCount: 0,
-                children: [],
-                isUnreadable: true,
-                isSkipped: false,
-                isTruncated: false
-            )
+    ) async {
+        while !Task.isCancelled {
+            guard let batch = queue.nextBatch() else {
+                if queue.isDone { return }
+                try? await Task.sleep(for: .milliseconds(1))
+                continue
+            }
+            for job in batch {
+                if queue.isDone || Task.isCancelled { return }
+                await measure(job, queue: queue, protectedPaths: protectedPaths, progress: progress)
+            }
+        }
+    }
+
+    /// Measures one directory: enumerates it, sums its files, and hands its
+    /// subdirectories to the queue as jobs of their own.
+    ///
+    /// A directory that cannot be read at all (a denied TCC prompt, a locked
+    /// folder, or one that vanished mid-scan) enumerates as nothing. It is
+    /// flagged rather than reported as an empty folder — or "0 B" — for a
+    /// real one.
+    private static func measure(
+        _ job: MeasureJob,
+        queue: MeasureQueue,
+        protectedPaths: Set<String>,
+        progress: ProgressGate
+    ) async {
+        let node = MeasureNode(path: job.path, budget: job.budget, parent: job.parent)
+        let entries = FileSystem.entries(of: job.path)
+        progress.tick(job.path)
+
+        // The lock body returns whether this was the node's last unit of work
+        // rather than writing to a captured variable: it may run on whichever
+        // worker took the lock, so it may not touch the caller's stack.
+        let ready = node.state.withLock { state -> Bool in
+            if let entries {
+                let retain = job.budget > 0
+                var children: [DiskEntry] = []
+                var subdirectories: [MeasureJob] = []
+                for entry in entries {
+                    if systemMarkers.contains(entry.name) { continue }
+                    if entry.isSymbolicLink { continue }
+                    if entry.isDirectory {
+                        // A mount point is another volume: not listed, not
+                        // counted, not entered (see the type comment).
+                        if entry.isMountPoint { continue }
+                        state.folderCount += 1
+                        // `entry.path` is computed on demand: a file the
+                        // budget does not retain (the deep majority of a
+                        // whole-disk tree) never pays for a path it does not
+                        // need.
+                        if protectedPaths.contains(entry.path) {
+                            if retain {
+                                children.append(
+                                    DiskEntry(
+                                        path: entry.path,
+                                        name: entry.name,
+                                        isDirectory: true,
+                                        size: 0,
+                                        folderCount: 0,
+                                        fileCount: 0,
+                                        children: [],
+                                        isUnreadable: false,
+                                        isSkipped: true,
+                                        isTruncated: false
+                                    )
+                                )
+                            }
+                            continue
+                        }
+                        subdirectories.append(
+                            MeasureJob(path: entry.path, budget: job.budget - 1, parent: node)
+                        )
+                    } else {
+                        state.fileCount += 1
+                        state.total += entry.allocatedSize
+                        if retain {
+                            children.append(
+                                DiskEntry(
+                                    path: entry.path,
+                                    name: entry.name,
+                                    isDirectory: false,
+                                    size: entry.allocatedSize,
+                                    folderCount: 0,
+                                    fileCount: 0,
+                                    children: [],
+                                    isUnreadable: false,
+                                    isSkipped: false,
+                                    isTruncated: false
+                                )
+                            )
+                        }
+                    }
+                }
+                state.children = children
+                // The count is raised before the jobs become visible to other
+                // workers: a subdirectory that runs and finishes at once would
+                // otherwise fold into this node before the work it represents
+                // was ever counted, finalizing it early with a partial total.
+                state.pending += subdirectories.count
+                queue.push(contentsOf: subdirectories)
+            } else {
+                state.unreadable = true
+            }
+            // This directory's own enumeration is the last unit of its work.
+            state.pending -= 1
+            return state.pending == 0
         }
 
-        let retain = budget > 0
+        if ready {
+            fold(finalize(node), from: node, into: queue)
+        }
+    }
+
+    /// Builds a finished node's entry. Called once the node is exclusively
+    /// this worker's — its pending count reached zero, so no child will
+    /// report into it again.
+    private static func finalize(_ node: MeasureNode) -> DiskEntry {
+        let snapshot = node.state.withLock { $0 }
+        // Size descending, name ascending on ties: the largest child first is
+        // both what the list shows and what the treemap needs, and a stable
+        // tiebreak keeps the order deterministic.
+        var children = node.retain ? snapshot.children : []
+        children.sort { $0.size == $1.size ? $0.name < $1.name : $0.size > $1.size }
+        return DiskEntry(
+            path: node.path,
+            name: node.name,
+            isDirectory: true,
+            size: snapshot.total,
+            folderCount: snapshot.folderCount,
+            fileCount: snapshot.fileCount,
+            children: children,
+            isUnreadable: snapshot.unreadable,
+            isSkipped: false,
+            isTruncated: !node.retain
+        )
+    }
+
+    /// Folds a finished subtree into its parent, then finalizes every
+    /// ancestor whose last child just landed. Runs on whichever worker
+    /// finished the subtree; the walk up is one step per level of depth and
+    /// never holds a lock while taking the next, so it cannot deadlock.
+    private static func fold(_ entry: DiskEntry, from node: MeasureNode, into queue: MeasureQueue) {
+        var current = entry
+        var currentNode = node
+        while true {
+            guard let parent = currentNode.parent else {
+                // The root's subtree is the whole tree: the walk is over.
+                queue.finish(with: current)
+                return
+            }
+            // The lock body returns the parent when its last child just
+            // landed, and may not touch the caller's variables — it runs on
+            // whichever worker took the lock.
+            let folded = current
+            let finished: MeasureNode? = parent.state.withLock { state in
+                state.total += folded.size
+                if parent.retain { state.children.append(folded) }
+                state.pending -= 1
+                return state.pending == 0 ? parent : nil
+            }
+            guard let parentDone = finished else { return }
+            current = finalize(parentDone)
+            currentNode = parentDone
+        }
+    }
+}
+
+/// One directory waiting to be measured: its path, how many levels of
+/// children to retain below it, and the node its result folds into.
+private struct MeasureJob: Sendable {
+    let path: String
+    let budget: Int
+    let parent: MeasureNode?
+}
+
+/// One directory being measured: the aggregation state its children report
+/// into, plus the link up to its parent.
+///
+/// The mutable state lives inside an unfair lock, which is what makes this
+/// class `Sendable` without an exemption: every stored property is a `let` of
+/// a `Sendable` type, and the lock is held only to merge a result — never
+/// across the enumeration that produces one.
+private final class MeasureNode: Sendable {
+    struct State {
+        /// Recursive allocated size so far: this directory's own files plus
+        /// every subdirectory that has folded in.
         var total: Int64 = 0
         var folderCount = 0
         var fileCount = 0
-        var nodes: [DiskEntry] = []
-        var directories: [String] = []
+        /// Units of work still outstanding: this directory's own enumeration
+        /// plus one per subdirectory job handed to the queue. Zero means every
+        /// child has folded in and the node can be finalized.
+        var pending = 1
+        /// Retained children, in enumeration order; sorted on finalize.
+        var children: [DiskEntry] = []
+        var unreadable = false
+    }
 
-        for entry in entries {
-            if systemMarkers.contains(entry.name) { continue }
-            if entry.isSymbolicLink { continue }
-            if entry.isDirectory {
-                // A mount point is another volume: not listed, not counted,
-                // not entered (see the type comment).
-                if entry.isMountPoint { continue }
-                folderCount += 1
-                // `entry.path` is computed on demand: a file the budget does
-                // not retain (the deep majority of a whole-disk tree) never
-                // pays for a path it does not need.
-                if protectedPaths.contains(entry.path) {
-                    if retain {
-                        nodes.append(
-                            DiskEntry(
-                                path: entry.path,
-                                name: entry.name,
-                                isDirectory: true,
-                                size: 0,
-                                folderCount: 0,
-                                fileCount: 0,
-                                children: [],
-                                isUnreadable: false,
-                                isSkipped: true,
-                                isTruncated: false
-                            )
-                        )
-                    }
-                    continue
-                }
-                directories.append(entry.path)
-            } else {
-                fileCount += 1
-                total += entry.allocatedSize
-                if retain {
-                    nodes.append(
-                        DiskEntry(
-                            path: entry.path,
-                            name: entry.name,
-                            isDirectory: false,
-                            size: entry.allocatedSize,
-                            folderCount: 0,
-                            fileCount: 0,
-                            children: [],
-                            isUnreadable: false,
-                            isSkipped: false,
-                            isTruncated: false
-                        )
-                    )
-                }
-            }
+    let path: String
+    let name: String
+    /// Whether this node keeps its children's nodes. A node past the depth
+    /// budget is still measured — enumerated, and its directories still
+    /// traversed for their sizes — it just does not retain, which is what
+    /// `isTruncated` reports.
+    let retain: Bool
+    let parent: MeasureNode?
+    let state = OSAllocatedUnfairLock(initialState: State())
+
+    init(path: String, budget: Int, parent: MeasureNode?) {
+        self.path = path
+        self.name = FileSystem.lastComponent(of: path)
+        self.retain = budget > 0
+        self.parent = parent
+    }
+}
+
+/// The measurement's shared work queue.
+///
+/// Jobs are taken from the back — depth first — because a depth-first walk
+/// finishes one subtree before starting the next, which keeps the set of
+/// nodes being aggregated, and with it the queue's own depth, as narrow as
+/// the tree allows.
+///
+/// The walk is over when the root's subtree has been finalized, which is a
+/// fact this queue records. A drained queue cannot tell a worker that on its
+/// own — another worker may be mid-enumeration with children still to push —
+/// so an idle worker polls rather than exiting (see
+/// `measureThroughQueue`).
+private final class MeasureQueue: Sendable {
+    private struct State {
+        var jobs: [MeasureJob] = []
+        var done = false
+        var finished: DiskEntry?
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    /// How many jobs one worker takes per lock acquisition. Batching keeps
+    /// the lock traffic next to the enumerations rather than per directory.
+    private static let batchSize = 64
+
+    func push(_ job: MeasureJob) {
+        state.withLock { $0.jobs.append(job) }
+    }
+
+    func push(contentsOf jobs: [MeasureJob]) {
+        guard !jobs.isEmpty else { return }
+        state.withLock { state in
+            state.jobs.append(contentsOf: jobs)
         }
+    }
 
-        // Directories are scanned in chunks: a single directory can hold
-        // hundreds of thousands of subdirectories, and spawning a task per
-        // child at once would park that many suspended tasks on the
-        // semaphore. Each chunk still runs fully concurrently.
-        let chunkSize = 64
-        var index = 0
-        while index < directories.count {
-            if Task.isCancelled { return nil }
-            let end = min(index + chunkSize, directories.count)
-            await withTaskGroup(of: DiskEntry?.self) { group in
-                for position in index..<end {
-                    let childPath = directories[position]
-                    group.addTask {
-                        await scanDirectory(
-                            path: childPath,
-                            budget: budget - 1,
-                            protectedPaths: protectedPaths,
-                            semaphore: semaphore,
-                            progress: progress
-                        )
-                    }
-                }
-                for await node in group {
-                    guard let node else { continue }
-                    total += node.size
-                    if retain { nodes.append(node) }
-                }
-            }
-            index = end
+    func nextBatch() -> [MeasureJob]? {
+        state.withLock { state in
+            guard !state.jobs.isEmpty else { return nil }
+            let size = min(Self.batchSize, state.jobs.count)
+            let batch = Array(state.jobs.suffix(size))
+            state.jobs.removeLast(size)
+            return batch
         }
+    }
 
-        if retain {
-            // Size descending, name ascending on ties: the largest child
-            // first is both what the list shows and what the treemap needs,
-            // and a stable tiebreak keeps the order deterministic.
-            nodes.sort { $0.size == $1.size ? $0.name < $1.name : $0.size > $1.size }
+    var isDone: Bool {
+        state.withLock { $0.done }
+    }
+
+    var finishedEntry: DiskEntry? {
+        state.withLock { $0.finished }
+    }
+
+    /// Records the root's finished subtree and ends the walk.
+    func finish(with entry: DiskEntry) {
+        state.withLock { state in
+            state.done = true
+            state.finished = entry
         }
-
-        return DiskEntry(
-            path: path,
-            name: name,
-            isDirectory: true,
-            size: total,
-            folderCount: folderCount,
-            fileCount: fileCount,
-            children: retain ? nodes : [],
-            isUnreadable: false,
-            isSkipped: false,
-            isTruncated: !retain
-        )
     }
 }
 
