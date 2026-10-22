@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-10-22
+
+### Fixed
+
+- Launch at login no longer dies silently after the agent binary is replaced. A login item registration caches a launch constraint computed from the agent binary at registration time — a code-directory hash for an ad-hoc-signed build, an identifier + team pair for a Developer-ID-signed one. Replacing the binary (a rebuild, an update, a reinstall) left that constraint pointing at a hash that no longer exists, so the kernel killed the agent at every login with a "Launch Constraint Violation", launchd removed the service on the spot, and the menu bar icon never appeared — the entry it left behind stopped resolving and a spawn retry failed every ten seconds, forever. The app now rebuilds the registration (unregister + register) at every main app launch when it is missing or was built from a different agent binary, tracked by the binary's cdhash, since a rebuild of the same commit changes the hash while leaving the version untouched. A registration still awaiting the user's approval in System Settings is left alone rather than churned on every launch
+- The launch-at-login choice is persisted in shared settings instead of being read from the system registration, so a registration the system gave up on no longer silently flips the settings toggle off — the choice is lost exactly when it needs rebuilding. The system state remains the fallback for settings files written before the choice was stored (an upgrade)
+- Turning launch at login off no longer kills the tray. Unregistering a login item makes launchd kill the process it spawned for it — the very menu bar icon the user was looking at — even though the setting only ever decided whether the agent starts at login. The agent is now brought back through LaunchServices after unregistering, whose instances the login item has no hold on, so the tray survives the toggle and only the login-time start is affected
+
+### Changed
+
+- The empty-state prompt is one composition instead of six hand-written variants: the welcome page, the general module's empty state and the disk analysis page's placeholders (unscanned, unreadable, protected) had drifted into six sets of metrics. `HeroPromptView` now owns the composition — badge, copy, optional hint, action with accessory, footer — at two scales, and callers only choose their subject
+
 ## [1.0.5] - 2026-10-22
 
 ### Added
@@ -131,6 +143,7 @@ First release. Mackit is a macOS developer cache cleaner: scan every regenerable
 
 - Private keys, certificates and credentials never enter the repo (`secrets/`, `*.p8` / `*.pem` / `*.key` blocked by `.gitignore`); a pre-commit hook scans the staging area to intercept private keys
 
+[1.0.6]: https://github.com/virskor/mackit/releases/tag/v1.0.6
 [1.0.5]: https://github.com/virskor/mackit/releases/tag/v1.0.5
 [1.0.4]: https://github.com/virskor/mackit/releases/tag/v1.0.4
 [1.0.3]: https://github.com/virskor/mackit/releases/tag/v1.0.3
