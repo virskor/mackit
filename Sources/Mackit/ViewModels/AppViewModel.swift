@@ -1577,17 +1577,18 @@ final class AppViewModel {
 
     /// Shows the item in Finder.
     ///
-    /// Revealing *through* Finder is an AppleEvent, and an app that may not
-    /// automate Finder — an ad-hoc build, or a user who declined the prompt
-    /// — gets silence rather than an error, so the click reads as a no-op.
-    /// LaunchServices needs no such permission: a folder opens itself and a
-    /// file opens in its enclosing folder, and either way the target is on
-    /// screen.
+    /// A folder is opened itself, a file its enclosing folder — and a folder
+    /// that LaunchServices would hand to another application (an application
+    /// bundle, a preference pane) is revealed through its enclosing folder
+    /// instead, so the click never starts something. See `RevealInFinder`.
     func revealInFinder(_ item: JunkItem) {
         guard !item.path.isEmpty else { return }
         let url = URL(fileURLWithPath: item.path)
-        let target = item.isDirectory ? url : url.deletingLastPathComponent()
-        NSWorkspace.shared.open(target)
+        if item.isDirectory {
+            RevealInFinder.show(folder: url)
+        } else {
+            RevealInFinder.show(file: url)
+        }
     }
 
     func openInTerminal(_ item: JunkItem) {

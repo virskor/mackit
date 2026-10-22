@@ -25,6 +25,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - The treemap no longer turns a folder's small children into a field of unlabelled fragments. Area stays proportional for every child big enough to carry a name, and the rest — everything under about 57×57pt — is folded into a single "其余 N 项" tile occupying exactly the area those children add up to, which opens a list of all of them (still enterable, still revealable in Finder). A 51-child `Applications` list at a 660×500 card splits into 21 labelled tiles plus one aggregate block, in place of the corner of unlabelled fragments the same children used to produce, and the aggregate's size is the sum of what it holds rather than a rounded figure. Labels are now measured against the space a tile has rather than against a fixed threshold, so a name is drawn whole, truncated once, or not at all instead of wrapping mid-word ("元宝.ap" with a "p" underneath); a large tile carries its percentage of the folder beside its size; hovering a tile too small to read floats its name, size and percentage beside it; and the child-count limit that used to swap the whole map for a plain list is gone, so a `Frameworks` folder or a `node_modules` now shows its head plus one aggregate tile instead of nothing at all
 
+### Fixed
+
+- "Show in Finder" no longer starts an application. LaunchServices opens a resource with whatever application claims that kind of resource, so revealing an application bundle — every row and tile under `/Applications` — launched the app instead of showing it, and a preference pane opened System Settings; both claims were verified against LaunchServices before the fix, which reports the bundle itself for an `.app` and System Settings for a `.prefPane`. A folder is now opened directly only when Finder would open it, and anything else is revealed through its enclosing folder — the window the user asked for, without an app starting behind it. The junk list's reveal had the same shape and is fixed with it
+
 ## [1.0.4] - 2026-10-20
 
 ### Fixed
