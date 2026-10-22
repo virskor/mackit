@@ -1782,6 +1782,13 @@ final class AppViewModel {
                 } else {
                     try await LaunchAtLogin.unregister()
                     LaunchAtLogin.clearRegistrationRecord()
+                    // Unregistering a login item makes launchd kill the process
+                    // it spawned for it, so the tray would vanish the moment the
+                    // setting is turned off — yet the setting only ever decided
+                    // whether the agent starts at login. Bring the agent back
+                    // through LaunchServices, whose instances the login item has
+                    // no hold on; a no-op when the running one survived.
+                    AppBridge.ensureAgentRunning()
                 }
                 launchAtLogin = enabled
                 saveSettings()
