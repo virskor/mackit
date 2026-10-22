@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-10-22
+
 ### Added
 
 - Disk space analysis: a new tool page (sidebar "Tools" section, below the cleanup entries) answering "where did the space go". The page opens on a start screen — a whole-disk traversal is minutes of IO, so it waits for the user's button instead of scanning on arrival — and once started, a scanning screen shows the folder being measured and a stop button while it runs, with the results appearing only after the scan has landed, so no number on screen is still moving. The left column lists the current directory's children with their recursive sizes and item counts, biggest first; the right column shows the selected folder's breakdown as a squarified treemap, with a toggle between the treemap and a plain list. Navigation is breadcrumb-based with back/forward history, and a toolbar shortcut jumps straight to the home folder — the fastest path to `~/Library/Containers`, where most reclaimable container junk lives. The scan retains six levels of the tree (measured on a real ~500 GB volume: six levels keep the footprint at tens of megabytes, where eight would hold over a million nodes); drilling past that scans the folder the same way — scanning screen first, results after — so `Users › … › Library › Containers › <container> › Data` stays reachable at any depth. The hardware page's "Analyze Disk Space" now opens this tool instead of running a cleanup scan
@@ -129,6 +131,7 @@ First release. Mackit is a macOS developer cache cleaner: scan every regenerable
 
 - Private keys, certificates and credentials never enter the repo (`secrets/`, `*.p8` / `*.pem` / `*.key` blocked by `.gitignore`); a pre-commit hook scans the staging area to intercept private keys
 
+[1.0.5]: https://github.com/virskor/mackit/releases/tag/v1.0.5
 [1.0.4]: https://github.com/virskor/mackit/releases/tag/v1.0.4
 [1.0.3]: https://github.com/virskor/mackit/releases/tag/v1.0.3
 [1.0.2]: https://github.com/virskor/mackit/releases/tag/v1.0.2
