@@ -308,10 +308,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // from the current bundle.
             UpdateController.shared.restartTrayAgentIfBundleReplaced()
             // When the user launches the main app directly from the Dock /
-            // Finder, the agent in the login item may not have been
-            // brought up (or a login item was never registered). Bring it
-            // up once more so the tray is immediately usable.
+            // Finder, the agent in the login items may not have been brought up
+            // yet (or a login item was never registered). Bring it up once
+            // more so the tray is immediately usable.
             AppBridge.ensureAgentRunning()
+            // The login item registration caches a launch constraint from the
+            // agent binary it was built from. A replaced binary — a rebuild, an
+            // update, a reinstall — leaves that constraint stale, and the agent
+            // is then killed at every login with a launch-constraint violation
+            // while launchd removes the service: the menu bar icon simply never
+            // appears. Rebuild the registration here, where the current binary
+            // is on disk, instead of letting the user find out at the next
+            // login. A no-op unless something actually needs rebuilding.
+            Task {
+                do {
+                    try await LaunchAtLogin.repairIfNeeded(preferred: LaunchAtLogin.preferredIntent())
+                } catch {
+                    MackitLog.ui.error("rebuilding the launch-at-login registration failed: \(error.localizedDescription, privacy: .public)")
+                }
+            }
             startAgentWatchdog()
             // Tray command channel.
             AppBridge.observeCommands { command, text, style in

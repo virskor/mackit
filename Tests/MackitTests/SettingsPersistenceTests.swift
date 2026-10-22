@@ -44,4 +44,25 @@ struct SettingsPersistenceTests {
 
         #expect(reread.showMenuBarLogo == false)
     }
+
+    /// The launch-at-login choice has to reach the shared file. The system
+    /// registration can go stale on its own — a rebuild replaces the binary its
+    /// launch constraint pins — and the persisted choice is what lets the app
+    /// rebuild it at the next launch instead of silently dropping the user's
+    /// request (which is what reading the system state directly did).
+    @Test func launchAtLoginChoiceIsPersisted() {
+        var saved: [String: Any] = [:]
+        let vm = AppViewModel(statsPolling: false)
+        vm.settingsSink = { saved = $0 }
+
+        vm.launchAtLogin = true
+        vm.saveSettings()
+
+        #expect(saved["launchAtLogin"] as? Bool == true)
+
+        let reread = AppViewModel(statsPolling: false)
+        reread.loadSettings(from: saved)
+
+        #expect(reread.launchAtLogin == true)
+    }
 }

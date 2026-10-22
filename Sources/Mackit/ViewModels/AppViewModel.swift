@@ -123,8 +123,11 @@ final class AppViewModel {
     /// category).
     var includeApps: Bool = true
     var projectRoots: [String] = []
-    /// Whether launch-at-login is registered. The real state lives in the
-    /// system login items, synced over at startup.
+    /// Whether the app is registered to launch at login — the user's choice,
+    /// persisted in shared settings. The system registration is reconciled
+    /// against this (see `LaunchAtLogin.repairIfNeeded`), never trusted as the
+    /// source of truth: a registration the system gave up on reads as off even
+    /// though the user asked for it.
     ///
     /// What the login item registers is the tray agent rather than the
     /// main app: at login only the menu bar icon appears, and the main
@@ -1723,7 +1726,14 @@ final class AppViewModel {
         if let value = values["showDesktopStats"] as? Bool {
             showDesktopStats = value
         }
-        launchAtLogin = LaunchAtLogin.isEnabled
+        // The persisted launch-at-login choice. Absent means a settings file
+        // written before the choice was persisted (an upgrade), which keeps
+        // reading the system registration exactly as the older versions did.
+        if let value = values["launchAtLogin"] as? Bool {
+            launchAtLogin = value
+        } else {
+            launchAtLogin = LaunchAtLogin.isEnabled
+        }
     }
 
     func saveSettings() {
@@ -1742,6 +1752,7 @@ final class AppViewModel {
             "showMenuBarTemperature": showMenuBarTemperature,
             "showMenuBarLogo": showMenuBarLogo,
             "showDesktopStats": showDesktopStats,
+            "launchAtLogin": launchAtLogin,
         ])
         // Broadcast to the tray agent: its VM re-reads once, so setting
         // changes take effect on the panel and menu bar labels
@@ -1763,11 +1774,17 @@ final class AppViewModel {
         Task {
             do {
                 if enabled {
-                    try LaunchAtLogin.register()
+                    // Rebuild rather than plain register: a leftover entry from
+                    // an older binary already satisfies "registered", so
+                    // registering it again would leave the constraint that fails
+                    // at every login in place.
+                    try await LaunchAtLogin.repairIfNeeded(preferred: true)
                 } else {
                     try await LaunchAtLogin.unregister()
+                    LaunchAtLogin.clearRegistrationRecord()
                 }
                 launchAtLogin = enabled
+                saveSettings()
             } catch {
                 showToast(.error, L10n.tr(enabled ? "toast.launchAtLoginOnFailed" : "toast.launchAtLoginOffFailed"))
             }
