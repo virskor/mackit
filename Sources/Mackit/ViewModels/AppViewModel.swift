@@ -1726,14 +1726,11 @@ final class AppViewModel {
         if let value = values["showDesktopStats"] as? Bool {
             showDesktopStats = value
         }
-        // The persisted launch-at-login choice. Absent means a settings file
-        // written before the choice was persisted (an upgrade), which keeps
-        // reading the system registration exactly as the older versions did.
-        if let value = values["launchAtLogin"] as? Bool {
-            launchAtLogin = value
-        } else {
-            launchAtLogin = LaunchAtLogin.isEnabled
-        }
+        // The persisted launch-at-login choice, with the system registration as
+        // the fallback for settings files written before the key existed (an
+        // upgrade). The rule lives in LaunchAtLogin because the launch-time
+        // repair reads the same choice through it.
+        launchAtLogin = LaunchAtLogin.preferredIntent(from: values)
     }
 
     func saveSettings() {
