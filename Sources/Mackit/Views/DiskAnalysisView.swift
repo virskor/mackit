@@ -215,32 +215,19 @@ struct DiskAnalysisView: View {
     /// names the tool, so this screen explains what the scan does and hands
     /// over the button.
     private var startScreen: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 24)
-
-            VStack(spacing: 22) {
-                Image(systemName: "internaldrive")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.secondary)
-
-                Text(verbatim: L10n.tr("diskAnalysis.start.explain"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 320)
-
-                BrandCTAButton(
-                    title: L10n.tr("welcome.start"),
-                    systemImage: "arrow.clockwise",
-                    style: .primary,
-                    glass: true,
-                    action: { vm.diskAnalysis.startScan() }
-                )
-            }
-
-            Spacer(minLength: 24)
+        // The drive symbol in the shared prompt's hero treatment: the page's
+        // subject is the disk, but its front door is the same composition as
+        // the welcome page's.
+        HeroPromptView(
+            systemImage: "internaldrive",
+            brandIcon: false,
+            message: L10n.tr("diskAnalysis.start.explain"),
+            messageMaxWidth: 320,
+            actionTitle: L10n.tr("welcome.start"),
+            actionImage: "arrow.clockwise"
+        ) {
+            vm.diskAnalysis.startScan()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Scanning screen
@@ -338,17 +325,17 @@ struct DiskAnalysisView: View {
         let model = vm.diskAnalysis
         return VStack(spacing: 0) {
             if model.currentEntry?.isUnreadable == true {
-                directoryPlaceholder(unreadable: true)
+                unreadableOrEmptyPlaceholder(unreadable: true)
             } else if model.children.isEmpty {
                 if model.currentEntry?.isTruncated == true {
                     // The folder was entered but its scan was stopped: say so
                     // and offer it again, rather than claiming "empty folder".
                     notScannedPlaceholder(
-                        title: L10n.tr("diskAnalysis.truncated.action"),
+                        actionTitle: L10n.tr("diskAnalysis.truncated.action"),
                         action: { model.scanCurrentFolder() }
                     )
                 } else {
-                    directoryPlaceholder(unreadable: false)
+                    unreadableOrEmptyPlaceholder(unreadable: false)
                 }
             } else {
                 List {
@@ -369,48 +356,43 @@ struct DiskAnalysisView: View {
     /// Shown where a listing should be but the scan never landed: the browsed
     /// folder's children were never measured — the depth budget cut them, or
     /// the scan that would have expanded them was stopped.
-    private func notScannedPlaceholder(title: String, action: @escaping () -> Void) -> some View {
-        VStack(spacing: 10) {
-            Image(systemName: "internaldrive")
-                .font(.system(size: 28))
-                .foregroundStyle(.tertiary)
-            Text(verbatim: L10n.tr("diskAnalysis.notScanned"))
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            BrandCTAButton(
-                title: title,
-                systemImage: "arrow.clockwise",
-                style: .secondary,
-                compact: true,
-                glass: true,
-                action: action
-            )
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private func notScannedPlaceholder(actionTitle: String, action: @escaping () -> Void) -> some View {
+        HeroPromptView(
+            systemImage: "internaldrive",
+            brandIcon: false,
+            tint: Color(nsColor: .tertiaryLabelColor),
+            diameter: 28,
+            symbolSize: 28,
+            fillOpacity: 0,
+            message: L10n.tr("diskAnalysis.notScanned"),
+            actionTitle: actionTitle,
+            actionImage: "arrow.clockwise",
+            actionStyle: .secondary,
+            actionCompact: true,
+            rises: false,
+            action: action
+        )
     }
 
-    /// Shown when the current directory has no children to list: either it
-    /// genuinely is empty, or the process may not read it — the two look
-    /// identical from the enumeration alone, so they get distinct copy.
-    @ViewBuilder
-    private func directoryPlaceholder(unreadable: Bool) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: unreadable ? "lock.fill" : "folder")
-                .font(.system(size: 28))
-                .foregroundStyle(.tertiary)
-            Text(verbatim: L10n.tr(unreadable ? "diskAnalysis.unreadable" : "diskAnalysis.empty"))
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            if unreadable {
-                Text(verbatim: L10n.tr("diskAnalysis.fdaHint"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 220)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    /// Shown where a listing should be but the folder has no children in it:
+    /// either it genuinely is empty, or the process may not read it — the two
+    /// look identical from the enumeration alone, so they get distinct copy,
+    /// and the unreadable one adds the Full Disk Access hint. Both columns
+    /// share it: an empty left column is the same state as an empty detail
+    /// column.
+    private func unreadableOrEmptyPlaceholder(unreadable: Bool) -> some View {
+        HeroPromptView(
+            systemImage: unreadable ? "lock.fill" : "folder",
+            brandIcon: false,
+            tint: Color(nsColor: .tertiaryLabelColor),
+            diameter: 28,
+            symbolSize: 28,
+            fillOpacity: 0,
+            message: L10n.tr(unreadable ? "diskAnalysis.unreadable" : "diskAnalysis.empty"),
+            hint: unreadable ? L10n.tr("diskAnalysis.fdaHint") : nil,
+            hintMaxWidth: 240,
+            rises: false
+        )
     }
 
     // MARK: - Right column: the selected child's breakdown
@@ -492,7 +474,7 @@ struct DiskAnalysisView: View {
                         settingsURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
                     )
                 } else if entry.isUnreadable {
-                    selectionPlaceholder(unreadable: true)
+                    unreadableOrEmptyPlaceholder(unreadable: true)
                 } else if entry.isTruncated {
                     // The size is real but the children were not retained, so
                     // the treemap has nothing to draw until the folder is
@@ -505,7 +487,7 @@ struct DiskAnalysisView: View {
                         action: { model.scanFolder(entry) }
                     )
                 } else if entry.children.isEmpty {
-                    selectionPlaceholder(unreadable: false)
+                    unreadableOrEmptyPlaceholder(unreadable: false)
                 } else if model.visualizationMode {
                     if entry.children.contains(where: { $0.size > 0 }) {
                         TreemapView(
@@ -517,7 +499,7 @@ struct DiskAnalysisView: View {
                     } else {
                         // Every child measures zero (empty subfolders): there
                         // is no area to draw, and a blank card reads as broken.
-                        selectionPlaceholder(unreadable: false)
+                        unreadableOrEmptyPlaceholder(unreadable: false)
                     }
                 } else {
                     // The toggle is off: every child as a row, no map.
@@ -527,7 +509,7 @@ struct DiskAnalysisView: View {
                 fileInfo(entry)
             }
         } else {
-            directoryPlaceholder(unreadable: false)
+            unreadableOrEmptyPlaceholder(unreadable: false)
         }
     }
 
@@ -542,27 +524,22 @@ struct DiskAnalysisView: View {
         action: @escaping () -> Void,
         settingsURL: URL? = nil
     ) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 28))
-                .foregroundStyle(.tertiary)
-
-            Text(verbatim: explain)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 300)
-
-            HStack(spacing: 10) {
-                BrandCTAButton(
-                    title: actionTitle,
-                    systemImage: "arrow.clockwise",
-                    style: .secondary,
-                    compact: true,
-                    glass: true,
-                    action: action
-                )
-
+        HeroPromptView(
+            systemImage: icon,
+            brandIcon: false,
+            tint: Color(nsColor: .tertiaryLabelColor),
+            diameter: 28,
+            symbolSize: 28,
+            fillOpacity: 0,
+            message: explain,
+            messageMaxWidth: 300,
+            actionTitle: actionTitle,
+            actionImage: "arrow.clockwise",
+            actionStyle: .secondary,
+            actionCompact: true,
+            rises: false,
+            action: action,
+            actionAccessory: {
                 if let settingsURL {
                     Button {
                         // The Full Disk Access pane: granting it removes the
@@ -576,27 +553,7 @@ struct DiskAnalysisView: View {
                     .help(L10n.tr("diskAnalysis.openSettings.help"))
                 }
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func selectionPlaceholder(unreadable: Bool) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: unreadable ? "lock.fill" : "folder")
-                .font(.system(size: 28))
-                .foregroundStyle(.tertiary)
-            Text(verbatim: L10n.tr(unreadable ? "diskAnalysis.unreadable" : "diskAnalysis.empty"))
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            if unreadable {
-                Text(verbatim: L10n.tr("diskAnalysis.fdaHint"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 260)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        )
     }
 
     /// A selected file has no children to break down; its size and name are
