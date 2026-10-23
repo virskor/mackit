@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- macOS 26 and later now render the app's own surfaces in Liquid Glass instead of the hand-painted plates: the action toast, the clean-progress card, the treemap's hover label, the tray panel's quit hint and clean pill, the disk-analysis navigation chevrons and every brand call-to-action. `GlassSurface` owns the switch — one component decides between `glassEffect` (macOS 26+) and the exact fill, hairline and shadow each surface painted before — so macOS 14 and 15 keep the appearance they had, and the Liquid Glass pilot that `BrandCTAButton` carried as an opt-in is now the default everywhere the button appears, the results page's "Done" included. Glass replaces the fallback's hairline and shadow rather than stacking on them, and a disabled control stays on the flat fill, where a dimmed glass reads as broken rather than as "not now". System-styled controls — push buttons, switches, segmented pickers, the sidebar, tables, forms, progress views — follow the system's own macOS 26 appearance and are deliberately untouched
+
 ## [1.0.6] - 2026-10-22
 
 ### Fixed

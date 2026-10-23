@@ -100,12 +100,21 @@ struct MenuBarPanelView: View {
 
                 Spacer(minLength: 8)
 
-                Text(verbatim: L10n.tr("panel.clean"))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 7)
-                    .background(Color.green, in: Capsule())
+                // The panel's primary action rides the same glass surface as
+                // the window's brand CTA: a green-tinted interactive glass
+                // capsule on macOS 26+, the flat green pill below that.
+                GlassSurface(
+                    style: .tinted(.green),
+                    interactive: true,
+                    outline: .capsule,
+                    fallback: .fill(AnyShapeStyle(Color.green))
+                ) {
+                    Text(verbatim: L10n.tr("panel.clean"))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 7)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
@@ -537,21 +546,22 @@ private struct AppMemoryRow: View {
     /// wide and the warning needs most of it, so there is no room for both;
     /// the name returns the moment the pointer leaves the controls.
     private var quitHint: some View {
-        Text(verbatim: L10n.tr("panel.quitApp.warning"))
-            .font(.system(size: 10))
-            .foregroundStyle(.primary)
-            .lineLimit(2)
-            .multilineTextAlignment(.leading)
-            .frame(width: 210, height: 26, alignment: .leading)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(.primary.opacity(0.12), lineWidth: 0.5)
-            )
-            .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
-            .allowsHitTesting(false)
+        GlassSurface(
+            outline: .rounded(cornerRadius: 6),
+            fallback: .material(.ultraThinMaterial),
+            fallbackHairline: (color: .primary.opacity(0.12), width: 0.5),
+            fallbackShadow: (color: .black.opacity(0.2), radius: 8, y: 3)
+        ) {
+            Text(verbatim: L10n.tr("panel.quitApp.warning"))
+                .font(.system(size: 10))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(width: 210, height: 26, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+        }
+        .allowsHitTesting(false)
     }
 }
 

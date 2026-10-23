@@ -99,8 +99,7 @@ struct GeneralCleanupView: View {
                             title: L10n.tr("general.restoreDefault"),
                             systemImage: "arrow.uturn.backward",
                             style: .secondary,
-                            compact: true,
-                            glass: true
+                            compact: true
                         ) {
                             vm.restoreDefaultGeneralSelection()
                         }
@@ -110,8 +109,7 @@ struct GeneralCleanupView: View {
                             title: L10n.tr("general.remember.action"),
                             systemImage: "star",
                             style: .secondary,
-                            compact: true,
-                            glass: true
+                            compact: true
                         ) {
                             vm.rememberGeneralSelection()
                         }
@@ -157,8 +155,7 @@ struct GeneralCleanupView: View {
                 : L10n.tr("toolbar.rescan"),
             systemImage: vm.phase == .scanning ? "stop.circle" : "arrow.clockwise",
             style: .secondary,
-            compact: true,
-            glass: true
+            compact: true
         ) {
             if vm.phase == .scanning {
                 vm.cancelScan()

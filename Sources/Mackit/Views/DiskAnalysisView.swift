@@ -114,7 +114,6 @@ struct DiskAnalysisView: View {
                 systemImage: model.isScanning ? "stop.circle" : "arrow.clockwise",
                 style: .secondary,
                 compact: true,
-                glass: true,
                 action: { model.rescanOrStop() }
             )
 
@@ -138,9 +137,10 @@ struct DiskAnalysisView: View {
     /// The glyph alone is a 6×11pt target — no mouse hand hits that
     /// reliably, so the button carries its own hit area. Whether it *will*
     /// go back has to be readable without a click: an enabled chevron sits
-    /// on a subtle surface at full strength, a disabled one drops to a
-    /// muted tint and no surface, which is a difference you can see rather
-    /// than one you have to guess at by trying the click.
+    /// on a subtle surface at full strength — glass on macOS 26+, the flat
+    /// tint below that — a disabled one drops to a muted tint and no
+    /// surface, which is a difference you can see rather than one you have
+    /// to guess at by trying the click.
     private func navButton(
         symbol: String,
         enabled: Bool,
@@ -148,16 +148,23 @@ struct DiskAnalysisView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(enabled ? Color.primary : Color.secondary)
-                .opacity(enabled ? 1 : 0.45)
-                .frame(width: 30, height: 26)
-                .background(
-                    enabled ? Color.primary.opacity(0.07) : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-                )
-                .contentShape(Rectangle())
+            GlassSurface(
+                interactive: true,
+                outline: .rounded(cornerRadius: 7),
+                // A disabled chevron carries no surface at all, on either
+                // side of the availability line — glass included.
+                usesGlass: enabled,
+                fallback: .fill(AnyShapeStyle(
+                    enabled ? Color.primary.opacity(0.07) : Color.clear
+                ))
+            ) {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(enabled ? Color.primary : Color.secondary)
+                    .opacity(enabled ? 1 : 0.45)
+                    .frame(width: 30, height: 26)
+                    .contentShape(Rectangle())
+            }
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
@@ -844,29 +851,30 @@ private struct TreemapCanvas: View {
         )
         let y = rect.minY > 52 ? rect.minY - 30 : rect.maxY + 30
 
-        return VStack(alignment: .leading, spacing: 2) {
-            Text(verbatim: entry.name)
-                .font(.system(size: 12, weight: .medium))
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Text(verbatim: L10n.fmt(
-                "diskAnalysis.hover.sizeShare",
-                Formatters.compactBytes(entry.size),
-                Formatters.percent(share(of: entry))
-            ))
+        return GlassSurface(
+            outline: .rounded(cornerRadius: 7),
+            fallback: .material(.thickMaterial),
+            fallbackHairline: (color: .primary.opacity(0.1), width: 1),
+            fallbackShadow: (color: .black.opacity(0.16), radius: 7, y: 2)
+        ) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: entry.name)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(verbatim: L10n.fmt(
+                    "diskAnalysis.hover.sizeShare",
+                    Formatters.compactBytes(entry.size),
+                    Formatters.percent(share(of: entry))
+                ))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(width: Self.labelWidth)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(width: Self.labelWidth)
-        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.1))
-        }
-        .shadow(color: Color.black.opacity(0.16), radius: 7, y: 2)
         .position(x: x, y: y)
         // A label that took the pointer would unhover the tile it describes and
         // flicker on and off under the cursor.

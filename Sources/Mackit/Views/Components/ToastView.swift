@@ -11,39 +11,43 @@ struct ToastView: View {
     var onDismiss: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: banner.style.symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(banner.style.tint)
+        GlassSurface(
+            // The tint carries the toast's semantic color on 26+; below that
+            // the hairline does the same job.
+            style: .tinted(banner.style.tint),
+            outline: .rounded(cornerRadius: 12),
+            fallback: .material(.regularMaterial),
+            fallbackHairline: (color: banner.style.tint.opacity(0.35), width: 1),
+            fallbackShadow: (color: .black.opacity(0.16), radius: 14, y: 5)
+        ) {
+            HStack(spacing: 10) {
+                Image(systemName: banner.style.symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(banner.style.tint)
 
-            Text(verbatim: banner.message)
-                .font(.system(size: 12, weight: .medium))
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
+                Text(verbatim: banner.message)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            Spacer(minLength: 8)
+                Spacer(minLength: 8)
 
-            Button {
-                onDismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.secondary)
-                    .padding(4)
+                Button {
+                    onDismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .padding(4)
+                }
+                .buttonStyle(.plain)
+                .help(L10n.tr("common.dismiss"))
             }
-            .buttonStyle(.plain)
-            .help(L10n.tr("common.dismiss"))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .frame(maxWidth: 440)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .frame(maxWidth: 440)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(banner.style.tint.opacity(0.35), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.16), radius: 14, y: 5)
         .accessibilityAddTraits(.isStaticText)
     }
 }

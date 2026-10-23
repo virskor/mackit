@@ -186,15 +186,14 @@ struct HeroPromptView<Accessory: View, Footer: View>: View {
             if let actionTitle, let action {
                 entrance(
                     HStack(spacing: 10) {
-                        // Every prompt's action starts a scan or a
-                        // measurement, so it carries the Liquid Glass pilot;
-                        // other BrandCTAButton users opt in separately.
+                        // The prompt's action is the primary action of the
+                        // screen it sits on, so it carries the brand CTA's
+                        // full treatment.
                         BrandCTAButton(
                             title: actionTitle,
                             systemImage: actionImage,
                             style: actionStyle,
                             compact: actionCompact,
-                            glass: true,
                             action: action
                         )
 
