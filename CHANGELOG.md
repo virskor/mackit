@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - The content toolbar's actions carry real weight. Scan, sort, the safe-only switch, the search field and the clean button all ran on default metrics, so a button in the hand-built row rendered at text-button weight beside the prominent clean button and the whole strip read as scaffolding. The actions now use explicit `.bordered` / `.button` styles at `.large` — the same treatment the results page already gave its rescan button — the switch steps up to `.regular`, the search field and the clean button grow to match, and the row gains height. Those styles are also what let the actions pick up the system's own macOS 26 surface, so the row reads as one piece on every OS rather than a styled button among naked ones
 
+### Fixed
+
+- The toolbar's sort menu names the sort in force instead of a fixed "Sort". The label was static, so after picking "earliest modified" the row still read "Sort" and the only trace of the choice was the checkmark inside the menu — the one place the user isn't looking. `sortComparator` is written by the table's header clicks as well as by the menu, so the live state is a comparator rather than a preset; `ItemSort` gained the reverse lookup (every comparator a header click can produce is one of the six presets), and the row now shows that preset's title, falling back to the generic label for a comparator no preset covers
+
 ## [1.0.6] - 2026-10-22
 
 ### Fixed

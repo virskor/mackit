@@ -2180,6 +2180,23 @@ enum ItemSort: String, CaseIterable, Identifiable {
         case .dateAscending: JunkItemComparator(field: .modified, order: .forward)
         }
     }
+
+    /// The preset a comparator came from — how the toolbar names the sort in
+    /// force instead of a fixed label.
+    ///
+    /// Needed because `sortComparator` is written by the table's header
+    /// clicks as well as by the menu, so the current state is a comparator,
+    /// not a preset. Every comparator a header click can produce (three
+    /// fields × two directions) is one of these six, which is why the
+    /// round trip is total in practice; the initializer stays failable so a
+    /// future field has to be given a preset rather than silently reporting
+    /// the wrong sort's name.
+    init?(comparator: JunkItemComparator) {
+        guard let match = Self.allCases.first(where: { $0.comparator == comparator }) else {
+            return nil
+        }
+        self = match
+    }
 }
 
 /// Top banner.

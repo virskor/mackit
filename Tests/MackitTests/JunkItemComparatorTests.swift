@@ -106,6 +106,25 @@ struct JunkItemComparatorTests {
             == JunkItemComparator(field: .modified, order: .forward))
     }
 
+    /// The toolbar's label names the sort in force, which needs the reverse
+    /// lookup. Every preset must round-trip through its comparator, and every
+    /// comparator a header click can produce (three fields × two directions)
+    /// must resolve to a preset — a miss would leave the row naming a sort
+    /// that isn't the one in force.
+    @Test func everyComparatorResolvesToThePresetItCameFrom() {
+        for preset in ItemSort.allCases {
+            #expect(ItemSort(comparator: preset.comparator) == preset)
+        }
+        for field in [JunkItemComparator.Field.name, .size, .modified] {
+            for order in [SortOrder.forward, .reverse] {
+                #expect(
+                    ItemSort(comparator: JunkItemComparator(field: field, order: order)) != nil,
+                    "no preset covers \(field) / \(order)"
+                )
+            }
+        }
+    }
+
     /// visibleItems must follow sortComparator: this is the path where header
     /// clicks actually take effect (SwiftUI's Table only updates the binding
     /// and does not sort the data itself).

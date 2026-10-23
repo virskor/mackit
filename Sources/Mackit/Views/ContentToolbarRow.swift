@@ -57,7 +57,16 @@ struct ContentToolbarRow: View {
                     }
                 }
             } label: {
-                Label(L10n.tr("toolbar.sort"), systemImage: "arrow.up.arrow.down")
+                // Names the sort in force rather than a fixed "Sort": the
+                // checkmark inside the menu was the only place the current
+                // choice showed, and this row is where the user looks.
+                // Header clicks land on one of the presets too, so the name
+                // stays truthful whichever way the sort was set; the generic
+                // label is the fallback for a comparator no preset covers.
+                Label(
+                    ItemSort(comparator: vm.sortComparator)?.title ?? L10n.tr("toolbar.sort"),
+                    systemImage: "arrow.up.arrow.down"
+                )
             }
             .menuStyle(.button)
             .controlSize(.large)
@@ -116,6 +125,9 @@ struct ContentToolbarRow: View {
             .quaternary.opacity(0.45),
             in: RoundedRectangle(cornerRadius: 7, style: .continuous)
         )
-        .frame(width: 216)
+        // Flexible rather than a fixed width: the sort button beside it now
+        // names the sort in force, which widens the row, and this field is
+        // what should give the space back when the window narrows.
+        .frame(minWidth: 120, maxWidth: 216)
     }
 }
