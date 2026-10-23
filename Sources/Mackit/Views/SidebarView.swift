@@ -158,6 +158,11 @@ struct SidebarView: View {
     /// one ragged edge and the rows share one height, which is what makes the
     /// sidebar read as a list rather than as a draft.
     ///
+    /// The selection is the system's own treatment — an accent-filled rounded
+    /// row with its contents inverted — rather than a tint of the row's own
+    /// background: the tint read as a hover state, which left the selected row
+    /// looking like the one the pointer happened to be over.
+    ///
     /// Rows are Buttons with `listRowBackground` rather than `List(selection:)`:
     /// tag selection of an optional value doesn't respond to clicks in a
     /// sidebar List (rows don't react when clicked), and binding the selection
@@ -181,10 +186,14 @@ struct SidebarView: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                CategoryIcon(symbol: symbol, tint: tint, size: 15, width: 22)
+                // Everything inverts on selection, the way the system's own
+                // list rows do; the figures keep a step of opacity so the
+                // title still leads within the selected row.
+                CategoryIcon(symbol: symbol, tint: isSelected ? .white : tint, size: 15, width: 22)
 
                 Text(verbatim: title)
                     .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(isSelected ? .white : .primary)
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
@@ -199,7 +208,7 @@ struct SidebarView: View {
                             .monospacedDigit()
                     }
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                 }
@@ -207,13 +216,21 @@ struct SidebarView: View {
                 if isBusy {
                     ProgressView()
                         .controlSize(.mini)
+                        .foregroundStyle(isSelected ? .white : .primary)
                 }
             }
             .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowBackground(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+        .listRowBackground(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(isSelected ? Color.accentColor : .clear)
+                // Inset from the row's edges the way the system's selection
+                // is, so the highlight reads as belonging to the row rather
+                // than as a band across the sidebar.
+                .padding(.horizontal, 8)
+        )
     }
 
     private var volumeFooter: some View {
