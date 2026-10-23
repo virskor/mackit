@@ -6,10 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Changed
-
-- The sidebar reads as one list instead of two. Every row is now a single line at one height — the cleanup rows used to stack the item count under the title while the module entries were single-line, so a tall row and a short one alternated with no rule saying why — with the count folded in beside the size in a trailing slot every row has, filled or not, so the titles share one ragged edge. The figures hold their width when the sidebar narrows and the title gives way instead, and the safe-only toggle takes the same height and lines up with the title column rather than hanging at the leading edge. The four module-entry rows were four copies of one layout; they are now calls to the single row builder
-
 ## [1.0.7] - 2026-10-23
 
 ### Changed
@@ -17,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - macOS 26 and later now render the app's own surfaces in Liquid Glass instead of the hand-painted plates: the action toast, the clean-progress card, the treemap's hover label, the tray panel's quit hint and clean pill, the disk-analysis navigation chevrons and every brand call-to-action. `GlassSurface` owns the switch — one component decides between `glassEffect` (macOS 26+) and the exact fill, hairline and shadow each surface painted before — so macOS 14 and 15 keep the appearance they had, and the Liquid Glass pilot that `BrandCTAButton` carried as an opt-in is now the default everywhere the button appears, the results page's "Done" included. Glass replaces the fallback's hairline and shadow rather than stacking on them, and a disabled control stays on the flat fill, where a dimmed glass reads as broken rather than as "not now". System-styled controls — push buttons, switches, segmented pickers, the sidebar, tables, forms, progress views — follow the system's own macOS 26 appearance and are deliberately untouched
 
 - The content toolbar's actions carry real weight. Scan, sort, the safe-only switch, the search field and the clean button all ran on default metrics, so a button in the hand-built row rendered at text-button weight beside the prominent clean button and the whole strip read as scaffolding. The actions now use explicit `.bordered` / `.button` styles at `.large` — the same treatment the results page already gave its rescan button — the switch steps up to `.regular`, the search field and the clean button grow to match, and the row gains height. Those styles are also what let the actions pick up the system's own macOS 26 surface, so the row reads as one piece on every OS rather than a styled button among naked ones
+
+- The sidebar reads as one list. Every row is a single line at one height — the cleanup rows used to stack the item count under the title while the module entries were single-line, so a tall row and a short one alternated with no rule saying why — with the count folded in beside the size in a trailing slot every row has, filled or not, so the titles share one ragged edge. The figures hold their width when the sidebar narrows and the title gives way instead. The safe-only filter, the one control row, takes the same shape — icon, title, and its checkbox in the trailing slot where the figures sit — rather than hanging at the leading edge. The row-leading icons are larger (15pt in the sidebar, 13pt in the list), and the selected row is a light pill inset from the row's edges that darkens against the light sidebar and lightens against the dark one, with the row's own colors left alone; the 15% accent tint it replaces read as a hover state. The four module-entry rows were four copies of one layout; they are now calls to the single row builder
 
 ### Fixed
 
