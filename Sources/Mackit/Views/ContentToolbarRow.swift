@@ -8,6 +8,14 @@ import SwiftUI
 /// title bar's gray area, disconnected from the white rounded card below,
 /// looking like two unrelated regions. Placed inside the card, the whole
 /// content area reads as one piece, contrasting with the sidebar's flush gray.
+///
+/// The controls carry explicit styles and `.large` metrics rather than the
+/// defaults: left at the default size, a button in this hand-built row
+/// renders at text-button weight next to the prominent clean button, and the
+/// whole row reads as scaffolding. `.bordered` / `.button` are also what let
+/// the actions pick up the system's own macOS 26 treatment — the same
+/// surface family the clean button beside them wears — so the row is one
+/// piece on every OS rather than a styled button among naked ones.
 struct ContentToolbarRow: View {
     @Environment(AppViewModel.self) private var vm
 
@@ -29,6 +37,8 @@ struct ContentToolbarRow: View {
                     systemImage: vm.phase == .scanning ? "stop.circle" : "arrow.clockwise"
                 )
             }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
             .keyboardShortcut("r", modifiers: .command)
             .help(vm.phase == .scanning
                 ? L10n.tr("toolbar.stopScanHelp")
@@ -49,12 +59,14 @@ struct ContentToolbarRow: View {
             } label: {
                 Label(L10n.tr("toolbar.sort"), systemImage: "arrow.up.arrow.down")
             }
+            .menuStyle(.button)
+            .controlSize(.large)
             .disabled(vm.items.isEmpty)
             .help(L10n.tr("toolbar.sortHelp"))
 
             Toggle(L10n.tr("toolbar.safeOnly"), isOn: $vm.safeOnly)
                 .toggleStyle(.switch)
-                .controlSize(.small)
+                .controlSize(.regular)
                 .labelsHidden()
                 .disabled(vm.items.isEmpty)
                 .help(L10n.tr("toolbar.safeOnly"))
@@ -66,7 +78,7 @@ struct ContentToolbarRow: View {
             CleanSummaryButton()
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
     }
 
     /// In-card search field: `.searchable` can only attach to the window
@@ -78,12 +90,12 @@ struct ContentToolbarRow: View {
 
         return HStack(spacing: 4) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
             TextField(L10n.tr("toolbar.searchPlaceholder"), text: $vm.searchText)
             .textFieldStyle(.plain)
-            .font(.system(size: 12))
+            .font(.system(size: 13))
             .frame(minWidth: 120)
 
             if !vm.searchText.isEmpty {
@@ -91,19 +103,19 @@ struct ContentToolbarRow: View {
                     vm.searchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help(L10n.tr("toolbar.clearSearch"))
             }
         }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
         .background(
             .quaternary.opacity(0.45),
-            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
         )
-        .frame(width: 200)
+        .frame(width: 216)
     }
 }

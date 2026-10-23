@@ -20,21 +20,24 @@ struct CleanSummaryButton: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "trash")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                 if hasSelection {
                     Text(verbatim: L10n.fmt("clean.buttonWithSize", Formatters.bytes(vm.scopeSelectedSize)))
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                 } else {
                     Text(verbatim: L10n.tr("clean.button"))
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                 }
             }
             .padding(.horizontal, 4)
         }
         .buttonStyle(.borderedProminent)
-        .controlSize(.regular)
+        // Matches the toolbar's other actions at `.large`: a regular-size
+        // primary button beside large secondary ones reads as a mistake
+        // rather than as a hierarchy.
+        .controlSize(.large)
         .disabled(!hasSelection || vm.isBusy)
         .help(hasSelection
             ? L10n.fmt(
