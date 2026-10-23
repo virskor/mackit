@@ -10,44 +10,71 @@ struct SidebarView: View {
         List {
             Section {
                 row(
-                    category: nil,
-                    title: L10n.tr("sidebar.allItems"),
                     symbol: "square.stack.3d.up",
                     tint: .accentColor,
-                    count: vm.developerItemCount,
-                    size: vm.developerTotalSize
+                    title: L10n.tr("sidebar.allItems"),
+                    isSelected: itemListIsActive && vm.selectedCategory == nil,
+                    figures: (count: vm.developerItemCount, size: vm.developerTotalSize),
+                    action: { vm.selectCategory(nil) }
                 )
+                .help(L10n.tr("sidebar.allItemsHelp"))
+
                 // The general module sits directly under "all items": the two
                 // are the window's top-level destinations, while the category
                 // rows below only filter the developer list.
-                generalCleanupRow
+                row(
+                    symbol: "sparkles",
+                    tint: .orange,
+                    title: L10n.tr("sidebar.generalCleanup"),
+                    isSelected: vm.showsGeneralCleanup,
+                    action: { vm.showGeneralCleanup() }
+                )
+                .help(L10n.tr("scope.general.summary"))
             }
 
             // Tools sit directly below the cleanup entries, above the
             // developer category filters: they are read-only utilities, a
             // different kind of destination from either cleanup module.
             Section(L10n.tr("sidebar.tools")) {
-                diskAnalysisRow
+                row(
+                    symbol: "chart.pie",
+                    tint: .accentColor,
+                    title: L10n.tr("sidebar.diskAnalysis"),
+                    isSelected: vm.showsDiskAnalysis,
+                    isBusy: vm.diskAnalysis.isScanning,
+                    action: { vm.showDiskAnalysis() }
+                )
+                .help(L10n.tr("sidebar.diskAnalysis.help"))
             }
 
             if !vm.developerCategories.isEmpty {
                 Section(L10n.tr("sidebar.categories")) {
                     ForEach(vm.developerCategories) { category in
                         row(
-                            category: category,
-                            title: category.title,
                             symbol: category.symbol,
                             tint: category.tint,
-                            count: vm.categoryCounts[category] ?? 0,
-                            size: vm.categoryTotals[category] ?? 0
+                            title: category.title,
+                            isSelected: itemListIsActive && vm.selectedCategory == category,
+                            figures: (
+                                count: vm.categoryCounts[category] ?? 0,
+                                size: vm.categoryTotals[category] ?? 0
+                            ),
+                            action: { vm.selectCategory(category) }
                         )
+                        .help(category.summary)
                     }
                 }
             }
+
             Section(L10n.tr("sidebar.filter")) {
                 Toggle(L10n.tr("sidebar.safeOnly"), isOn: $vm.safeOnly)
                     .toggleStyle(.checkbox)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 5)
+                    // Lines the checkbox up with the row titles: every other
+                    // row opens with an 18pt icon and an 8pt gap, and a
+                    // control hanging at the leading edge reads as a
+                    // different list rather than as a row of this one.
+                    .padding(.leading, 26)
             }
 
             // The hardware detection and settings entries sit at the very
@@ -55,8 +82,21 @@ struct SidebarView: View {
             // rows; clicking switches the right detail area entirely to the
             // corresponding embedded page, not a separate window.
             Section {
-                hardwareRow
-                settingsRow
+                row(
+                    symbol: "cpu",
+                    tint: .accentColor,
+                    title: L10n.tr("hw.title"),
+                    isSelected: vm.showsHardware,
+                    action: { vm.showHardware() }
+                )
+
+                row(
+                    symbol: "gear",
+                    tint: .accentColor,
+                    title: L10n.tr("sidebar.settings"),
+                    isSelected: vm.showsSettings,
+                    action: { vm.showSettings() }
+                )
             }
         }
         .listStyle(.sidebar)
@@ -72,112 +112,81 @@ struct SidebarView: View {
         .frame(minWidth: 232)
     }
 
-    /// General cleanup entry row: opens the Lemon-style general module in the
-    /// detail area. Same pattern as the hardware row (button + listRowBackground),
-    /// without count and size — the module reports its own totals.
-    private var generalCleanupRow: some View {
-        Button {
-            vm.showGeneralCleanup()
-        } label: {
-            HStack(spacing: 8) {
-                CategoryIcon(symbol: "sparkles", tint: .orange, size: 12, width: 18)
-                Text(verbatim: L10n.tr("sidebar.generalCleanup"))
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-            }
-            .padding(.vertical, 3)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .listRowBackground(
-            vm.showsGeneralCleanup ? Color.accentColor.opacity(0.15) : Color.clear
-        )
-        .help(L10n.tr("scope.general.summary"))
+    /// Whether the detail area is on the item list rather than on one of the
+    /// module pages. Only then may a category row read as selected: the
+    /// sidebar has one selected item at a time, and switching pages has to
+    /// clear the highlight.
+    private var itemListIsActive: Bool {
+        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis
     }
 
-    /// Disk analysis tool entry: opens the analysis page in the detail area.
-    /// Same pattern as the general cleanup and hardware rows (button +
-    /// listRowBackground), without count and size — the page reports its own
-    /// totals.
+    /// One sidebar row: icon, title, and the trailing slot that carries the
+    /// figures or the tool's spinner.
     ///
-    /// A measurement keeps running while the user is on another page, so the
-    /// row carries a spinner: without it a background scan is invisible, and
-    /// "is it still going?" becomes a guess. Only `isScanning` is read here —
-    /// deliberately not the scanned-directory count, which changes several
-    /// times a second and would re-render the whole sidebar for a number the
-    /// row does not show.
-    private var diskAnalysisRow: some View {
-        Button {
-            vm.showDiskAnalysis()
-        } label: {
-            HStack(spacing: 8) {
-                CategoryIcon(symbol: "chart.pie", tint: .accentColor, size: 12, width: 18)
-                Text(verbatim: L10n.tr("sidebar.diskAnalysis"))
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                if vm.diskAnalysis.isScanning {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .help(L10n.tr("diskAnalysis.scan.title"))
-                }
-            }
-            .padding(.vertical, 3)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .listRowBackground(
-            vm.showsDiskAnalysis ? Color.accentColor.opacity(0.15) : Color.clear
-        )
-        .help(L10n.tr("sidebar.diskAnalysis.help"))
-    }
-
+    /// Every row is one line at one height. The cleanup rows used to stack the
+    /// item count under the title while the module entries were single-line,
+    /// so the list read as two different controls piled on each other — the
+    /// count now sits beside the size in the trailing slot instead. That slot
+    /// exists on every row whether it is filled or not, so the titles share
+    /// one ragged edge and the rows share one height, which is what makes the
+    /// sidebar read as a list rather than as a draft.
+    ///
+    /// Rows are Buttons with `listRowBackground` rather than `List(selection:)`:
+    /// tag selection of an optional value doesn't respond to clicks in a
+    /// sidebar List (rows don't react when clicked), and binding the selection
+    /// to the checkbox state would let the table's selection write-back clear
+    /// the user's picks. Button + background is the known-working pattern.
     private func row(
-        category: JunkCategory?,
-        title: String,
         symbol: String,
         tint: Color,
-        count: Int,
-        size: Int64
+        title: String,
+        isSelected: Bool,
+        /// Item count and total, for the cleanup rows. The module entries
+        /// leave it nil — they report their own totals on their pages.
+        figures: (count: Int, size: Int64)? = nil,
+        /// A measurement is running in the background (the disk analysis
+        /// tool). Only the running flag is read, deliberately not the
+        /// scanned-directory count, which changes several times a second and
+        /// would re-render the whole sidebar for a number the row does not
+        /// show.
+        isBusy: Bool = false,
+        action: @escaping () -> Void
     ) -> some View {
-        // Category switching goes through vm.selectCategory: it also dismisses
-        // the settings / hardware / clean result pages at the same time.
-        // List(selection:) is not used: tag selection of an optional value
-        // doesn't respond to clicks in a sidebar List (rows don't react when
-        // clicked); button + listRowBackground is a known-working pattern.
-        Button {
-            vm.selectCategory(category)
-        } label: {
+        Button(action: action) {
             HStack(spacing: 8) {
                 CategoryIcon(symbol: symbol, tint: tint, size: 12, width: 18)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(verbatim: title)
-                        .font(.system(size: 13, weight: .medium))
-                        .lineLimit(1)
-                    Text(verbatim: L10n.items(count))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
+
+                Text(verbatim: title)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+
                 Spacer(minLength: 4)
-                Text(verbatim: Formatters.bytes(size))
-                    .font(.system(size: 11, weight: .medium))
+
+                if let figures {
+                    // Fixed rather than flexible: when the sidebar narrows,
+                    // the title is what should give way, never the figures.
+                    HStack(spacing: 6) {
+                        Text(verbatim: L10n.items(figures.count))
+                        Text(verbatim: Formatters.bytes(figures.size))
+                            .fontWeight(.medium)
+                            .monospacedDigit()
+                    }
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+
+                if isBusy {
+                    ProgressView()
+                        .controlSize(.mini)
+                }
             }
-            .padding(.vertical, 3)
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // When the settings / hardware / general cleanup / disk analysis page
-        // is active, no category row is allowed to stay highlighted: the
-        // sidebar has only one selected item at a time.
-        .listRowBackground(
-            !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && vm.selectedCategory == category
-                ? Color.accentColor.opacity(0.15)
-                : Color.clear
-        )
-        .help(category?.summary ?? L10n.tr("sidebar.allItemsHelp"))
+        .listRowBackground(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
     }
 
     private var volumeFooter: some View {
@@ -198,59 +207,13 @@ struct SidebarView: View {
                 Text(verbatim: L10n.fmt(
                     "sidebar.totalCapacity", Formatters.bytes(vm.volumeUsage.total)
                 ))
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 12)
         }
         .background(.bar)
-    }
-
-    /// Hardware detection entry: same pattern as the category and settings rows
-    /// (button + listRowBackground), without count and size; clicking switches
-    /// to the embedded hardware info page.
-    private var hardwareRow: some View {
-        Button {
-            vm.showHardware()
-        } label: {
-            HStack(spacing: 8) {
-                CategoryIcon(symbol: "cpu", tint: .accentColor, size: 12, width: 18)
-                Text(verbatim: L10n.tr("hw.title"))
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-            }
-            .padding(.vertical, 3)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .listRowBackground(
-            vm.showsHardware ? Color.accentColor.opacity(0.15) : Color.clear
-        )
-    }
-
-    /// Settings entry row: same pattern as the category rows (button +
-    /// listRowBackground), without count and size; clicking switches to the
-    /// embedded settings page.
-    private var settingsRow: some View {
-        Button {
-            vm.showSettings()
-        } label: {
-            HStack(spacing: 8) {
-                CategoryIcon(symbol: "gear", tint: .accentColor, size: 12, width: 18)
-                Text(verbatim: L10n.tr("sidebar.settings"))
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-            }
-            .padding(.vertical, 3)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .listRowBackground(
-            vm.showsSettings ? Color.accentColor.opacity(0.15) : Color.clear
-        )
     }
 
     /// The higher the usage ratio, the more alarming the color.

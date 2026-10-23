@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- The sidebar reads as one list instead of two. Every row is now a single line at one height — the cleanup rows used to stack the item count under the title while the module entries were single-line, so a tall row and a short one alternated with no rule saying why — with the count folded in beside the size in a trailing slot every row has, filled or not, so the titles share one ragged edge. The figures hold their width when the sidebar narrows and the title gives way instead, and the safe-only toggle takes the same height and lines up with the title column rather than hanging at the leading edge. The four module-entry rows were four copies of one layout; they are now calls to the single row builder
+
 ## [1.0.7] - 2026-10-23
 
 ### Changed
