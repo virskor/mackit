@@ -221,13 +221,14 @@ struct SidebarView: View {
         .buttonStyle(.plain)
         .listRowBackground(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                // The system's own selection color, not a hand-mixed fill: it
-                // is appearance-adaptive, so the pill stays subtle and the
-                // row's own text keeps its contrast in both. White at a fixed
-                // opacity — the first attempt — turns into a bright slab in
-                // dark mode, where the row's text is white too and stops
-                // reading against it.
-                .fill(isSelected ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : .clear)
+                // `Color.primary` rather than a hand-mixed white or a fixed
+                // gray: it is black in light mode and white in dark mode, so
+                // one opacity darkens the pill against the light sidebar and
+                // lightens it against the dark one, with the row's own text
+                // keeping its contrast either way. A step above the hover
+                // fills the rest of the app uses (0.06), so a selected row
+                // still reads as more than the one the pointer is over.
+                .fill(isSelected ? Color.primary.opacity(0.08) : .clear)
                 // Inset from the row's edges the way the system's selection
                 // is, so the highlight reads as belonging to the row rather
                 // than as a band across the sidebar.
