@@ -84,7 +84,7 @@ struct SidebarView: View {
                         vm.safeOnly.toggle()
                     } label: {
                         HStack(spacing: 8) {
-                            CategoryIcon(symbol: "checkmark.shield", tint: .accentColor, size: 12, width: 18)
+                            CategoryIcon(symbol: "checkmark.shield", tint: .accentColor, size: 15, width: 22)
                             Text(verbatim: L10n.tr("sidebar.safeOnly"))
                                 .font(.system(size: 13, weight: .medium))
                                 .lineLimit(1)
@@ -181,7 +181,7 @@ struct SidebarView: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                CategoryIcon(symbol: symbol, tint: tint, size: 12, width: 18)
+                CategoryIcon(symbol: symbol, tint: tint, size: 15, width: 22)
 
                 Text(verbatim: title)
                     .font(.system(size: 13, weight: .medium))

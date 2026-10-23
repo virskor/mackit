@@ -4,17 +4,17 @@ import SwiftUI
 struct CategoryIcon: View {
     let symbol: String
     let tint: Color
-    var size: CGFloat = 11
-    var width: CGFloat = 16
+    var size: CGFloat = 13
+    var width: CGFloat = 18
 
-    init(symbol: String, tint: Color, size: CGFloat = 11, width: CGFloat = 16) {
+    init(symbol: String, tint: Color, size: CGFloat = 13, width: CGFloat = 18) {
         self.symbol = symbol
         self.tint = tint
         self.size = size
         self.width = width
     }
 
-    init(category: JunkCategory, size: CGFloat = 11, width: CGFloat = 16) {
+    init(category: JunkCategory, size: CGFloat = 13, width: CGFloat = 18) {
         self.init(symbol: category.symbol, tint: category.tint, size: size, width: width)
     }
 
