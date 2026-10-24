@@ -4776,50 +4776,6 @@
         }
       }
     },
-    "sidebar.filter": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "筛选"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Filter"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "篩選"
-          }
-        }
-      }
-    },
-    "sidebar.safeOnly": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只看安全项"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Safe Items Only"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只看安全項目"
-          }
-        }
-      }
-    },
     "sidebar.settings": {
       "localizations": {
         "zh-Hans": {

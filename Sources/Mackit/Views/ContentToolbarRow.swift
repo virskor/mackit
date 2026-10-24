@@ -73,12 +73,22 @@ struct ContentToolbarRow: View {
             .disabled(vm.items.isEmpty)
             .help(L10n.tr("toolbar.sortHelp"))
 
-            Toggle(L10n.tr("toolbar.safeOnly"), isOn: $vm.safeOnly)
-                .toggleStyle(.switch)
-                .controlSize(.regular)
-                .labelsHidden()
-                .disabled(vm.items.isEmpty)
-                .help(L10n.tr("toolbar.safeOnly"))
+            // A bare switch never said what it filtered — the setting it
+            // drove showed in a tooltip only, and the sidebar checkbox that
+            // used to carry the name is gone. The label puts the name on
+            // the control itself, wearing the shield the risk column's
+            // "safe" badge wears. The label carries its own size rather
+            // than the row's `.large` metrics, which the bordered buttons
+            // need to read as buttons; the switch stays at `.regular`,
+            // the size the row was tuned to.
+            Toggle(isOn: $vm.safeOnly) {
+                Label(L10n.tr("toolbar.safeOnly"), systemImage: "checkmark.shield")
+                    .font(.system(size: 13))
+            }
+            .toggleStyle(.switch)
+            .controlSize(.regular)
+            .disabled(vm.items.isEmpty)
+            .help(L10n.tr("toolbar.safeOnly"))
 
             Spacer(minLength: 12)
 

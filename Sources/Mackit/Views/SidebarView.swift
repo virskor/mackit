@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Sidebar: category list + filter + storage info + module entries.
+/// Sidebar: category list + storage info + module entries.
 struct SidebarView: View {
     @Environment(AppViewModel.self) private var vm
 
@@ -64,44 +64,6 @@ struct SidebarView: View {
                         .help(category.summary)
                     }
                 }
-            }
-
-            Section(L10n.tr("sidebar.filter")) {
-                // The sidebar's one control row, in the same shape as the
-                // destination rows: icon, title, and the checkbox in the
-                // trailing slot where the figures sit, so the column stays
-                // one grid. A leading checkbox — where `.checkbox` puts it by
-                // default — pushes the title out of that grid, and padding it
-                // back into line does not survive the List's own row layout.
-                //
-                // The title and the box are two targets for the one setting,
-                // as they were when the label was a single clickable string.
-                // The button is hidden from VoiceOver so the checkbox
-                // announces the setting once, with its state; `.labelsHidden`
-                // keeps its label for that announcement.
-                HStack(spacing: 8) {
-                    Button {
-                        vm.safeOnly.toggle()
-                    } label: {
-                        HStack(spacing: 8) {
-                            CategoryIcon(symbol: "checkmark.shield", tint: .accentColor, size: 15, width: 22)
-                            Text(verbatim: L10n.tr("sidebar.safeOnly"))
-                                .font(.system(size: 13, weight: .medium))
-                                .lineLimit(1)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHidden(true)
-
-                    Spacer(minLength: 4)
-
-                    Toggle(L10n.tr("sidebar.safeOnly"), isOn: $vm.safeOnly)
-                        .toggleStyle(.checkbox)
-                        .labelsHidden()
-                        .fixedSize()
-                }
-                .padding(.vertical, 6)
             }
 
             // The hardware detection and settings entries sit at the very
