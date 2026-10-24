@@ -12,7 +12,7 @@
 [![Release](https://img.shields.io/github/v/release/virskor/mackit?style=flat-square)](https://github.com/virskor/mackit/releases)
 [![Downloads](https://img.shields.io/github/downloads/virskor/mackit/total?style=flat-square)](https://github.com/virskor/mackit/releases)
 
-🌐 [Official Website](https://www.mingcui.cn/mackit/)
+🌐 [Official Website](https://www.mingcui.cn)
 
 </div>
 

@@ -14,7 +14,7 @@
 
 [简体中文](README_ZH.md) · [English](README.md)
 
-🌐 [官方网站 / 落地页](https://www.mingcui.cn/mackit/)
+🌐 [官方网站 / 落地页](https://www.mingcui.cn)
 
 </div>
 

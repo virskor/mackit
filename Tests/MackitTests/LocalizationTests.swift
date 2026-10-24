@@ -148,8 +148,8 @@ struct LocalizationTests {
         #expect(withSize.contains("1.2 GB"))
         #expect(!withSize.contains("%@"))
 
-        let shareMessage = L10n.fmt("share.message", "https://www.mingcui.cn/mackit/")
-        #expect(shareMessage.contains("https://www.mingcui.cn/mackit/"))
+        let shareMessage = L10n.fmt("share.message", "https://www.mingcui.cn")
+        #expect(shareMessage.contains("https://www.mingcui.cn"))
         #expect(!shareMessage.contains("%@"))
 
         let withCount = L10n.fmt("scan.banner.found.other", 3, "4.5 GB")

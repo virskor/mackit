@@ -9,5 +9,5 @@ enum Links {
     ///
     /// Force-unwrapped because the string is a literal this repository owns —
     /// the one form of URL that is known valid without checking at runtime.
-    static let website = URL(string: "https://www.mingcui.cn/mackit/")!
+    static let website = URL(string: "https://www.mingcui.cn")!
 }
