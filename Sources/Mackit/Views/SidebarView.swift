@@ -232,7 +232,13 @@ struct SidebarView: View {
             .padding(.horizontal, 14)
             .padding(.bottom, 12)
         }
-        .background(.bar)
+        // The footer belongs to the sidebar's one sheet of Liquid Glass on
+        // macOS 26+, so it carries no backdrop of its own — the bar material
+        // reads as a second, lighter slab under the list. Below 26 the sidebar
+        // has no glass to keep continuous, so the bar material stays.
+        .legacyBackdrop {
+            Rectangle().fill(.bar)
+        }
     }
 
     /// The higher the usage ratio, the more alarming the color.

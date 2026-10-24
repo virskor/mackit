@@ -97,8 +97,11 @@ struct ContentView: View {
             }
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.85), value: vm.banner?.id)
-        .background {
-            // Make the transition between toolbar and content closer to system apps.
+        // This backdrop sits behind the sidebar column as well as the detail
+        // card, so on macOS 26+ it would flatten the sidebar's Liquid Glass:
+        // it is painted only below 26, where the window backdrop is the plain
+        // window background color and there is no glass to preserve yet.
+        .legacyBackdrop {
             Color(nsColor: .windowBackgroundColor).ignoresSafeArea()
         }
     }
