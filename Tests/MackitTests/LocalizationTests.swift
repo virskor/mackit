@@ -49,7 +49,9 @@ struct LocalizationTests {
             "sidebar.settings",
             "table.name", "table.size", "table.modified", "table.risk", "table.path",
             "ctx.revealInFinder", "ctx.openInTerminal", "ctx.copyPath", "ctx.moveToTrash",
-            "toolbar.rescan", "toolbar.stopScan", "toolbar.sort",
+            "toolbar.rescan", "toolbar.stopScan", "toolbar.sort", "toolbar.safeOnly",
+            "share.button", "share.title", "share.intro", "share.message",
+            "share.copy", "share.copied", "share.done",
             "toolbar.searchPlaceholder", "clean.button", "clean.confirm.title",
             "clean.confirm.cleanNow", "clean.progress.title", "clean.result.done",
             "scan.progress.title", "scan.progress.title.general", "scan.progress.cancel", "scan.enumerating", "scan.finished",
@@ -145,6 +147,10 @@ struct LocalizationTests {
         let withSize = L10n.fmt("clean.buttonWithSize", "1.2 GB")
         #expect(withSize.contains("1.2 GB"))
         #expect(!withSize.contains("%@"))
+
+        let shareMessage = L10n.fmt("share.message", "https://www.mingcui.cn/mackit/")
+        #expect(shareMessage.contains("https://www.mingcui.cn/mackit/"))
+        #expect(!shareMessage.contains("%@"))
 
         let withCount = L10n.fmt("scan.banner.found.other", 3, "4.5 GB")
         #expect(withCount.contains("3"))

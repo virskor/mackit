@@ -4,9 +4,6 @@ import SwiftUI
 /// The share capsule in the sidebar footer: a pill beside the brand chip that
 /// opens the share dialog.
 ///
-/// The capsule copies the brand chip's shape and fill so the two read as a
-/// pair, with only the label telling them apart.
-///
 /// A sheet rather than a popover: sharing is a decision the user makes on
 /// purpose, and a modal dialog says so — it holds the window until the message
 /// is copied or the dialog is dismissed, where a popover would vanish on the
@@ -18,17 +15,13 @@ struct ShareButton: View {
         Button {
             showsPanel = true
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 11, weight: .semibold))
-                    .accessibilityHidden(true)
-                Text(verbatim: L10n.tr("share.button"))
-                    .font(.system(size: 11, weight: .semibold))
+            FooterCapsule {
+                HStack(spacing: 5) {
+                    Image(systemName: "square.and.arrow.up")
+                        .accessibilityHidden(true)
+                    Text(verbatim: L10n.tr("share.button"))
+                }
             }
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Capsule().fill(Color.accentColor.opacity(0.12)))
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showsPanel) {
@@ -40,9 +33,9 @@ struct ShareButton: View {
 /// The dialog the share capsule opens: what Mackit is, the message it hands
 /// out, and the button that puts that message on the clipboard.
 ///
-/// The message is shown above the button rather than copied blind — the user
-/// should be able to see, and edit, exactly what they are about to send, so the
-/// text is selectable.
+/// The message is shown above the button rather than copied blind: the user
+/// sees exactly what they are about to send, and the text stays selectable so
+/// the address alone can be copied out when that is all they want.
 struct SharePanel: View {
     @Environment(\.dismiss) private var dismiss
     @State private var copied = false

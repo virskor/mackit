@@ -5529,19 +5529,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "只看安全项"
+            "value": "只看安全"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Safe Items Only"
+            "value": "Safe Only"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "只看安全項目"
+            "value": "只看安全"
           }
         }
       }

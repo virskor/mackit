@@ -39,6 +39,14 @@ struct ContentToolbarRow: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+            // While a scan runs this button cancels it, and cancel is
+            // destructive: it takes the red the confirmation panel's
+            // destructive primary action wears (see ProminentActionButton),
+            // not the accent every harmless control in the row wears. The
+            // style stays `.bordered` rather than turning prominent — a
+            // prominent red pill would resize the button and reflow the
+            // row every time a scan starts or stops.
+            .tint(vm.phase == .scanning ? .red : .accentColor)
             .keyboardShortcut("r", modifiers: .command)
             .help(vm.phase == .scanning
                 ? L10n.tr("toolbar.stopScanHelp")
@@ -88,7 +96,27 @@ struct ContentToolbarRow: View {
             .toggleStyle(.switch)
             .controlSize(.regular)
             .disabled(vm.items.isEmpty)
-            .help(L10n.tr("toolbar.safeOnly"))
+            // Holds the label at its ideal width rather than letting the row
+            // squeeze it: this label is the most compressible thing in the
+            // row — plain text — so when the row runs over its budget the
+            // width deficit lands here, and a squeezed CJK label wraps to one
+            // character per line, which reads as a rendering crash. The
+            // search field is the element that gives the space back (see
+            // searchField); the bordered buttons truncate their labels.
+            .fixedSize(horizontal: true, vertical: false)
+            // The capsule gives the switch the sort menu's pill chrome:
+            // without it the row reads as buttons with a naked switch
+            // floating among them. The fill is the search field's, so the
+            // row's two hand-built surfaces match. The vertical padding
+            // targets the bordered buttons' `.large` height so the pill
+            // lines up with them instead of sitting low.
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.quaternary.opacity(0.45), in: Capsule())
+            // Dims with the state rather than leaving a full-strength pill
+            // around a dimmed switch: the bordered buttons take the system's
+            // disabled treatment, and this capsule has to fade with them.
+            .opacity(vm.items.isEmpty ? 0.5 : 1)
 
             Spacer(minLength: 12)
 
