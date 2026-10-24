@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-10-24
+
+### Fixed
+
+- The main window's traffic lights and system-styled controls now take the macOS 26+ appearance instead of the pre-macOS-26 one. SwiftPM stamps the linked binary's `LC_BUILD_VERSION` with the deployment target for both `minos` and `sdk`, so the app — built against the macOS 27 SDK — declared `sdk 14.0`, and AppKit read that as "a pre-macOS-26 app": the window drew the small traffic lights (12pt discs with glyphs always visible) and the old control metrics while every other current app on the system drew the macOS 26+ chrome (14pt discs with glyphs on hover, larger controls). `build-app.sh` now restates the SDK the build actually compiled against through the linker's `-platform_version`, keeping `minos` at the deployment target so the app still installs on macOS 14. Nothing in the app's own code changes; the window keeps its hidden title bar and full-bleed layout
+
 ## [1.0.7] - 2026-10-23
 
 ### Changed
@@ -157,6 +163,7 @@ First release. Mackit is a macOS developer cache cleaner: scan every regenerable
 
 - Private keys, certificates and credentials never enter the repo (`secrets/`, `*.p8` / `*.pem` / `*.key` blocked by `.gitignore`); a pre-commit hook scans the staging area to intercept private keys
 
+[1.0.8]: https://github.com/virskor/mackit/releases/tag/v1.0.8
 [1.0.7]: https://github.com/virskor/mackit/releases/tag/v1.0.7
 [1.0.6]: https://github.com/virskor/mackit/releases/tag/v1.0.6
 [1.0.5]: https://github.com/virskor/mackit/releases/tag/v1.0.5
