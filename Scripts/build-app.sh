@@ -56,16 +56,42 @@ BUNDLE_ID="cn.mingcui.mackit"
 AGENT_BUNDLE_ID="cn.mingcui.mackit.agent"
 
 cd "$ROOT"
+
+# The macOS deployment target, which must stay in sync with Package.swift's
+# `platforms` entry: it is written into both bundles' Info.plist as
+# LSMinimumSystemVersion and into the binary's LC_BUILD_VERSION below.
+MACOS_MINOS="14.0"
+MACOS_SDK_VERSION="$(xcrun --show-sdk-version)"
+
+# SwiftPM stamps the linked binary's LC_BUILD_VERSION with the deployment
+# target for BOTH minos and sdk — the driver hands the linker
+# `-platform_version macos 14.0 14.0` — so a binary compiled against the
+# macOS 27 SDK ends up declaring sdk 14.0. AppKit reads that field to pick
+# which generation of window chrome to draw: sdk 14.0 gets the
+# pre-macOS-26 traffic lights (12pt discs, glyphs visible at rest) and the
+# pre-macOS-26 control metrics, while sdk 26 or later gets the macOS 26+
+# Liquid Glass chrome (14pt discs, glyphs on hover) and the new metrics —
+# the look every other current app on the system has. Restating the SDK this
+# build actually compiled against makes the app render as the macOS 26+ app
+# it is, while minos stays at the deployment target so it still installs on
+# macOS 14.
+LINKER_BUILD_VERSION=(
+    -Xlinker -platform_version
+    -Xlinker macos
+    -Xlinker "$MACOS_MINOS"
+    -Xlinker "$MACOS_SDK_VERSION"
+)
+
 if [ -n "${MACKIT_ARCHES:-}" ]; then
     echo "==> Building (${CONFIG}, architectures: ${MACKIT_ARCHES})"
     BUILD_ARGS=()
     for arch in $MACKIT_ARCHES; do
         BUILD_ARGS+=(--arch "$arch")
     done
-    swift build -c "$CONFIG" "${BUILD_ARGS[@]}"
+    swift build -c "$CONFIG" "${BUILD_ARGS[@]}" "${LINKER_BUILD_VERSION[@]}"
 else
     echo "==> Building (${CONFIG})"
-    swift build -c "$CONFIG"
+    swift build -c "$CONFIG" "${LINKER_BUILD_VERSION[@]}"
 fi
 
 BINARY="$BUILD_DIR/$CONFIG/Mackit"
@@ -231,7 +257,7 @@ cat > "$AGENT/Contents/Info.plist" <<PLIST
         <string>MacOSX</string>
     </array>
     <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
+    <string>${MACOS_MINOS}</string>
     <!-- LSUIElement: the agent is an accessory — only a menu bar icon, no Dock
          icon, no main window, and absent from the Cmd-Tab list. This is the
          foundation of "the Dock icon disappears after closing the window while
@@ -307,7 +333,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
         <string>MacOSX</string>
     </array>
     <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
+    <string>${MACOS_MINOS}</string>
     <!-- The minimum is aligned with Package.swift's .v14 (compile target
          minos 14.0): there are no APIs above 14.0 in the source, the compiler
          gates them by the 14.0 availability annotations, and swift build emits
@@ -319,7 +345,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
          only one needing the macOS 15.0+ runtime, is a weak import whose call
          sites carry a runtime version check, so on 14.x it takes the local
          fallback implementation compiled into the binary.
-         When raising platforms in the future, this must be updated in sync. -->
+         When raising platforms in the future, this must be updated in sync —
+         MACOS_MINOS above is the single place this script reads it from. -->
     <!-- The main app deliberately stays regular with no LSUIElement: the menu
          bar belongs to the agent, and the Dock icon follows the main process —
          it exists only while the window is open; closing the window quits and
