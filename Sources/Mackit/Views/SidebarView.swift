@@ -232,12 +232,13 @@ struct SidebarView: View {
             .padding(.horizontal, 14)
             .padding(.bottom, 12)
         }
-        // The footer belongs to the sidebar's one sheet of Liquid Glass on
-        // macOS 26+, so it carries no backdrop of its own — the bar material
-        // reads as a second, lighter slab under the list. Below 26 the sidebar
-        // has no glass to keep continuous, so the bar material stays.
-        .legacyBackdrop {
-            Rectangle().fill(.bar)
+        // The footer is a bottom inset the list scrolls behind, so it needs a
+        // backdrop of its own: without one the bottom row reads straight
+        // through the footer's figures. The frost is translucent, so on macOS
+        // 26+ the sidebar's Liquid Glass keeps showing through it rather than
+        // being sawed off as a slab (see SidebarFooterBackdrop).
+        .background {
+            SidebarFooterBackdrop()
         }
     }
 
