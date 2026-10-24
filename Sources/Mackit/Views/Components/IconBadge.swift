@@ -15,21 +15,15 @@ struct IconBadge: View {
     var fillOpacity: Double = 0.14
 
     var body: some View {
-        Group {
-            if let image {
-                // Full-color brand image: does not take tint (not a template image,
-                // foregroundStyle has no effect on it); scaled by symbolSize to align
-                // its visual weight with the SF Symbol's font size.
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: symbolSize, height: symbolSize)
-            } else {
-                Image(systemName: systemImage)
-                    .font(.system(size: symbolSize, weight: symbolWeight))
-                    .foregroundStyle(tint)
-            }
-        }
+        BrandMark(
+            image: image,
+            fallbackSymbol: systemImage,
+            // Scaled by symbolSize so the mark's weight lines up with the SF
+            // Symbol's font size it stands in for.
+            size: symbolSize,
+            weight: symbolWeight,
+            tint: tint
+        )
         .frame(width: diameter, height: diameter)
         .background(tint.opacity(fillOpacity), in: badgeShape)
     }

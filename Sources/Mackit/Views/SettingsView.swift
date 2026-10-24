@@ -417,7 +417,7 @@ struct SettingsView: View {
                 }
                 .padding(.vertical, 4)
 
-                Link(destination: URL(string: "https://www.mingcui.cn/mackit/")!) {
+                Link(destination: Links.website) {
                     HStack(spacing: 6) {
                         Image(systemName: "globe")
                         Text(verbatim: L10n.tr("settings.about.website"))

@@ -29,16 +29,16 @@ struct ItemListView: View {
             }
 
             if vm.items.isEmpty {
-                ContentUnavailableView(
-                    L10n.tr("empty.noItems.title"),
+                emptyState(
+                    title: L10n.tr("empty.noItems.title"),
                     systemImage: "checkmark.circle",
-                    description: Text(verbatim: L10n.tr("empty.noItems.message"))
+                    message: L10n.tr("empty.noItems.message")
                 )
             } else if items.isEmpty {
-                ContentUnavailableView(
-                    L10n.tr("empty.noMatch.title"),
+                emptyState(
+                    title: L10n.tr("empty.noMatch.title"),
                     systemImage: "magnifyingglass",
-                    description: Text(verbatim: L10n.tr("empty.noMatch.message"))
+                    message: L10n.tr("empty.noMatch.message")
                 )
             } else {
                 table
@@ -48,6 +48,25 @@ struct ItemListView: View {
         // to cover whichever page the clean started from — the general
         // module's rows never render this view, so an overlay hung off it
         // would leave a general-module clean running with no progress at all.
+    }
+
+    // MARK: - Empty state
+
+    /// The list's empty state.
+    ///
+    /// The filling frame is load-bearing, not cosmetic: a table stretches, so
+    /// with rows on screen this VStack fills the detail column, but an empty
+    /// state hugs — and macOS 26 centers whatever the column is handed that
+    /// doesn't fill it, dragging the toolbar row into the middle of the window
+    /// along with it. Filling the column pins the toolbar back to the top and
+    /// leaves the empty state the space below.
+    private func emptyState(title: String, systemImage: String, message: String) -> some View {
+        ContentUnavailableView(
+            title,
+            systemImage: systemImage,
+            description: Text(verbatim: message)
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Table

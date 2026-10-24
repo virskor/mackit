@@ -256,6 +256,16 @@ struct SidebarView: View {
                 ))
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
+
+                // The brand chip closes the footer on the right, under the
+                // capacity line: the storage figures own the top of the block
+                // and the app's mark signs it off at the end. The share capsule
+                // sits beside it — the same pill, one action away.
+                HStack(spacing: 6) {
+                    Spacer(minLength: 0)
+                    BrandChip()
+                    ShareButton()
+                }
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 12)
