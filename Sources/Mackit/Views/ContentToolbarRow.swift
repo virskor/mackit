@@ -11,11 +11,13 @@ import SwiftUI
 ///
 /// The controls carry explicit styles and `.large` metrics rather than the
 /// defaults: left at the default size, a button in this hand-built row
-/// renders at text-button weight next to the prominent clean button, and the
-/// whole row reads as scaffolding. `.bordered` / `.button` are also what let
-/// the actions pick up the system's own macOS 26 treatment — the same
-/// surface family the clean button beside them wears — so the row is one
-/// piece on every OS rather than a styled button among naked ones.
+/// renders at text-button weight next to the prominent clean button, and
+/// the whole row reads as scaffolding. `.bordered` / `.button` give the
+/// actions the system's own macOS 26 control metrics — taller and rounder
+/// than before — on every OS. They do not give them Liquid Glass, which
+/// the system reserves for its own toolbars and sidebars: the scan button
+/// rides `GlassSurface` for that, the same surface the brand CTA and the
+/// tray panel's clean button wear.
 struct ContentToolbarRow: View {
     @Environment(AppViewModel.self) private var vm
 
@@ -30,23 +32,44 @@ struct ContentToolbarRow: View {
                     vm.startScan()
                 }
             } label: {
-                Label(
-                    vm.phase == .scanning
-                        ? L10n.tr("toolbar.stopScan")
-                        : L10n.tr("toolbar.rescan"),
-                    systemImage: vm.phase == .scanning ? "stop.circle" : "arrow.clockwise"
-                )
+                // The same glass surface the brand CTA and the tray panel's
+                // clean button ride: a `.bordered` button in the content
+                // area picks up macOS 26's new control metrics but never
+                // Liquid Glass — the system reserves that for its own
+                // toolbars and sidebars — so the glass is asked for
+                // explicitly. Stop signals the way the system's destructive
+                // toolbar items do, with the glyph and label turning red,
+                // and NOT with a red-tinted surface: a saturated tint over
+                // glass reads as a solid blob and the translucency — the
+                // whole point of the surface — stops being visible. Below
+                // macOS 26 the fallback keeps the idea as a flat wash at
+                // the opacity the badges use.
+                GlassSurface(
+                    style: .regular,
+                    interactive: true,
+                    outline: .capsule,
+                    fallback: .fill(AnyShapeStyle(
+                        vm.phase == .scanning
+                            ? Color.red.opacity(0.12)
+                            : Color.primary.opacity(0.06)
+                    ))
+                ) {
+                    Label(
+                        vm.phase == .scanning
+                            ? L10n.tr("toolbar.stopScan")
+                            : L10n.tr("toolbar.rescan"),
+                        systemImage: vm.phase == .scanning ? "stop.circle" : "arrow.clockwise"
+                    )
+                    // The `.large` control metrics the bordered button used
+                    // to borrow are gone with the bezel, so the label pins
+                    // its own size; the padding stands in for the bezel's.
+                    .font(.system(size: 13))
+                    .foregroundStyle(vm.phase == .scanning ? Color.red : Color.primary)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            // While a scan runs this button cancels it, and cancel is
-            // destructive: it takes the red the confirmation panel's
-            // destructive primary action wears (see ProminentActionButton),
-            // not the accent every harmless control in the row wears. The
-            // style stays `.bordered` rather than turning prominent — a
-            // prominent red pill would resize the button and reflow the
-            // row every time a scan starts or stops.
-            .tint(vm.phase == .scanning ? .red : .accentColor)
+            .buttonStyle(.plain)
             .keyboardShortcut("r", modifiers: .command)
             .help(vm.phase == .scanning
                 ? L10n.tr("toolbar.stopScanHelp")

@@ -44,6 +44,18 @@ A change is not complete until `swift build` and `swift test` both pass. Running
 - Private keys, certificates, and credentials (`*.p8` / `*.pem` / `*.key` / `*.p12`, etc.) never go into the repository — `.gitignore` blocks them, and `Scripts/install-git-hooks.sh` installs a pre-commit hook as a safety net
 - Credential management for the release pipeline is documented in [docs/RELEASE.md](docs/RELEASE.md)
 
+## System Version Compatibility
+
+The deployment target is macOS 14 while the build runs against newer SDKs, so every API above the floor is a crash risk on the systems that lack it. These are hard rules, not preferences:
+
+- **Every API above the deployment target must be guarded** — wrap the call in `if #available(macOS X, *)` or annotate the declaration `@available`, and give the older path a real implementation. Never silence an availability error with an exemption, and never raise the deployment target to make a newer API compile
+- **Availability is a runtime OS-version check, never an SDK declaration** — the binary's `LC_BUILD_VERSION` sdk field (restated by `Scripts/build-app.sh`) only decides which generation of system chrome the OS draws; it never makes a newer API safe to call. "We declare sdk 27, so macOS 26 APIs are fine" is always wrong
+- **The floor is fixed** — `minos` 14.0 in the binary and `LSMinimumSystemVersion` 14.0 in both bundles are set by `Scripts/build-app.sh` from `MACOS_MINOS`; neither may be raised to silence an availability diagnostic
+- **No force-unwrapping or implicitly-unwrapped optionals on system-versioned values** — use optional chaining, `guard let`, or a nil fallback. A force unwrap that only fails on one OS version is a crash only some users ever see, which makes it the worst kind
+- **Every version-gated surface needs a fallback that actually runs on the floor** — `GlassSurface`'s `.fill(...)` path is the pattern to copy. A fallback that never executes on macOS 14 is not a fallback; if it cannot be exercised, say so instead of claiming it works
+- **Newer-OS-only code must degrade, never crash or blank out** — the older path must keep the feature usable: a plainer visual treatment is fine, a missing view, an empty list, or a dead control is not
+- **Builds must stay clean** — `./run.sh` and `Scripts/build-app.sh` builds complete with zero warnings; an availability warning is an unguarded API that has not crashed yet
+
 ## References
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — full contributor guide
