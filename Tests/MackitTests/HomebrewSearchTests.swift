@@ -111,12 +111,21 @@ struct HomebrewSearchTests {
 
         _ = await HomebrewSearch.search("codex", run: run(probe))
 
-        #expect(probe.calls == [
-            ["search", "--formula", "codex"],
+        // The searches and the details each run as a concurrent `async let`
+        // pair, so the recording order inside a pair follows the scheduler.
+        // What the data dependency does pin: both searches run before any
+        // details call. Comparing each phase as a multiset pins the argument
+        // shapes without asserting an order the implementation never promised.
+        let calls = probe.calls
+        #expect(calls.count == 4)
+        #expect(Set(calls.prefix(2)) == Set([
+            ["search", "--formula", "codex"] as [String],
             ["search", "--cask", "codex"],
-            ["info", "--json=v2", "codex"],
-            ["info", "--cask", "--json=v2", "codex-app"]
-        ])
+        ]))
+        #expect(Set(calls.dropFirst(2)) == Set([
+            ["info", "--json=v2", "codex"] as [String],
+            ["info", "--cask", "--json=v2", "codex-app"],
+        ]))
     }
 
     @Test func noMatchesAndAnUnreadableBrewBothReadAsTheEmptySet() async {
