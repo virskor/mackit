@@ -235,6 +235,30 @@ struct HomebrewInspectorTests {
         #expect(snapshot.formulae[0].size == 0)
     }
 
+    @Test func anEmptyInstallationSkipsTheDetailsCalls() async throws {
+        // A fresh brew with nothing installed. `brew info --json=v2` with no
+        // names answers with the whole index (verified on brew 7.x —
+        // thousands of entries), so no info call may happen; and with
+        // nothing to enrich the page is not degraded. Any unexpected call
+        // answers nil here, which would flip detailsAvailable and fail.
+        let run: BrewCommand = { arguments, _ in
+            switch arguments {
+            case ["--version"]: "Homebrew 4.4.15"
+            case ["--prefix"]: "/opt/homebrew"
+            case ["--cache"]: "/nonexistent-cache"
+            case ["--cellar"]: "/nonexistent-cellar"
+            case ["list", "--versions"]: ""
+            case ["list", "--cask", "--versions"]: ""
+            default: nil
+            }
+        }
+        let snapshot = try #require(await HomebrewInspector.inspect(brewPath: "/fake/brew", run: run))
+        #expect(snapshot.formulae.isEmpty)
+        #expect(snapshot.casks.isEmpty)
+        #expect(snapshot.detailsAvailable, "nothing to enrich is not degraded")
+        #expect(snapshot.isUsable)
+    }
+
     @Test func inspectFallsBackWhenPathQueriesFail() async throws {
         // A broken brew that answers nothing must still produce a snapshot
         // with the Apple Silicon prefix default, not nil.

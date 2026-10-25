@@ -124,13 +124,17 @@ enum HomebrewRunner {
 
         let exitStatus = await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Int32, Never>) in
+                // Once-wrapped: a process exiting between the handler install
+                // and the isRunning check below would fire both resume paths,
+                // and a double resume traps.
+                let once = OnceContinuation(continuation)
                 process.terminationHandler = { process in
-                    continuation.resume(returning: process.terminationStatus)
+                    once.resume(returning: process.terminationStatus)
                 }
                 // The process may have exited before the handler was set, in
                 // which case the handler never fires — check once explicitly.
                 if !process.isRunning {
-                    continuation.resume(returning: process.terminationStatus)
+                    once.resume(returning: process.terminationStatus)
                 }
             }
         } onCancel: {

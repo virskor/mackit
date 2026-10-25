@@ -157,9 +157,15 @@ enum HomebrewInspector {
         let detailsAvailable: Bool
         var formulae = listedFormulae
         var casks = listedCasks
-        if let infoJSON = await read(["info", "--json=v2"] + listedFormulae.map(\.name)) {
+        // An empty name list skips the call outright: `brew info --json=v2`
+        // with no arguments answers with the whole index (verified on brew
+        // 7.x — thousands of entries), and zero packages have nothing to
+        // enrich, so they are vacuously fully known.
+        if listedFormulae.isEmpty {
+            detailsAvailable = true
+        } else if let infoJSON = await read(["info", "--json=v2"] + listedFormulae.map(\.name)) {
             let details = parseInfoJSON(infoJSON, kind: .formula)
-            if details.isEmpty, !listedFormulae.isEmpty {
+            if details.isEmpty {
                 // A decodable but empty payload means the call failed in a
                 // way JSON cannot express (brew prints the error to stderr
                 // and exits nonzero) — treat it as no details.
@@ -171,7 +177,7 @@ enum HomebrewInspector {
         } else {
             detailsAvailable = false
         }
-        if let caskJSON = await read(["info", "--cask", "--json=v2"] + listedCasks.map(\.name)) {
+        if !listedCasks.isEmpty, let caskJSON = await read(["info", "--cask", "--json=v2"] + listedCasks.map(\.name)) {
             casks = merge(list: listedCasks, details: parseInfoJSON(caskJSON, kind: .cask), kind: .cask)
         }
 

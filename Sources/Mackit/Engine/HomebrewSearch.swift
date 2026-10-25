@@ -31,8 +31,16 @@ enum HomebrewSearch {
     /// list nobody can scan is worse than a short one.
     static let resultLimit = 50
 
-    /// Searches for `query`, returning the hits (empty when nothing matches).
-    /// Nil only when brew itself could not be read.
+    /// Searches for `query`, returning the hits; empty when nothing matches
+    /// or the query is blank.
+    ///
+    /// Never nil, even when brew cannot be read: `brew search` exits 1 with
+    /// empty stdout when nothing matches (verified on brew 7.x), so a nil
+    /// from the runner is ambiguous between "no matches" and "brew broke
+    /// mid-session" — both read as the empty set rather than guessing a
+    /// failure the evidence cannot support. A brew that is missing outright
+    /// never gets here; the page shows its not-installed state instead. The
+    /// caller's own failure state stays reserved for its seam.
     static func search(
         _ query: String,
         run: BrewCommand = HomebrewRunner.run

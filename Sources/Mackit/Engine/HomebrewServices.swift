@@ -3,9 +3,11 @@ import Foundation
 /// One managed Homebrew service, from `brew services info --all --json`.
 ///
 /// The field names and the `status` values ("started", "none", "scheduled",
-/// "stopped", "error") come from brew's own `FormulaWrapper#to_hash` /
-/// `#status_symbol` — verified against the brew 7.x source, since an empty
-/// machine cannot produce a sample payload.
+/// "stopped", "error", "unknown", "other") come from brew's own
+/// `FormulaWrapper#to_hash` / `#status_symbol` — verified against the brew
+/// 7.x source, since an empty machine cannot produce a sample payload. The
+/// last two appear when launchctl answered in a shape brew cannot parse;
+/// they are status words like any other, just rare ones.
 struct HomebrewService: Identifiable, Equatable, Sendable {
     /// The formula that owns the service.
     let name: String

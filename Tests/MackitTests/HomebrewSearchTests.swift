@@ -119,21 +119,34 @@ struct HomebrewSearchTests {
         ])
     }
 
-    @Test func searchWithoutMatchesIsEmptyNotAFailure() async throws {
+    @Test func noMatchesAndAnUnreadableBrewBothReadAsTheEmptySet() async {
+        // `brew search` exits 1 with empty stdout when nothing matches
+        // (verified on brew 7.x), so a nil from the runner cannot mean
+        // "failed" — it is also what a brew that broke mid-session looks
+        // like. Both read as "no results"; the probe leaves every call
+        // unanswered, which is exactly that nil shape.
         let probe = RunProbe()
-        probe.answer(["search", "--formula", "zzzznotfound"], "")
-        probe.answer(["search", "--cask", "zzzznotfound"], "")
 
         let results = await HomebrewSearch.search("zzzznotfound", run: run(probe))
+
         #expect(results?.isEmpty == true)
         // No names means no details calls either.
         #expect(probe.calls.count == 2)
     }
 
-    @Test func searchFailsWhenBrewCannotBeRead() async {
+    @Test func aFailedKindDegradesToTheOtherKindsHits() async throws {
+        // The formula search could not be read, but the cask side answered:
+        // the section shows what it could read rather than failing wholesale.
         let probe = RunProbe()
-        let results = await HomebrewSearch.search("meilisearch", run: run(probe))
-        #expect(results == nil, "nil is the failure signal, distinct from no matches")
+        probe.answer(["search", "--cask", "codex"], "codex\n")
+        probe.answer(["info", "--cask", "--json=v2", "codex"], "{\"casks\":[]}")
+
+        let results = await HomebrewSearch.search("codex", run: run(probe))
+
+        #expect(results?.count == 1)
+        let hit = try #require(results?.first)
+        #expect(hit.kind == .cask)
+        #expect(hit.description == nil)
     }
 
     @Test func searchSurvivesAFailedDetailsCall() async throws {

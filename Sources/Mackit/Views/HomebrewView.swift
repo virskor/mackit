@@ -252,10 +252,6 @@ struct HomebrewView: View {
         }
     }
 
-    private func stat(_ label: String, _ value: Int) -> some View {
-        stat(label, String(value))
-    }
-
     /// The last outcome, one row above the section content so an action's
     /// result is visible whichever section is open. The in-flight state is
     /// deliberately not repeated here: the corner pill already carries it
