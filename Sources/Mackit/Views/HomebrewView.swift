@@ -22,10 +22,15 @@ struct HomebrewView: View {
             if model.isNotInstalled {
                 notInstalled
             } else {
+                // One chrome band: the section picker, the space totals and
+                // the transient action feedback. The divider sits under all
+                // of it — the way the main content card puts one under its
+                // toolbar row (see ContentView) — so what follows reads as
+                // the working area, not as more scaffolding.
                 sectionPicker(model)
-                Divider()
                 statsStrip(model)
                 feedback(model)
+                Divider()
                 // The section content claims the rest of the card: without
                 // this the panes size to their content and the page reads as
                 // a thin strip floating above an empty window — lists and
@@ -132,7 +137,7 @@ struct HomebrewView: View {
         }
         .pickerStyle(.segmented)
         .padding(.horizontal, 28)
-        .padding(.bottom, 12)
+        .padding(.bottom, 10)
     }
 
     /// The official apps badge the outdated count on the installed and
@@ -144,18 +149,21 @@ struct HomebrewView: View {
 
     // MARK: - Stats & feedback
 
-    /// The space angle: what this installation costs on disk and how much of
-    /// it is stale. Only the two package sections show it.
+    /// The space angle: what this installation costs on disk. Only the two
+    /// package sections show it, and it deliberately carries no package
+    /// counts — the picker's badges already answer "how many", and a second
+    /// copy of the same number a line below only invites the question of
+    /// which one is current.
     @ViewBuilder
     private func statsStrip(_ model: HomebrewModel) -> some View {
         if let snapshot = model.snapshot,
            model.section == .installed || model.section == .upgrade {
-            HStack(spacing: 8) {
-                stat(L10n.tr("homebrew.stat.formulae"), snapshot.formulae.count)
-                stat(L10n.tr("homebrew.stat.casks"), snapshot.casks.count)
-                stat(L10n.tr("homebrew.stat.cache"), Formatters.bytes(snapshot.cacheSize))
-                stat(L10n.tr("homebrew.stat.cellar"), Formatters.bytes(snapshot.cellarSize))
-                stat(L10n.tr("homebrew.stat.outdated"), snapshot.outdated.count, highlight: !snapshot.outdated.isEmpty)
+            HStack(spacing: 0) {
+                ForEach(Array(stats(snapshot).enumerated()), id: \.offset) { index, item in
+                    if index > 0 { separator }
+                    stat(item.label, item.value)
+                }
+
                 if !snapshot.detailsAvailable {
                     Spacer(minLength: 4)
                     Label(L10n.tr("homebrew.detail.degraded"), systemImage: "exclamationmark.triangle")
@@ -171,24 +179,43 @@ struct HomebrewView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .font(.system(size: 11))
+            .font(.system(size: 12))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 28)
-            .padding(.bottom, 10)
+            .padding(.bottom, 12)
         }
     }
 
-    private func stat(_ label: String, _ value: String, highlight: Bool = false) -> some View {
+    private func stats(_ snapshot: HomebrewSnapshot) -> [(label: String, value: String)] {
+        [
+            (L10n.tr("homebrew.stat.formulae"), String(snapshot.formulae.count)),
+            (L10n.tr("homebrew.stat.casks"), String(snapshot.casks.count)),
+            (L10n.tr("homebrew.stat.cache"), Formatters.bytes(snapshot.cacheSize)),
+            (L10n.tr("homebrew.stat.cellar"), Formatters.bytes(snapshot.cellarSize)),
+        ]
+    }
+
+    /// Divider between stats: the hairline the menu-bar stats overlay puts
+    /// between its metric groups. Without it the pairs run together into one
+    /// phrase — "公式 73 Cask 应用 3" reads as a single label.
+    private var separator: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.15))
+            .frame(width: 1, height: 12)
+            .padding(.horizontal, 10)
+    }
+
+    private func stat(_ label: String, _ value: String) -> some View {
         HStack(spacing: 4) {
             Text(verbatim: label)
             Text(verbatim: value)
-                .foregroundStyle(highlight ? .orange : .primary)
+                .foregroundStyle(.primary)
                 .monospacedDigit()
         }
     }
 
-    private func stat(_ label: String, _ value: Int, highlight: Bool = false) -> some View {
-        stat(label, String(value), highlight: highlight)
+    private func stat(_ label: String, _ value: Int) -> some View {
+        stat(label, String(value))
     }
 
     /// The in-flight action and the last outcome. One row each, above the

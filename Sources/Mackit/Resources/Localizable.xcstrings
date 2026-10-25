@@ -12872,28 +12872,6 @@
         }
       }
     },
-    "homebrew.stat.outdated": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "可更新"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Outdated"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "可更新"
-          }
-        }
-      }
-    },
     "homebrew.filter.all": {
       "localizations": {
         "zh-Hans": {
