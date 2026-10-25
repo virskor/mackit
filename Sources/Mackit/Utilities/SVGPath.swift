@@ -330,6 +330,12 @@ struct SVGPath: Sendable, Equatable {
             return
         }
 
+        // Identical endpoints leave the center equation's denominator at
+        // zero (spec F.6.5.2), which yields NaN coordinates; the spec (F.4)
+        // omits such a segment entirely, so no line is emitted either —
+        // the arc vanishes rather than collapsing to a point.
+        guard start.x != end.x || start.y != end.y else { return }
+
         let phi = rotationDegrees * .pi / 180
         let cosPhi = cos(phi)
         let sinPhi = sin(phi)

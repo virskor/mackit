@@ -175,6 +175,18 @@ struct SVGPathParserTests {
         #expect(throws: SVGPath.ParseError.self) { try SVGPath.parse("M0 0Z1") }
     }
 
+    /// An arc whose endpoints coincide has no geometry to draw: the spec
+    /// (F.4) omits the segment entirely rather than collapsing it, and the
+    /// center equation (F.6.5.2) would divide by zero for it. The path must
+    /// keep drawing from the untouched current point, with no NaN smuggled
+    /// in as a coordinate.
+    @Test func degenerateArcIsOmitted() throws {
+        #expect(try parse("M0 0A5 5 0 0 1 0 0L4 4") == [
+            .move(CGPoint(x: 0, y: 0)),
+            .line(CGPoint(x: 4, y: 4)),
+        ])
+    }
+
     /// Every bundled mark must decode: non-empty, anchored by a moveto,
     /// closed, with a declared viewBox confining the geometry. A truncated or
     /// corrupted SVG fails here instead of shipping a broken icon.
