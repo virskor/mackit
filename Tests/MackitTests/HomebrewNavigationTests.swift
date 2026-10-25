@@ -33,7 +33,7 @@ struct HomebrewNavigationTests {
                 counters.config += 1
                 return []
             },
-            perform: { _ in
+            perform: { _, _ in
                 HomebrewOutcome(action: .cleanup, measure: 0, failure: nil)
             }
         )

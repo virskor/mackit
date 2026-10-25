@@ -14,6 +14,14 @@ import SwiftUI
 struct HomebrewView: View {
     @Environment(AppViewModel.self) private var vm
 
+    /// The corner pill's visibility: on while an action runs, and briefly
+    /// after it finishes so the log stays reachable.
+    @State private var showsStatusPill = false
+    /// Whether the action's log popover is open. Lifted out of the pill so
+    /// reading the log holds the pill up instead of it vanishing mid-read.
+    @State private var showsActionLog = false
+    @State private var pillDismissTask: Task<Void, Never>?
+
     var body: some View {
         let model = vm.homebrew
         VStack(spacing: 0) {
@@ -41,6 +49,61 @@ struct HomebrewView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(alignment: .bottomTrailing) {
+            if showsStatusPill, let progress = model.progress {
+                HomebrewProgressPill(
+                    progress: progress,
+                    outcome: model.outcome,
+                    onCopyLog: {
+                        vm.showToast(.success, L10n.tr("homebrew.progress.copied"))
+                    },
+                    showsLog: $showsActionLog
+                )
+                .padding(.trailing, 20)
+                .padding(.bottom, 18)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: showsStatusPill)
+        .onAppear {
+            // An action can already be running when the page is entered —
+            // the sidebar keeps the model alive across page switches.
+            if model.runningAction != nil { showsStatusPill = true }
+        }
+        .onChange(of: model.runningAction) { _, running in
+            pillDismissTask?.cancel()
+            pillDismissTask = nil
+            if running != nil {
+                showsStatusPill = true
+            } else if model.outcome != nil {
+                schedulePillDismiss()
+            } else {
+                showsStatusPill = false
+            }
+        }
+        .onChange(of: showsActionLog) { _, open in
+            if open {
+                pillDismissTask?.cancel()
+                pillDismissTask = nil
+            } else if model.runningAction == nil, model.outcome != nil {
+                schedulePillDismiss()
+            }
+        }
+    }
+
+    /// Keeps the result pill up long enough to read the result and open the
+    /// log, then gets out of the corner. The notice above the section content
+    /// remains the durable record of the outcome.
+    private func schedulePillDismiss() {
+        pillDismissTask?.cancel()
+        pillDismissTask = nil
+        // The log popover is anchored to the pill: dismissing the pill while
+        // the log is open would pull the popover out from under the reader.
+        guard !showsActionLog else { return }
+        pillDismissTask = Task {
+            try? await Task.sleep(for: .seconds(10))
+            showsStatusPill = false
+        }
     }
 
     // MARK: - Header
@@ -227,7 +290,7 @@ struct HomebrewView: View {
             HStack(spacing: 8) {
                 ProgressView()
                     .controlSize(.small)
-                Text(verbatim: runningLabel(running))
+                Text(verbatim: running.runningTitle)
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
@@ -240,54 +303,10 @@ struct HomebrewView: View {
             NoticeRow(
                 systemImage: outcome.succeeded ? "checkmark.circle" : "exclamationmark.triangle",
                 tint: outcome.succeeded ? .green : .red,
-                message: outcomeMessage(outcome)
+                message: outcome.message
             )
             .padding(.horizontal, 28)
             .padding(.bottom, 10)
-        }
-    }
-
-    private func runningLabel(_ action: HomebrewAction) -> String {
-        switch action {
-        case .cleanup: return L10n.tr("homebrew.running.cleanup")
-        case .autoremove: return L10n.tr("homebrew.running.autoremove")
-        case .upgradeAll: return L10n.tr("homebrew.running.upgradeAll")
-        case .upgrade: return L10n.tr("homebrew.running.upgrade")
-        case .uninstall: return L10n.tr("homebrew.running.uninstall")
-        case .startService, .stopService, .restartService: return L10n.tr("homebrew.running.service")
-        }
-    }
-
-    private func outcomeMessage(_ outcome: HomebrewOutcome) -> String {
-        guard outcome.succeeded else {
-            return L10n.fmt("homebrew.result.failed", outcome.failure ?? "")
-        }
-        switch outcome.action {
-        case .cleanup:
-            if let bytes = outcome.measure, bytes > 0 {
-                return L10n.fmt("homebrew.result.cleaned", Formatters.bytes(bytes))
-            }
-            return L10n.tr("homebrew.result.cleanedNone")
-        case .autoremove:
-            if let count = outcome.measure, count > 0 {
-                let key = count == 1
-                    ? "homebrew.result.autoremoved.one"
-                    : "homebrew.result.autoremoved.other"
-                return L10n.fmt(key, count)
-            }
-            return L10n.tr("homebrew.result.autoremovedNone")
-        case .upgradeAll:
-            return L10n.tr("homebrew.result.upgradedAll")
-        case .upgrade(_, let name):
-            return L10n.fmt("homebrew.result.upgraded", name)
-        case .uninstall(_, let name):
-            return L10n.fmt("homebrew.result.uninstalled", name)
-        case .startService(let name):
-            return L10n.fmt("homebrew.result.serviceStarted", name)
-        case .stopService(let name):
-            return L10n.fmt("homebrew.result.serviceStopped", name)
-        case .restartService(let name):
-            return L10n.fmt("homebrew.result.serviceRestarted", name)
         }
     }
 

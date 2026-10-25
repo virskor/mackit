@@ -114,6 +114,13 @@ struct HomebrewSnapshot: Equatable, Sendable {
 /// below anything a macOS 14 user realistically runs.
 typealias BrewCommand = @Sendable ([String], Duration) async -> String?
 
+/// The streaming counterpart of `BrewCommand`: runs an action and reports each
+/// output line as it arrives, for the progress the page shows while brew works.
+///
+/// The callback is main-actor isolated because it drives observable page state;
+/// the runner calls it from its pipe readers, which is why it is `@Sendable`.
+typealias BrewStreamCommand = @Sendable ([String], Duration, @escaping @MainActor @Sendable (String) -> Void) async -> String?
+
 enum HomebrewInspector {
     /// Queries a full snapshot. Returns nil only when brew is not installed.
     ///

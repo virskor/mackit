@@ -172,6 +172,11 @@ struct LocalizationTests {
             "homebrew.running.cleanup", "homebrew.running.autoremove",
             "homebrew.running.upgradeAll", "homebrew.running.upgrade",
             "homebrew.running.uninstall", "homebrew.running.service",
+            "homebrew.progress.count", "homebrew.progress.steps.one",
+            "homebrew.progress.steps.other", "homebrew.progress.elapsed",
+            "homebrew.progress.openLog", "homebrew.progress.logTitle",
+            "homebrew.progress.logEmpty", "homebrew.progress.copyLog",
+            "homebrew.progress.copied",
             "homebrew.result.cleaned", "homebrew.result.cleanedNone",
             "homebrew.result.autoremovedNone", "homebrew.result.upgradedAll",
             "homebrew.result.upgraded", "homebrew.result.uninstalled",
@@ -369,6 +374,10 @@ struct LocalizationTests {
             ("diskAnalysis.overflow.accessibility", 2),
             ("homebrew.header.version", 2),
             ("homebrew.section.badge", 2),
+            ("homebrew.progress.count", 2),
+            ("homebrew.progress.steps.one", 1),
+            ("homebrew.progress.steps.other", 1),
+            ("homebrew.progress.elapsed", 1),
             ("homebrew.package.upgrade", 2),
             ("homebrew.detail.upgradeAction", 1),
             ("homebrew.detail.uninstallConfirm", 1),
@@ -376,6 +385,8 @@ struct LocalizationTests {
             ("homebrew.result.cleaned", 1),
             ("homebrew.result.autoremoved.one", 1),
             ("homebrew.result.autoremoved.other", 1),
+            ("homebrew.progress.steps.one", 1),
+            ("homebrew.progress.steps.other", 1),
             ("homebrew.result.upgraded", 1),
             ("homebrew.result.uninstalled", 1),
             ("homebrew.result.serviceStarted", 1),
@@ -420,7 +431,8 @@ struct LocalizationTests {
             "diskAnalysis.header.files",
             "diskAnalysis.scan.count",
             "diskAnalysis.others",
-            "homebrew.result.autoremoved"
+            "homebrew.result.autoremoved",
+            "homebrew.progress.steps"
         ]
         let placeholder = /%(?:\d+\$)?(?:@|lld)/
         for base in pairs {
@@ -472,7 +484,9 @@ struct LocalizationTests {
             ("diskAnalysis.others.one", [1]),
             ("diskAnalysis.others.other", [18]),
             ("homebrew.result.autoremoved.one", [1]),
-            ("homebrew.result.autoremoved.other", [5])
+            ("homebrew.result.autoremoved.other", [5]),
+            ("homebrew.progress.steps.one", [1]),
+            ("homebrew.progress.steps.other", [5])
         ]
         for (key, args) in calls {
             let value = String(format: L10n.tr(key), arguments: args)

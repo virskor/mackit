@@ -18,6 +18,8 @@ struct HomebrewModelTests {
         var diagnostics = 0
         var config = 0
         var actions: [HomebrewAction] = []
+        /// Lines the action streamed, in arrival order.
+        var streamed: [String] = []
     }
 
     private func makePackage(
@@ -69,7 +71,10 @@ struct HomebrewModelTests {
         counters: Counters = Counters(),
         snapshot: HomebrewSnapshot? = nil,
         services: [HomebrewService]? = [],
-        outcome: HomebrewOutcome = HomebrewOutcome(action: .cleanup, measure: 512, failure: nil)
+        outcome: HomebrewOutcome = HomebrewOutcome(action: .cleanup, measure: 512, failure: nil),
+        /// Lines the fake action streams while it "runs"; empty means the
+        /// action prints nothing.
+        streaming: [String] = []
     ) -> HomebrewModel {
         HomebrewModel(
             inspect: {
@@ -88,8 +93,12 @@ struct HomebrewModelTests {
                 counters.config += 1
                 return [HomebrewConfigEntry(key: "HOMEBREW_PREFIX", value: "/opt/homebrew")]
             },
-            perform: { action in
+            perform: { action, onLine in
                 counters.actions.append(action)
+                for line in streaming {
+                    await onLine(line)
+                    counters.streamed.append(line)
+                }
                 return outcome
             }
         )
@@ -227,6 +236,99 @@ struct HomebrewModelTests {
         model.run(.autoremove)
         await model.waitUntilSettled()
         #expect(counters.actions == [.cleanup])
+    }
+
+    // MARK: - Progress
+
+    @Test func progressCountsBrewsPackageSteps() async {
+        let counters = Counters()
+        let model = makeModel(
+            counters: counters,
+            snapshot: makeSnapshot(formulae: [
+                makePackage("wget", outdated: true),
+                makePackage("node", outdated: true)
+            ]),
+            outcome: HomebrewOutcome(action: .upgradeAll, measure: nil, failure: nil),
+            // brew's real per-package lines, in the order it prints them.
+            streaming: ["==> Upgrading wget", "  1.0.0 -> 2.0.0", "==> Upgrading node", "==> Upgraded 2 outdated packages"]
+        )
+
+        model.run(.upgradeAll)
+        #expect(model.progress?.total == 2, "the plan size comes from the outdated list, not from brew")
+
+        await model.waitUntilSettled()
+
+        #expect(model.progress?.completed == 2)
+        #expect(model.progress?.currentStep == "node")
+        #expect(model.progress?.fraction == 1)
+        #expect(model.progress?.finishedAt != nil, "the elapsed readout freezes at the finish")
+        #expect(model.progress?.log == [
+            "==> Upgrading wget",
+            "  1.0.0 -> 2.0.0",
+            "==> Upgrading node",
+            "==> Upgraded 2 outdated packages"
+        ])
+        #expect(counters.streamed.count == 4, "every line reached the sink")
+    }
+
+    @Test func aSinglePackageActionPlansOneStep() async {
+        let model = makeModel(snapshot: makeSnapshot())
+        model.run(.upgrade(.formula, "wget"))
+        #expect(model.progress?.total == 1)
+        await model.waitUntilSettled()
+    }
+
+    @Test func indeterminateActionsCountStepsWithoutATotal() async {
+        let model = makeModel(
+            snapshot: makeSnapshot(),
+            outcome: HomebrewOutcome(action: .cleanup, measure: 512, failure: nil),
+            streaming: [
+                "Removing: /opt/homebrew/Cellar/wget/1.0.0... (12 files, 400KB)",
+                "Removing: /opt/homebrew/Cellar/node/22.0.0... (3,000 files, 90MB)"
+            ]
+        )
+
+        model.run(.cleanup)
+        await model.waitUntilSettled()
+
+        #expect(model.progress?.total == nil, "cleanup never states how many paths it will remove")
+        #expect(model.progress?.fraction == nil)
+        #expect(model.progress?.completed == 2)
+        #expect(model.progress?.currentStep == nil, "a cleanup path names no package")
+    }
+
+    @Test func autoremoveReadsItsPlanSizeFromBrewsHeader() async {
+        let model = makeModel(
+            snapshot: makeSnapshot(),
+            outcome: HomebrewOutcome(action: .autoremove, measure: 3, failure: nil),
+            streaming: [
+                "==> Autoremoving 3 unneeded formulae:",
+                "gettext",
+                "libtool",
+                "pcre2",
+                "Uninstalling /opt/homebrew/Cellar/gettext/0.22.5... (213 files, 3.5MB)",
+                "Uninstalling /opt/homebrew/Cellar/libtool/2.5.4... (77 files, 1.6MB)",
+                "Uninstalling /opt/homebrew/Cellar/pcre2/10.44... (95 files, 6.4MB)"
+            ]
+        )
+
+        model.run(.autoremove)
+        await model.waitUntilSettled()
+
+        #expect(model.progress?.total == 3, "the header is the only total brew states up front")
+        #expect(model.progress?.completed == 3)
+        #expect(model.progress?.currentStep == "pcre2")
+        #expect(model.progress?.fraction == 1)
+    }
+
+    @Test func progressSurvivesTheActionSoTheLogStaysReachable() async {
+        let model = makeModel(snapshot: makeSnapshot(), streaming: ["==> Upgrading wget"])
+        model.run(.upgrade(.formula, "wget"))
+        await model.waitUntilSettled()
+
+        #expect(model.runningAction == nil)
+        #expect(model.outcome != nil)
+        #expect(model.progress?.log == ["==> Upgrading wget"])
     }
 
     // MARK: - Uninstall confirmation

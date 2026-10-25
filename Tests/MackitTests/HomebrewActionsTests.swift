@@ -32,22 +32,51 @@ struct HomebrewActionsTests {
         }
     }
 
-    /// Argument recorder for the plain actions' `run` seam. `@unchecked
-    /// Sendable` for the same reason as `SizeProbe`.
-    private final class ArgumentProbe: @unchecked Sendable {
+    /// Recorder for the streaming seam: the arguments it was called with and
+    /// every line it reported. `@unchecked Sendable` because the fake closure
+    /// runs on the action's task.
+    private final class LineProbe: @unchecked Sendable {
         private let lock = NSLock()
-        private var seen: [[String]] = []
+        private var argumentsSeen: [[String]] = []
+        private var linesSeen: [String] = []
 
         func record(_ arguments: [String]) {
             lock.lock()
             defer { lock.unlock() }
-            seen.append(arguments)
+            argumentsSeen.append(arguments)
+        }
+
+        func recordLine(_ line: String) {
+            lock.lock()
+            defer { lock.unlock() }
+            linesSeen.append(line)
         }
 
         var calls: [[String]] {
             lock.lock()
             defer { lock.unlock() }
-            return seen
+            return argumentsSeen
+        }
+
+        var lines: [String] {
+            lock.lock()
+            defer { lock.unlock() }
+            return linesSeen
+        }
+    }
+
+    /// The streaming seam for canned `output`: reports each line the way the
+    /// real runner does and records both the call and the lines.
+    private func stream(_ output: String?, into probe: LineProbe) -> BrewStreamCommand {
+        { arguments, _, onLine in
+            probe.record(arguments)
+            guard let output else { return nil }
+            for line in output.split(separator: "\n") {
+                let text = String(line)
+                await onLine(text)
+                probe.recordLine(text)
+            }
+            return output
         }
     }
 
@@ -57,16 +86,17 @@ struct HomebrewActionsTests {
         let probe = SizeProbe()
         // before: cellar 1000 + cache 500; after: cellar 400 + cache 0.
         probe.sequence = [1000, 500, 400, 0]
+        let lines = LineProbe()
 
         let outcome = await HomebrewActions.cleanup(
             run: { arguments, _ in
                 switch arguments {
                 case ["--cellar"]: "/cellar"
                 case ["--cache"]: "/cache"
-                case ["cleanup", "--prune=all", "-s"]: "Removing: /cache/..."
                 default: nil
                 }
             },
+            stream: stream("==> This operation has freed approximately 1.1 KB of disk space.", into: lines),
             sizeOf: { probe.size(of: $0) }
         )
 
@@ -74,10 +104,16 @@ struct HomebrewActionsTests {
         #expect(outcome.action == .cleanup)
         #expect(outcome.measure == 1100)
         #expect(probe.paths == ["/cellar", "/cache", "/cellar", "/cache"])
+        #expect(lines.calls == [["cleanup", "--prune=all", "-s"]])
+        #expect(lines.lines == ["==> This operation has freed approximately 1.1 KB of disk space."])
     }
 
     @Test func cleanupFailsWhenBrewIsUnavailable() async {
-        let outcome = await HomebrewActions.cleanup(run: { _, _ in nil }, sizeOf: { _ in 0 })
+        let outcome = await HomebrewActions.cleanup(
+            run: { _, _ in nil },
+            stream: stream("", into: LineProbe()),
+            sizeOf: { _ in 0 }
+        )
         #expect(!outcome.succeeded)
         #expect(outcome.failure == L10n.tr("homebrew.error.brewUnavailable"))
     }
@@ -87,6 +123,7 @@ struct HomebrewActionsTests {
             run: { arguments, _ in
                 arguments == ["cleanup", "--prune=all", "-s"] ? nil : "/somewhere"
             },
+            stream: stream(nil, into: LineProbe()),
             sizeOf: { _ in 0 }
         )
         #expect(!outcome.succeeded)
@@ -96,8 +133,10 @@ struct HomebrewActionsTests {
     // MARK: - autoremove
 
     @Test func autoremoveParsesTheDroppedCount() async {
+        // The shape brew 7.x actually prints: the headline states the count,
+        // the names follow on their own lines.
         let outcome = await HomebrewActions.autoremove(
-            run: { _, _ in "==> Autoremoving 3 formulae: gettext, libtool, pcre2" }
+            stream: stream("==> Autoremoving 3 unneeded formulae:\ngettext\nlibtool\npcre2", into: LineProbe())
         )
         #expect(outcome.succeeded)
         #expect(outcome.action == .autoremove)
@@ -105,74 +144,64 @@ struct HomebrewActionsTests {
     }
 
     @Test func autoremoveWithoutACountStillSucceeds() async {
-        let outcome = await HomebrewActions.autoremove(run: { _, _ in "" })
+        let outcome = await HomebrewActions.autoremove(stream: stream("", into: LineProbe()))
         #expect(outcome.succeeded)
         #expect(outcome.measure == nil)
     }
 
     @Test func autoremoveFailsWhenTheCommandFails() async {
-        let outcome = await HomebrewActions.autoremove(run: { _, _ in nil })
+        let outcome = await HomebrewActions.autoremove(stream: stream(nil, into: LineProbe()))
         #expect(!outcome.succeeded)
         #expect(outcome.failure == L10n.tr("homebrew.error.autoremoveFailed"))
     }
 
     @Test func parseAutoremovedCountShapes() {
-        #expect(HomebrewActions.parseAutoremovedCount("==> Autoremoving 1 formula: x") == 1)
-        #expect(HomebrewActions.parseAutoremovedCount("==> Autoremoving 12 formulae: a, b") == 12)
+        #expect(HomebrewActions.parseAutoremovedCount("==> Autoremoving 1 unneeded formula:") == 1)
+        #expect(HomebrewActions.parseAutoremovedCount("==> Autoremoving 12 unneeded formulae:") == 12)
+        #expect(HomebrewActions.parseAutoremovedCount("==> Autoremoving notanumber unneeded formulae:") == nil)
         #expect(HomebrewActions.parseAutoremovedCount("==> `brew autoremove` is a no-op") == nil)
         #expect(HomebrewActions.parseAutoremovedCount("") == nil)
-        #expect(HomebrewActions.parseAutoremovedCount("Autoremoving notanumber") == nil)
     }
 
     // MARK: - package and service actions
 
     @Test func upgradeRunsThePerKindFlag() async {
-        let probe = ArgumentProbe()
-        let outcome = await HomebrewActions.run(.upgrade(.formula, "brotli"), run: { arguments, _ in
-            probe.record(arguments)
-            return "==> Upgrading brotli"
-        })
+        let lines = LineProbe()
+        let stream = stream("==> Upgrading brotli", into: lines)
+
+        let outcome = await HomebrewActions.run(.upgrade(.formula, "brotli"), stream: stream)
         #expect(outcome.succeeded)
         #expect(outcome.action == .upgrade(.formula, "brotli"))
         #expect(outcome.measure == nil)
-        #expect(probe.calls == [["upgrade", "--formula", "brotli"]])
+        #expect(lines.calls == [["upgrade", "--formula", "brotli"]])
 
-        _ = await HomebrewActions.run(.upgrade(.cask, "codex"), run: { arguments, _ in
-            probe.record(arguments)
-            return "==> Upgrading codex"
-        })
-        #expect(probe.calls.last == ["upgrade", "--cask", "codex"])
+        _ = await HomebrewActions.run(.upgrade(.cask, "codex"), stream: stream)
+        #expect(lines.calls.last == ["upgrade", "--cask", "codex"])
     }
 
     @Test func uninstallRunsThePerKindFlag() async {
-        let probe = ArgumentProbe()
-        let outcome = await HomebrewActions.run(.uninstall(.cask, "codex"), run: { arguments, _ in
-            probe.record(arguments)
-            return "==> Uninstalling codex"
-        })
+        let lines = LineProbe()
+        let outcome = await HomebrewActions.run(
+            .uninstall(.cask, "codex"),
+            stream: stream("==> Uninstalling Cask codex", into: lines)
+        )
         #expect(outcome.succeeded)
-        #expect(probe.calls == [["uninstall", "--cask", "codex"]])
+        #expect(lines.calls == [["uninstall", "--cask", "codex"]])
     }
 
     @Test func upgradeAllRunsPlainUpgrade() async {
-        let probe = ArgumentProbe()
-        _ = await HomebrewActions.run(.upgradeAll, run: { arguments, _ in
-            probe.record(arguments)
-            return "==> Upgrading 3 outdated packages"
-        })
-        #expect(probe.calls == [["upgrade"]])
+        let lines = LineProbe()
+        _ = await HomebrewActions.run(.upgradeAll, stream: stream("==> Upgraded 3 outdated packages", into: lines))
+        #expect(lines.calls == [["upgrade"]])
     }
 
     @Test func serviceActionsRunTheServicesSubcommand() async {
-        let probe = ArgumentProbe()
-        let run: BrewCommand = { arguments, _ in
-            probe.record(arguments)
-            return "==> Successfully started `mysql`"
-        }
-        _ = await HomebrewActions.run(.startService("mysql"), run: run)
-        _ = await HomebrewActions.run(.stopService("mysql"), run: run)
-        _ = await HomebrewActions.run(.restartService("mysql"), run: run)
-        #expect(probe.calls == [
+        let lines = LineProbe()
+        let stream = stream("==> Successfully started `mysql`", into: lines)
+        _ = await HomebrewActions.run(.startService("mysql"), stream: stream)
+        _ = await HomebrewActions.run(.stopService("mysql"), stream: stream)
+        _ = await HomebrewActions.run(.restartService("mysql"), stream: stream)
+        #expect(lines.calls == [
             ["services", "start", "mysql"],
             ["services", "stop", "mysql"],
             ["services", "restart", "mysql"]
@@ -180,8 +209,37 @@ struct HomebrewActionsTests {
     }
 
     @Test func failedActionCarriesTheGenericMessage() async {
-        let outcome = await HomebrewActions.run(.uninstall(.formula, "wget"), run: { _, _ in nil })
+        let outcome = await HomebrewActions.run(.uninstall(.formula, "wget"), stream: stream(nil, into: LineProbe()))
         #expect(!outcome.succeeded)
         #expect(outcome.failure == L10n.tr("homebrew.error.actionFailed"))
+    }
+
+    // MARK: - outcome messages
+
+    @Test func outcomeMessagesCarryTheirMeasures() {
+        let cleaned = HomebrewOutcome(action: .cleanup, measure: 1_200_000_000, failure: nil)
+        #expect(cleaned.message == L10n.fmt("homebrew.result.cleaned", Formatters.bytes(1_200_000_000)))
+
+        let nothing = HomebrewOutcome(action: .cleanup, measure: 0, failure: nil)
+        #expect(nothing.message == L10n.tr("homebrew.result.cleanedNone"))
+
+        let one = HomebrewOutcome(action: .autoremove, measure: 1, failure: nil)
+        #expect(one.message == L10n.fmt("homebrew.result.autoremoved.one", 1))
+
+        let many = HomebrewOutcome(action: .autoremove, measure: 4, failure: nil)
+        #expect(many.message == L10n.fmt("homebrew.result.autoremoved.other", 4))
+
+        let upgraded = HomebrewOutcome(action: .upgrade(.cask, "codex"), measure: nil, failure: nil)
+        #expect(upgraded.message == L10n.fmt("homebrew.result.upgraded", "codex"))
+
+        let failed = HomebrewOutcome(action: .uninstall(.formula, "wget"), measure: nil, failure: "boom")
+        #expect(failed.message == L10n.fmt("homebrew.result.failed", "boom"))
+    }
+
+    @Test func runningTitlesNameEachAction() {
+        #expect(HomebrewAction.cleanup.runningTitle == L10n.tr("homebrew.running.cleanup"))
+        #expect(HomebrewAction.upgradeAll.runningTitle == L10n.tr("homebrew.running.upgradeAll"))
+        #expect(HomebrewAction.upgrade(.cask, "codex").runningTitle == L10n.tr("homebrew.running.upgrade"))
+        #expect(HomebrewAction.startService("mysql").runningTitle == L10n.tr("homebrew.running.service"))
     }
 }

@@ -62,6 +62,9 @@ final class HomebrewModel {
     /// Result of the last finished action, shown as the page's notice until
     /// the next action replaces it.
     private(set) var outcome: HomebrewOutcome?
+    /// Live progress of the running action — and, once it finishes, of the
+    /// one just finished, so the status pill can still open its log.
+    private(set) var progress: HomebrewProgress?
     /// The package awaiting uninstall confirmation. Uninstall is the one
     /// irreversible action on the page, so it goes through an explicit
     /// confirm step in the detail pane.
@@ -71,7 +74,10 @@ final class HomebrewModel {
     private let loadServices: () async -> [HomebrewService]?
     private let loadDiagnostics: () async -> String?
     private let loadConfig: () async -> [HomebrewConfigEntry]?
-    private let perform: (HomebrewAction) async -> HomebrewOutcome
+    /// Runs one action, reporting each output line as brew prints it. The
+    /// line sink is how the page's progress pill stays live during a
+    /// `brew upgrade` that runs for minutes.
+    private let perform: (HomebrewAction, @escaping @MainActor @Sendable (String) -> Void) async -> HomebrewOutcome
 
     private var loadTask: Task<Void, Never>?
     private var servicesTask: Task<Void, Never>?
@@ -83,7 +89,14 @@ final class HomebrewModel {
         loadServices: @escaping @MainActor () async -> [HomebrewService]? = { await HomebrewServices.list() },
         loadDiagnostics: @escaping @MainActor () async -> String? = { await HomebrewEnvironment.diagnostics() },
         loadConfig: @escaping @MainActor () async -> [HomebrewConfigEntry]? = { await HomebrewEnvironment.config() },
-        perform: @escaping @MainActor (HomebrewAction) async -> HomebrewOutcome = { await HomebrewActions.run($0) }
+        perform: @escaping @MainActor (HomebrewAction, @escaping @MainActor @Sendable (String) -> Void) async -> HomebrewOutcome = { action, onLine in
+            await HomebrewActions.run(
+                action,
+                run: HomebrewRunner.run,
+                stream: HomebrewRunner.stream,
+                onLine: onLine
+            )
+        }
     ) {
         self.inspect = inspect
         self.loadServices = loadServices
@@ -189,11 +202,20 @@ final class HomebrewModel {
         runningAction = action
         outcome = nil
         pendingUninstall = nil
-        Task { [perform] in
-            let outcome = await perform(action)
+        progress = HomebrewProgress(action: action, total: plannedTotal(for: action))
+        Task { [perform, self] in
+            let outcome = await perform(action) { line in
+                self.consumeLine(line)
+            }
             guard !Task.isCancelled else { return }
             self.runningAction = nil
             self.outcome = outcome
+            // The progress outlives the action so the status pill can still
+            // open the log; the finish time freezes its elapsed readout.
+            if var current = self.progress {
+                current.finish()
+                self.progress = current
+            }
             guard outcome.succeeded else {
                 // A failed action changes nothing; reloading would only hide
                 // the failure behind an identical snapshot.
@@ -206,6 +228,30 @@ final class HomebrewModel {
                 self.refreshServices()
             }
         }
+    }
+
+    /// The number of packages the action plans to touch — the progress bar's
+    /// denominator, known before brew prints anything (it never states a
+    /// total outside a dry run). Nil where only brew knows: autoremove
+    /// decides what is unneeded as it goes, cleanup removes an unknown
+    /// number of paths, and a service restart is a single opaque step.
+    private func plannedTotal(for action: HomebrewAction) -> Int? {
+        switch action {
+        case .upgradeAll:
+            return snapshot?.outdated.count
+        case .upgrade, .uninstall:
+            return 1
+        case .cleanup, .autoremove, .startService, .stopService, .restartService:
+            return nil
+        }
+    }
+
+    /// Folds one streamed output line into the progress. Runs on the main
+    /// actor — the runner's line callback hops there before calling in.
+    private func consumeLine(_ line: String) {
+        guard var current = progress else { return }
+        current.append(line)
+        progress = current
     }
 
     /// Asks for uninstall confirmation for a package.
