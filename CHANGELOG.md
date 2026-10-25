@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-10-25
+
+### Added
+
+- Homebrew manager: a new tool page in the sidebar's Tools section, with the official Homebrew GUIs' information architecture and Mackit's space angle beside it. Six sections — Installed, Upgrades, Install, Services, Diagnostics, Configuration. The package lists filter by kind (formula / cask, a full-width segmented band) and by origin (everything / only what you asked for / only what came in as a dependency — the set `brew autoremove` would take — with each option labelled by the row count it leaves), and selecting a package opens the facts a terminal user would look up: description, installed and latest versions, install date, whether the package was requested or pulled in as a dependency, license, tap, size and homepage, plus the dependency and dependent lists — a dependent is what blocks an uninstall, so it is named where the uninstall button is, and the uninstall itself goes through a confirmation dialog. The space angle stays in view in the header strip — formulae and cask counts, the cache total, the Cellar total — with cleanup, autoremove, upgrade-all and per-package upgrade actions each showing the terminal command it runs. Services lists every service's status and PID with start / stop / restart; Diagnostics runs `brew doctor` and Configuration reads `brew config`, both copyable. A machine without Homebrew gets the official installer command to copy and a recheck button that flips the page into the manager once Terminal is done. Degraded mode — brew's JSON unreadable, an old brew without `json=v2` — keeps the name+version list and disables only the filters that need the missing flag. Every brew command and JSON shape was verified against a real Homebrew 7.x installation, the services JSON read from brew's own source, so no output format here is guessed
+- Installing packages from the manager: the Install section searches brew's local index (`brew search`, one call per kind so the kind is exact), enriches the hits with one bulk `brew info --json=v2` per kind — description, installed state — and installs through the same action path as everything else, so the progress pill, the output log and the post-install refresh all come along
+- Live progress for brew actions: the runner streams brew's output line by line and a pill pinned in the page's bottom-right corner shows the running action's plan, current package and elapsed time; clicking it opens the full output log, which stays reachable for a few seconds after the action finishes before the pill gets out of the corner. Progress is honest about what brew reports: the plan size comes from the model's own outdated list (brew states no total outside a dry run), per-package `==> Upgrading` lines count as steps, `brew autoremove`'s header supplies its own total, and cleanup stays indeterminate rather than inventing a percentage
+
+### Changed
+
+- The action toast reads as a notice instead of a slab. The plate stays neutral on every style — a success toast used to be a solid green slab on macOS 26+, where a glass tint covers the entire surface — and the semantic color lives in a small tinted icon chip and a countdown hairline that drains across the toast's 3.5-second budget, anchored to the toast's own raise time so a repeated message restarts the drain; the auto-dismiss previously read as the toast vanishing mid-sentence. Every copy affordance confirms itself now: the Homebrew command rows, the diagnostics and configuration copies and the item list's Copy Path used to succeed silently, indistinguishable from a dead button without pasting somewhere first
+- The in-card search fields are one glass component. The content toolbar's field was hand-painted flat — the system reserves Liquid Glass for its own toolbars and sidebars, so a text field in a content area has to bring its own plate — and it stayed flat on macOS 26 while the controls around it went glass. `SearchField` now rides the same `GlassSurface` every other control in the app uses, glass on macOS 26+ and the flat fill the field always had below, in the system's capsule shape; the Homebrew panes' search fields are the same component rather than more hand-built copies, with the spinner-while-searching state built in
+- The hardware detection page sits in the sidebar's Tools section: a read-only report about the machine is a utility like disk analysis and the Homebrew manager, not a footer entry beside Settings
+
+### Fixed
+
+- The About page, the share message and both READMEs open the official site at its new root address (`https://www.mingcui.cn`); the site moved off the `/mackit/` path
+
 ## [1.0.8] - 2026-10-24
 
 ### Fixed
@@ -164,6 +182,7 @@ First release. Mackit is a macOS developer cache cleaner: scan every regenerable
 
 - Private keys, certificates and credentials never enter the repo (`secrets/`, `*.p8` / `*.pem` / `*.key` blocked by `.gitignore`); a pre-commit hook scans the staging area to intercept private keys
 
+[1.0.9]: https://github.com/virskor/mackit/releases/tag/v1.0.9
 [1.0.8]: https://github.com/virskor/mackit/releases/tag/v1.0.8
 [1.0.7]: https://github.com/virskor/mackit/releases/tag/v1.0.7
 [1.0.6]: https://github.com/virskor/mackit/releases/tag/v1.0.6
