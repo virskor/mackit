@@ -189,7 +189,7 @@ struct HomebrewView: View {
                 .tag(HomebrewModel.Section.installed)
             Text(verbatim: pickerLabel("homebrew.section.upgrade", count: model.snapshot?.outdated.count))
                 .tag(HomebrewModel.Section.upgrade)
-            Text(verbatim: pickerLabel("homebrew.section.services", count: model.services?.count))
+            Text(verbatim: L10n.tr("homebrew.section.services"))
                 .tag(HomebrewModel.Section.services)
             Text(verbatim: L10n.tr("homebrew.section.diagnostics"))
                 .tag(HomebrewModel.Section.diagnostics)
@@ -203,8 +203,11 @@ struct HomebrewView: View {
         .padding(.bottom, 10)
     }
 
-    /// The official apps badge the outdated count on the installed and
-    /// upgrade rows; the count is omitted until the data exists.
+    /// The official apps badge the counts on the installed and upgrade rows —
+    /// the two sections that are lists of packages. Services and the two
+    /// support sections carry no count: a badge that appears only after the
+    /// section has been visited once reads as a glitch, and "服务 0" is noise
+    /// on a machine that runs no brew services.
     private func pickerLabel(_ key: String, count: Int?) -> String {
         guard let count else { return L10n.tr(key) }
         return L10n.fmt("homebrew.section.badge", L10n.tr(key), count)
@@ -221,9 +224,16 @@ struct HomebrewView: View {
     private func statsStrip(_ model: HomebrewModel) -> some View {
         if let snapshot = model.snapshot,
            model.section == .installed || model.section == .upgrade {
-            HStack(spacing: 0) {
+            HStack(spacing: 6) {
                 ForEach(Array(stats(snapshot).enumerated()), id: \.offset) { index, item in
-                    if index > 0 { separator }
+                    if index > 0 {
+                        // The dot the scan banner puts between its facts
+                        // ("已发现 105 项 · 18.01 GB"): the app's separator
+                        // for inline facts, where a vertical rule would read
+                        // as a table.
+                        Text(verbatim: L10n.tr("homebrew.stat.separator"))
+                            .foregroundStyle(.tertiary)
+                    }
                     stat(item.label, item.value)
                 }
 
@@ -242,7 +252,7 @@ struct HomebrewView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .font(.system(size: 12))
+            .font(.system(size: 11))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 28)
             .padding(.bottom, 12)
@@ -256,16 +266,6 @@ struct HomebrewView: View {
             (L10n.tr("homebrew.stat.cache"), Formatters.bytes(snapshot.cacheSize)),
             (L10n.tr("homebrew.stat.cellar"), Formatters.bytes(snapshot.cellarSize)),
         ]
-    }
-
-    /// Divider between stats: the hairline the menu-bar stats overlay puts
-    /// between its metric groups. Without it the pairs run together into one
-    /// phrase — "公式 73 Cask 应用 3" reads as a single label.
-    private var separator: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(0.15))
-            .frame(width: 1, height: 12)
-            .padding(.horizontal, 10)
     }
 
     private func stat(_ label: String, _ value: String) -> some View {

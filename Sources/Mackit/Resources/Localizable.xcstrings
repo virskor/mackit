@@ -12806,6 +12806,28 @@
         }
       }
     },
+    "homebrew.stat.separator": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "·"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "·"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "·"
+          }
+        }
+      }
+    },
     "homebrew.stat.casks": {
       "localizations": {
         "zh-Hans": {

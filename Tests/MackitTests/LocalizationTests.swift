@@ -132,7 +132,7 @@ struct LocalizationTests {
             "homebrew.section.services", "homebrew.section.diagnostics", "homebrew.section.config",
             "homebrew.section.badge",
             "homebrew.stat.formulae", "homebrew.stat.casks", "homebrew.stat.cache",
-            "homebrew.stat.cellar",
+            "homebrew.stat.cellar", "homebrew.stat.separator",
             "homebrew.filter.all", "homebrew.filter.formula", "homebrew.filter.cask",
             "homebrew.filter.hideDependencies",
             "homebrew.searchPlaceholder", "homebrew.kind.formula", "homebrew.kind.cask",
