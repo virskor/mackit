@@ -42,6 +42,12 @@ let package = Package(
                 "Sparkle"
             ],
             path: "Sources/Mackit",
+            // Brand mark SVGs (Resources/BrandLogos) are copied as-is by
+            // .process; only the folder's README is documentation, not an
+            // app asset, and stays out of the bundle.
+            exclude: [
+                "Resources/BrandLogos/README.md"
+            ],
             resources: [
                 // String Catalog: source language zh-Hans, plus en and
                 // zh-Hant. At build time it is compiled into *.lproj

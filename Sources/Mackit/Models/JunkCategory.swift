@@ -55,6 +55,33 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The toolchain's official brand mark for categories that have one, nil
+    /// for the generic buckets (app junk, browsers, downloads...) where no
+    /// single logo exists and the SF Symbol above is the honest icon.
+    var brandLogo: BrandLogo? {
+        switch self {
+        case .xcode: return .xcode
+        case .android: return .android
+        case .go: return .go
+        case .node: return .node
+        case .flutter: return .flutter
+        case .rust: return .rust
+        case .python: return .python
+        case .pods: return .pods
+        case .homebrew: return .homebrew
+        default: return nil
+        }
+    }
+
+    /// What `CategoryIcon` should draw for this category: the brand mark when
+    /// one exists, the SF Symbol otherwise.
+    var iconSource: CategoryIcon.Source {
+        if let brandLogo {
+            return .brand(brandLogo)
+        }
+        return .symbol(symbol)
+    }
+
     var tint: Color {
         switch self {
         // The other categories already use up all the semantic colors; apps use black/white adaptive color to stay neutral

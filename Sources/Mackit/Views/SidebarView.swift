@@ -10,7 +10,7 @@ struct SidebarView: View {
         List {
             Section {
                 row(
-                    symbol: "square.stack.3d.up",
+                    icon: .symbol("square.stack.3d.up"),
                     tint: .accentColor,
                     title: L10n.tr("sidebar.allItems"),
                     isSelected: itemListIsActive && vm.selectedCategory == nil,
@@ -23,7 +23,7 @@ struct SidebarView: View {
                 // are the window's top-level destinations, while the category
                 // rows below only filter the developer list.
                 row(
-                    symbol: "sparkles",
+                    icon: .symbol("sparkles"),
                     tint: .orange,
                     title: L10n.tr("sidebar.generalCleanup"),
                     isSelected: vm.showsGeneralCleanup,
@@ -40,7 +40,7 @@ struct SidebarView: View {
             // read-only report about the machine, nothing to clean.
             Section(L10n.tr("sidebar.tools")) {
                 row(
-                    symbol: "chart.pie",
+                    icon: .symbol("chart.pie"),
                     tint: .accentColor,
                     title: L10n.tr("sidebar.diskAnalysis"),
                     isSelected: vm.showsDiskAnalysis,
@@ -50,7 +50,7 @@ struct SidebarView: View {
                 .help(L10n.tr("sidebar.diskAnalysis.help"))
 
                 row(
-                    symbol: "shippingbox",
+                    icon: .symbol("shippingbox"),
                     tint: .accentColor,
                     title: L10n.tr("sidebar.homebrew"),
                     isSelected: vm.showsHomebrew,
@@ -60,7 +60,7 @@ struct SidebarView: View {
                 .help(L10n.tr("sidebar.homebrew.help"))
 
                 row(
-                    symbol: "cpu",
+                    icon: .symbol("cpu"),
                     tint: .accentColor,
                     title: L10n.tr("hw.title"),
                     isSelected: vm.showsHardware,
@@ -72,7 +72,7 @@ struct SidebarView: View {
                 Section(L10n.tr("sidebar.categories")) {
                     ForEach(vm.developerCategories) { category in
                         row(
-                            symbol: category.symbol,
+                            icon: category.iconSource,
                             tint: category.tint,
                             title: category.title,
                             isSelected: itemListIsActive && vm.selectedCategory == category,
@@ -93,7 +93,7 @@ struct SidebarView: View {
             // separate window.
             Section {
                 row(
-                    symbol: "gear",
+                    icon: .symbol("gear"),
                     tint: .accentColor,
                     title: L10n.tr("sidebar.settings"),
                     isSelected: vm.showsSettings,
@@ -145,7 +145,7 @@ struct SidebarView: View {
     /// to the checkbox state would let the table's selection write-back clear
     /// the user's picks. Button + background is the known-working pattern.
     private func row(
-        symbol: String,
+        icon: CategoryIcon.Source,
         tint: Color,
         title: String,
         isSelected: Bool,
@@ -162,7 +162,7 @@ struct SidebarView: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                CategoryIcon(symbol: symbol, tint: tint, size: 15, width: 22)
+                CategoryIcon(icon, tint: tint, size: 15, width: 22)
 
                 Text(verbatim: title)
                     .font(.system(size: 13, weight: .medium))
