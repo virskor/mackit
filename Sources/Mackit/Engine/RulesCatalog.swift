@@ -1,6 +1,7 @@
 import Foundation
 
-/// The catalog of junk cleaning rules. All paths start with `~` and are expanded at runtime.
+/// The catalog of junk cleaning rules. Paths start with `~` and may reference
+/// a toolchain location as `${VAR}`; both are expanded at runtime (`EnvPaths`).
 enum RulesCatalog {
     static let scanRules: [ScanRule] = [
         // MARK: Xcode
@@ -90,39 +91,39 @@ enum RulesCatalog {
         ScanRule(
             id: "android.gradle-caches",
             category: .android,
-            target: .children("~/.gradle/caches"),
+            target: .children("${GRADLE_USER_HOME}/caches"),
             risk: .safe
         ),
         ScanRule(
             id: "android.gradle-wrapper",
             category: .android,
-            target: .children("~/.gradle/wrapper/dists"),
+            target: .children("${GRADLE_USER_HOME}/wrapper/dists"),
             risk: .safe
         ),
         ScanRule(
             id: "android.gradle-daemon-logs",
             category: .android,
-            target: .glob("~/.gradle/daemon/*/*.log"),
+            target: .glob("${GRADLE_USER_HOME}/daemon/*/*.log"),
             risk: .safe
         ),
         ScanRule(
             id: "android.android-cache",
             category: .android,
-            target: .children("~/.android/build-cache"),
+            target: .children("${ANDROID_USER_HOME}/build-cache"),
             risk: .safe
         ),
         // sdkmanager's downloaded repository manifests; refreshed on the next query
         ScanRule(
             id: "android.sdk-cache",
             category: .android,
-            target: .children("~/.android/cache"),
+            target: .children("${ANDROID_USER_HOME}/cache"),
             risk: .safe
         ),
         // JDK distributions the Gradle toolchain downloads; big re-downloads, hence review
         ScanRule(
             id: "android.gradle-jdks",
             category: .android,
-            target: .children("~/.gradle/jdks"),
+            target: .children("${GRADLE_USER_HOME}/jdks"),
             risk: .review
         ),
         ScanRule(
@@ -150,26 +151,26 @@ enum RulesCatalog {
         ScanRule(
             id: "go.build-cache",
             category: .go,
-            target: .children("~/Library/Caches/go-build"),
+            target: .children("${GOCACHE}"),
             risk: .safe
         ),
         ScanRule(
             id: "go.mod-download",
             category: .go,
-            target: .children("~/go/pkg/mod/cache/download"),
+            target: .children("${GOMODCACHE}/cache/download"),
             risk: .safe
         ),
         // MARK: Node / Frontend
         ScanRule(
             id: "node.npm-cacache",
             category: .node,
-            target: .children("~/.npm/_cacache"),
+            target: .children("${npm_config_cache}/_cacache"),
             risk: .safe
         ),
         ScanRule(
             id: "node.yarn-cache",
             category: .node,
-            target: .children("~/Library/Caches/Yarn"),
+            target: .children("${YARN_CACHE_FOLDER}"),
             risk: .safe
         ),
         ScanRule(
@@ -181,19 +182,19 @@ enum RulesCatalog {
         ScanRule(
             id: "node.pnpm-store",
             category: .node,
-            target: .directory("~/Library/pnpm/store"),
+            target: .directory("${npm_config_store_dir}"),
             risk: .safe
         ),
         ScanRule(
             id: "node.pnpm-cache",
             category: .node,
-            target: .children("~/Library/Caches/pnpm"),
+            target: .children("${npm_config_cache_dir}"),
             risk: .safe
         ),
         ScanRule(
             id: "node.bun-cache",
             category: .node,
-            target: .children("~/Library/Caches/bun"),
+            target: .children("${BUN_INSTALL_CACHE_DIR}"),
             risk: .safe
         ),
         ScanRule(
@@ -214,19 +215,19 @@ enum RulesCatalog {
             target: .children("~/Library/Caches/typescript"),
             risk: .safe
         ),
-        // DENO_DIR defaults to the OS cache directory — `~/Library/Caches/deno`
-        // on macOS; the Linux `~/.cache/deno` spelling never exists here.
+        // DENO_DIR is honored with its documented macOS default (the Linux
+        // `~/.cache/deno` spelling never exists here).
         ScanRule(
             id: "node.deno",
             category: .node,
-            target: .children("~/Library/Caches/deno"),
+            target: .children("${DENO_DIR}"),
             risk: .safe
         ),
         // One environment per package ever run through npx; re-downloaded on demand
         ScanRule(
             id: "node.npx",
             category: .node,
-            target: .children("~/.npm/_npx"),
+            target: .children("${npm_config_cache}/_npx"),
             risk: .safe
         ),
 
@@ -234,19 +235,19 @@ enum RulesCatalog {
         ScanRule(
             id: "flutter.pub-hosted",
             category: .flutter,
-            target: .children("~/.pub-cache/hosted"),
+            target: .children("${PUB_CACHE}/hosted"),
             risk: .safe
         ),
         ScanRule(
             id: "flutter.pub-git",
             category: .flutter,
-            target: .children("~/.pub-cache/git"),
+            target: .children("${PUB_CACHE}/git"),
             risk: .safe
         ),
         ScanRule(
             id: "flutter.pub-temp",
             category: .flutter,
-            target: .children("~/.pub-cache/.temp"),
+            target: .children("${PUB_CACHE}/.temp"),
             risk: .safe
         ),
         ScanRule(
@@ -258,7 +259,7 @@ enum RulesCatalog {
         ScanRule(
             id: "flutter.pub-cache-bin",
             category: .flutter,
-            target: .children("~/.pub-cache/bin"),
+            target: .children("${PUB_CACHE}/bin"),
             risk: .review
         ),
 
@@ -266,19 +267,19 @@ enum RulesCatalog {
         ScanRule(
             id: "rust.registry-cache",
             category: .rust,
-            target: .children("~/.cargo/registry/cache"),
+            target: .children("${CARGO_HOME}/registry/cache"),
             risk: .safe
         ),
         ScanRule(
             id: "rust.registry-src",
             category: .rust,
-            target: .children("~/.cargo/registry/src"),
+            target: .children("${CARGO_HOME}/registry/src"),
             risk: .safe
         ),
         ScanRule(
             id: "rust.git-db",
             category: .rust,
-            target: .children("~/.cargo/git/db"),
+            target: .children("${CARGO_HOME}/git/db"),
             risk: .safe
         ),
 
@@ -286,25 +287,25 @@ enum RulesCatalog {
         ScanRule(
             id: "python.pip-cache",
             category: .python,
-            target: .children("~/Library/Caches/pip"),
+            target: .children("${PIP_CACHE_DIR}"),
             risk: .safe
         ),
         ScanRule(
             id: "python.uv-cache",
             category: .python,
-            target: .children("~/.cache/uv"),
+            target: .children("${UV_CACHE_DIR}"),
             risk: .safe
         ),
         ScanRule(
             id: "python.poetry-cache",
             category: .python,
-            target: .children("~/Library/Caches/pypoetry"),
+            target: .children("${POETRY_CACHE_DIR}"),
             risk: .safe
         ),
         ScanRule(
             id: "python.precommit",
             category: .python,
-            target: .children("~/.cache/pre-commit"),
+            target: .children("${PRE_COMMIT_HOME}"),
             risk: .safe
         ),
 
@@ -534,7 +535,7 @@ enum RulesCatalog {
             executable: "go",
             arguments: ["clean", "-cache"],
             title: "go clean -cache",
-            sizeHints: ["~/Library/Caches/go-build"]
+            sizeHints: ["${GOCACHE}"]
         ),
         CLIRule(
             id: "cli.go-clean-modcache",
@@ -543,7 +544,7 @@ enum RulesCatalog {
             arguments: ["clean", "-modcache"],
             title: "go clean -modcache",
             risk: .review,
-            sizeHints: ["~/go/pkg/mod/cache/download"]
+            sizeHints: ["${GOMODCACHE}/cache/download"]
         ),
         CLIRule(
             id: "cli.npm-cache",
@@ -551,7 +552,7 @@ enum RulesCatalog {
             executable: "npm",
             arguments: ["cache", "clean", "--force"],
             title: "npm cache clean --force",
-            sizeHints: ["~/.npm/_cacache"]
+            sizeHints: ["${npm_config_cache}/_cacache"]
         ),
         CLIRule(
             id: "cli.yarn-cache",
@@ -559,7 +560,7 @@ enum RulesCatalog {
             executable: "yarn",
             arguments: ["cache", "clean"],
             title: "yarn cache clean",
-            sizeHints: ["~/Library/Caches/Yarn"]
+            sizeHints: ["${YARN_CACHE_FOLDER}"]
         ),
         CLIRule(
             id: "cli.pnpm-store",
@@ -567,7 +568,7 @@ enum RulesCatalog {
             executable: "pnpm",
             arguments: ["store", "prune"],
             title: "pnpm store prune",
-            sizeHints: ["~/Library/pnpm/store"]
+            sizeHints: ["${npm_config_store_dir}"]
         ),
         CLIRule(
             id: "cli.bun-cache",
@@ -575,7 +576,7 @@ enum RulesCatalog {
             executable: "bun",
             arguments: ["pm", "cache", "rm"],
             title: "bun pm cache rm",
-            sizeHints: ["~/Library/Caches/bun"]
+            sizeHints: ["${BUN_INSTALL_CACHE_DIR}"]
         ),
         CLIRule(
             id: "cli.dart-pub-cache",
@@ -584,7 +585,7 @@ enum RulesCatalog {
             arguments: ["pub", "cache", "clean"],
             title: "dart pub cache clean",
             risk: .review,
-            sizeHints: ["~/.pub-cache"]
+            sizeHints: ["${PUB_CACHE}"]
         ),
         CLIRule(
             id: "cli.pip-cache",
@@ -592,7 +593,7 @@ enum RulesCatalog {
             executable: "pip3",
             arguments: ["cache", "purge"],
             title: "pip cache purge",
-            sizeHints: ["~/Library/Caches/pip"]
+            sizeHints: ["${PIP_CACHE_DIR}"]
         ),
         CLIRule(
             id: "cli.uv-cache",
@@ -600,7 +601,7 @@ enum RulesCatalog {
             executable: "uv",
             arguments: ["cache", "clean"],
             title: "uv cache clean",
-            sizeHints: ["~/.cache/uv"]
+            sizeHints: ["${UV_CACHE_DIR}"]
         ),
         // The standard way to reclaim simulator space: devices whose runtime
         // is gone cannot boot, so deleting them loses nothing reachable. No

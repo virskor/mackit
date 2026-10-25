@@ -38,9 +38,11 @@ enum FileSystem {
         name.hasPrefix(systemDataPrefix)
     }
 
-    /// Expand `~`.
+    /// Expand `~` and the `${VAR}` toolchain locations `EnvPaths` knows.
+    /// Every path entry point — rule targets, glob patterns, CLI size
+    /// hints — funnels through here, so callers cannot miss the expansion.
     static func expand(_ path: String) -> String {
-        (path as NSString).expandingTildeInPath
+        EnvPaths.resolve(path)
     }
 
     /// Canonicalize in the realpath sense: resolve all symlinks in the path.
