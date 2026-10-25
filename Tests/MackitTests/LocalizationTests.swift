@@ -125,6 +125,62 @@ struct LocalizationTests {
             "diskAnalysis.tile.accessibility", "diskAnalysis.overflow.accessibility",
             "format.gigabytes.compact", "format.megabytes.compact", "format.kilobytes.compact",
             "format.terabytes.compact", "format.bytes.compact",
+            "sidebar.homebrew", "sidebar.homebrew.help",
+            "homebrew.title", "homebrew.loading", "homebrew.header.version",
+            "homebrew.snapshot.unusable",
+            "homebrew.section.installed", "homebrew.section.upgrade",
+            "homebrew.section.services", "homebrew.section.diagnostics", "homebrew.section.config",
+            "homebrew.section.badge",
+            "homebrew.stat.formulae", "homebrew.stat.casks", "homebrew.stat.cache",
+            "homebrew.stat.cellar", "homebrew.stat.outdated",
+            "homebrew.filter.all", "homebrew.filter.formula", "homebrew.filter.cask",
+            "homebrew.filter.hideDependencies",
+            "homebrew.searchPlaceholder", "homebrew.kind.formula", "homebrew.kind.cask",
+            "homebrew.package.outdated", "homebrew.package.pinned", "homebrew.package.upgrade",
+            "homebrew.packages.empty", "homebrew.outdated.allLatest",
+            "homebrew.detail.noSelection", "homebrew.detail.noSelectionHelp",
+            "homebrew.detail.title", "homebrew.detail.degraded", "homebrew.detail.degradedHelp",
+            "homebrew.detail.installed", "homebrew.detail.latest", "homebrew.detail.latestUnknown",
+            "homebrew.detail.installDate", "homebrew.detail.installReason",
+            "homebrew.detail.reason.onRequest", "homebrew.detail.reason.dependency",
+            "homebrew.detail.reason.bottle", "homebrew.detail.reason.source",
+            "homebrew.detail.license", "homebrew.detail.source", "homebrew.detail.size",
+            "homebrew.detail.homepage", "homebrew.detail.dependencies",
+            "homebrew.detail.noDependencies", "homebrew.detail.dependents",
+            "homebrew.detail.noDependents", "homebrew.detail.blocksUninstall",
+            "homebrew.detail.upgrade", "homebrew.detail.upgradeAllAction",
+            "homebrew.detail.upgradeAllHelp", "homebrew.detail.upgradeAction",
+            "homebrew.detail.uninstall", "homebrew.detail.uninstallHelp",
+            "homebrew.detail.uninstallAction", "homebrew.detail.uninstallConfirm",
+            "homebrew.detail.uninstallConfirmAction",
+            "homebrew.services.filter.all", "homebrew.services.filter.running",
+            "homebrew.services.filter.stopped", "homebrew.services.loading",
+            "homebrew.services.failed", "homebrew.services.empty", "homebrew.services.emptyHelp",
+            "homebrew.services.pid", "homebrew.services.start", "homebrew.services.stop",
+            "homebrew.services.restart", "homebrew.services.status.running",
+            "homebrew.services.status.stopped", "homebrew.services.status.none",
+            "homebrew.services.status.scheduled", "homebrew.services.status.error",
+            "homebrew.diagnostics.rerun", "homebrew.diagnostics.copy",
+            "homebrew.diagnostics.running", "homebrew.diagnostics.empty",
+            "homebrew.config.loading", "homebrew.config.empty",
+            "homebrew.config.group.homebrew", "homebrew.config.group.system",
+            "homebrew.config.copy",
+            "homebrew.action.refresh", "homebrew.action.refresh.help",
+            "homebrew.action.cleanup", "homebrew.action.cleanup.help",
+            "homebrew.action.autoremove", "homebrew.action.autoremove.help",
+            "homebrew.action.copy",
+            "homebrew.running.cleanup", "homebrew.running.autoremove",
+            "homebrew.running.upgradeAll", "homebrew.running.upgrade",
+            "homebrew.running.uninstall", "homebrew.running.service",
+            "homebrew.result.cleaned", "homebrew.result.cleanedNone",
+            "homebrew.result.autoremovedNone", "homebrew.result.upgradedAll",
+            "homebrew.result.upgraded", "homebrew.result.uninstalled",
+            "homebrew.result.serviceStarted", "homebrew.result.serviceStopped",
+            "homebrew.result.serviceRestarted", "homebrew.result.failed",
+            "homebrew.error.brewUnavailable", "homebrew.error.cleanupFailed",
+            "homebrew.error.autoremoveFailed", "homebrew.error.actionFailed",
+            "homebrew.notInstalled.title", "homebrew.notInstalled.explain",
+            "homebrew.notInstalled.action",
         ]
         for key in keys {
             #expect(!isFallback(L10n.tr(key), key: key), "\(key) not localized")
@@ -310,7 +366,22 @@ struct LocalizationTests {
             ("diskAnalysis.tile.sizeShare", 2),
             ("diskAnalysis.hover.sizeShare", 2),
             ("diskAnalysis.tile.accessibility", 3),
-            ("diskAnalysis.overflow.accessibility", 2)
+            ("diskAnalysis.overflow.accessibility", 2),
+            ("homebrew.header.version", 2),
+            ("homebrew.section.badge", 2),
+            ("homebrew.package.upgrade", 2),
+            ("homebrew.detail.upgradeAction", 1),
+            ("homebrew.detail.uninstallConfirm", 1),
+            ("homebrew.services.pid", 1),
+            ("homebrew.result.cleaned", 1),
+            ("homebrew.result.autoremoved.one", 1),
+            ("homebrew.result.autoremoved.other", 1),
+            ("homebrew.result.upgraded", 1),
+            ("homebrew.result.uninstalled", 1),
+            ("homebrew.result.serviceStarted", 1),
+            ("homebrew.result.serviceStopped", 1),
+            ("homebrew.result.serviceRestarted", 1),
+            ("homebrew.result.failed", 1)
         ]
         // Compatible with positional parameters (%1$@): residue file
         // subtitles use this layout
@@ -348,7 +419,8 @@ struct LocalizationTests {
             "diskAnalysis.header.folders",
             "diskAnalysis.header.files",
             "diskAnalysis.scan.count",
-            "diskAnalysis.others"
+            "diskAnalysis.others",
+            "homebrew.result.autoremoved"
         ]
         let placeholder = /%(?:\d+\$)?(?:@|lld)/
         for base in pairs {
@@ -398,7 +470,9 @@ struct LocalizationTests {
             ("diskAnalysis.scan.count.one", [1]),
             ("diskAnalysis.scan.count.other", [7]),
             ("diskAnalysis.others.one", [1]),
-            ("diskAnalysis.others.other", [18])
+            ("diskAnalysis.others.other", [18]),
+            ("homebrew.result.autoremoved.one", [1]),
+            ("homebrew.result.autoremoved.other", [5])
         ]
         for (key, args) in calls {
             let value = String(format: L10n.tr(key), arguments: args)

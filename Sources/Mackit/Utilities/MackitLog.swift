@@ -39,6 +39,8 @@ enum MackitLog {
     static let fs = Logger(subsystem: subsystem, category: "fs")
     /// Disk space analysis: directory scans, navigation, and measurement totals.
     static let disk = Logger(subsystem: subsystem, category: "disk")
+    /// Homebrew manager: installation queries and management actions.
+    static let brew = Logger(subsystem: subsystem, category: "brew")
 
     /// Formats a duration into whole milliseconds, for interpolation in log messages.
     static func duration(_ interval: Duration) -> String {

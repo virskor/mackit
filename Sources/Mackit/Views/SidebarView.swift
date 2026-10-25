@@ -33,8 +33,9 @@ struct SidebarView: View {
             }
 
             // Tools sit directly below the cleanup entries, above the
-            // developer category filters: they are read-only utilities, a
-            // different kind of destination from either cleanup module.
+            // developer category filters: they are utilities, a different
+            // kind of destination from either cleanup module — overviews
+            // with their own housekeeping actions, not scan-driven cleaning.
             Section(L10n.tr("sidebar.tools")) {
                 row(
                     symbol: "chart.pie",
@@ -45,6 +46,16 @@ struct SidebarView: View {
                     action: { vm.showDiskAnalysis() }
                 )
                 .help(L10n.tr("sidebar.diskAnalysis.help"))
+
+                row(
+                    symbol: "shippingbox",
+                    tint: .accentColor,
+                    title: L10n.tr("sidebar.homebrew"),
+                    isSelected: vm.showsHomebrew,
+                    isBusy: vm.homebrew.isLoading,
+                    action: { vm.showHomebrew() }
+                )
+                .help(L10n.tr("sidebar.homebrew.help"))
             }
 
             if !vm.developerCategories.isEmpty {
@@ -106,7 +117,7 @@ struct SidebarView: View {
     /// sidebar has one selected item at a time, and switching pages has to
     /// clear the highlight.
     private var itemListIsActive: Bool {
-        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis
+        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew
     }
 
     /// One sidebar row: icon, title, and the trailing slot that carries the
@@ -140,10 +151,10 @@ struct SidebarView: View {
         /// leave it nil — they report their own totals on their pages.
         figures: (count: Int, size: Int64)? = nil,
         /// A measurement is running in the background (the disk analysis
-        /// tool). Only the running flag is read, deliberately not the
-        /// scanned-directory count, which changes several times a second and
-        /// would re-render the whole sidebar for a number the row does not
-        /// show.
+        /// tool) or a Homebrew query is in flight. Only the running flag is
+        /// read, deliberately not the scanned-directory count, which changes
+        /// several times a second and would re-render the whole sidebar for
+        /// a number the row does not show.
         isBusy: Bool = false,
         action: @escaping () -> Void
     ) -> some View {

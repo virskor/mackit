@@ -115,8 +115,7 @@ struct SharePanel: View {
     /// confirmation they get.
     @MainActor
     private func copy() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(shareMessage, forType: .string)
+        Clipboard.copy(shareMessage)
         copied = true
     }
 }

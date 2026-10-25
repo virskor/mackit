@@ -363,6 +363,13 @@ enum FileSystem {
         return directorySize(of: url)
     }
 
+    /// The allocated size at a path string. The Homebrew manager measures
+    /// directories whose paths arrive as text from `brew --cellar` /
+    /// `brew --cache`, and every caller was rebuilding the same URL.
+    static func allocatedSize(ofPath path: String) -> Int64 {
+        allocatedSize(of: URL(fileURLWithPath: path, isDirectory: true))
+    }
+
     /// The size of the symlink itself (lstat semantics, usually only a few dozen bytes).
     private static func symbolicLinkSize(of url: URL) -> Int64 {
         let attributes = try? manager.attributesOfItem(atPath: url.path)

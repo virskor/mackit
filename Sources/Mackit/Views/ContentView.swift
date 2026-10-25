@@ -54,11 +54,11 @@ struct ContentView: View {
             // becomes the card's inner padding — the content shrinks in, while
             // the card itself still hugs the sidebar and the window's right edge.
             VStack(spacing: 0) {
-                // The settings, hardware, general cleanup and disk analysis
-                // pages have their own headers; the main toolbar's scan /
-                // clean actions are unrelated to them, so it is hidden
+                // The settings, hardware, general cleanup, disk analysis and
+                // homebrew pages have their own headers; the main toolbar's
+                // scan / clean actions are unrelated to them, so it is hidden
                 // entirely, leaving only the page content.
-                if !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis {
+                if !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew {
                     ContentToolbarRow()
                     Divider()
                 }
@@ -134,10 +134,10 @@ struct ContentView: View {
     @ViewBuilder
     private var page: some View {
         // When the sidebar's hardware detection / settings / general cleanup /
-        // disk analysis row is selected, the detail area switches entirely to
-        // the corresponding embedded page (within the same window, not a
-        // separate window); clicking back or any category row returns to the
-        // cleanable items content.
+        // disk analysis / homebrew row is selected, the detail area switches
+        // entirely to the corresponding embedded page (within the same window,
+        // not a separate window); clicking back or any category row returns to
+        // the cleanable items content.
         if vm.showsHardware {
             HardwareView()
         } else if vm.showsSettings {
@@ -146,6 +146,8 @@ struct ContentView: View {
             GeneralCleanupView()
         } else if vm.showsDiskAnalysis {
             DiskAnalysisView()
+        } else if vm.showsHomebrew {
+            HomebrewView()
         } else {
             switch vm.phase {
             case .scanning:

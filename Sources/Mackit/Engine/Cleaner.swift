@@ -316,10 +316,3 @@ enum CleanEngine {
         return String(data: data, encoding: .utf8)
     }
 }
-
-/// `Pipe` is not marked `Sendable`, but reading from `fileHandleForReading`
-/// is thread-safe; it is declared explicitly here so pipes can be drained
-/// concurrently in detached tasks.
-private struct SendablePipe: @unchecked Sendable {
-    let pipe: Pipe
-}

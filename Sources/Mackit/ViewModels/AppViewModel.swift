@@ -71,6 +71,9 @@ final class AppViewModel {
     /// area switches to the analysis page, the same embedded-page pattern
     /// as the hardware page.
     var showsDiskAnalysis: Bool = false
+    /// The Homebrew manager tool row is selected in the sidebar: the detail
+    /// area switches to the manager page, same embedded-page pattern again.
+    var showsHomebrew: Bool = false
 
     /// Row selection set, consistent with the list checkmarks. All of the
     /// state and every rule that decides it live in `CleanupSelection`; this
@@ -89,6 +92,11 @@ final class AppViewModel {
     /// page switches. Injectable so a test can drive the page-switch contract
     /// against a fixture tree instead of the real disk.
     let diskAnalysis: DiskAnalysisModel
+
+    /// State model of the Homebrew manager tool page. Same session-lifetime
+    /// and injectability contract as `diskAnalysis`: the snapshot survives
+    /// page switches, and tests drive the page against fake inspections.
+    let homebrew: HomebrewModel
 
     /// Cleanup result summary.
     var lastReclaimed: Int64 = 0
@@ -255,8 +263,9 @@ final class AppViewModel {
     /// "emit one event, assert one snapshot" in tests. Visible within the
     /// module so tests can drive it directly; the default value is the
     /// app's startup behavior.
-    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel()) {
+    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel()) {
         self.diskAnalysis = diskAnalysis
+        self.homebrew = homebrew
         // A remembered row selection is the one piece of selection state that
         // outlives a process, so the model's user actions route through here
         // to persist it. `loadSettings` below assigns the stored value
@@ -617,6 +626,7 @@ final class AppViewModel {
         showsSettings = false
         showsHardware = true
         dismissDiskAnalysis()
+        dismissHomebrew()
         hardwareProfile = HardwareSampler.profile()
     }
 
@@ -637,6 +647,7 @@ final class AppViewModel {
         showsHardware = false
         showsGeneralCleanup = false
         dismissDiskAnalysis()
+        dismissHomebrew()
     }
 
     /// Opens the disk analysis tool page from the sidebar. Same
@@ -649,6 +660,7 @@ final class AppViewModel {
         showsSettings = false
         showsHardware = false
         showsGeneralCleanup = false
+        showsHomebrew = false
         if cleanPhase == .done { dismissCleanResult() }
         diskAnalysis.activate()
     }
@@ -667,6 +679,30 @@ final class AppViewModel {
     private func dismissDiskAnalysis() {
         guard showsDiskAnalysis else { return }
         showsDiskAnalysis = false
+    }
+
+    /// Opens the Homebrew manager tool page from the sidebar. Same
+    /// embedded-page pattern as the other tools: the detail area swaps
+    /// entirely and the main toolbar hides. The first entry loads the
+    /// snapshot; coming back to a loaded one is instant.
+    func showHomebrew() {
+        guard !showsHomebrew else { return }
+        showsHomebrew = true
+        selectedCategory = nil
+        showsSettings = false
+        showsHardware = false
+        showsGeneralCleanup = false
+        dismissDiskAnalysis()
+        if cleanPhase == .done { dismissCleanResult() }
+        homebrew.activate()
+    }
+
+    /// Leaves the Homebrew manager page. Deliberately does not touch the
+    /// snapshot — same contract as the disk analysis measurement: the load
+    /// belongs to the session, not to the page being visible.
+    private func dismissHomebrew() {
+        guard showsHomebrew else { return }
+        showsHomebrew = false
     }
 
     // MARK: - Memory Release
@@ -1366,6 +1402,7 @@ final class AppViewModel {
         showsHardware = false
         showsGeneralCleanup = false
         dismissDiskAnalysis()
+        dismissHomebrew()
         if cleanPhase == .done { dismissCleanResult() }
     }
 
@@ -1377,6 +1414,7 @@ final class AppViewModel {
         showsSettings = false
         showsHardware = false
         dismissDiskAnalysis()
+        dismissHomebrew()
         if cleanPhase == .done { dismissCleanResult() }
     }
 
@@ -1629,8 +1667,7 @@ final class AppViewModel {
 
     func copyPath(_ item: JunkItem) {
         let text = item.path.isEmpty ? item.command.joined(separator: " ") : item.path
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        Clipboard.copy(text)
     }
 
     func trashSingle(_ item: JunkItem) {
