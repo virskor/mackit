@@ -148,21 +148,16 @@ enum HomebrewRunner {
         onLine: @MainActor @Sendable (String) -> Void,
         into collector: LineCollector
     ) async {
-        var buffer = Data()
+        var lines = LineBuffer()
         while true {
             let chunk = box.pipe.fileHandleForReading.availableData
             if chunk.isEmpty { break }
-            buffer.append(chunk)
-            while let range = buffer.range(of: Data("\n".utf8)) {
-                let lineData = buffer.subdata(in: buffer.startIndex..<range.lowerBound)
-                buffer.removeSubrange(buffer.startIndex..<range.upperBound)
-                if let line = text(from: lineData), !line.isEmpty {
-                    collector.append(line)
-                    await onLine(line)
-                }
+            for line in lines.append(chunk) {
+                collector.append(line)
+                await onLine(line)
             }
         }
-        if let tail = text(from: buffer), !tail.isEmpty {
+        if let tail = lines.flush() {
             collector.append(tail)
             await onLine(tail)
         }
@@ -190,5 +185,41 @@ private final class LineCollector: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return lines.joined(separator: "\n")
+    }
+}
+
+/// Splits a byte stream into lines.
+///
+/// A chunk boundary can fall mid-line — a pipe read rarely lands on a
+/// newline — so the trailing partial line is carried into the next chunk and
+/// only flushed once the stream ends (brew's last line often has no newline
+/// after it).
+struct LineBuffer {
+    private var buffer = Data()
+    private static let newline = Data("\n".utf8)
+
+    /// Appends a chunk, returning every line it completed. Blank lines are
+    /// dropped: brew separates its sections with them, and an empty row in
+    /// the log says nothing.
+    mutating func append(_ chunk: Data) -> [String] {
+        buffer.append(chunk)
+        var lines: [String] = []
+        while let range = buffer.range(of: Self.newline) {
+            let lineData = buffer.subdata(in: buffer.startIndex..<range.lowerBound)
+            buffer.removeSubrange(buffer.startIndex..<range.upperBound)
+            if let line = String(data: lineData, encoding: .utf8), !line.isEmpty {
+                lines.append(line)
+            }
+        }
+        return lines
+    }
+
+    /// The trailing partial line, once the stream has ended.
+    mutating func flush() -> String? {
+        defer { buffer.removeAll() }
+        guard !buffer.isEmpty, let tail = String(data: buffer, encoding: .utf8), !tail.isEmpty else {
+            return nil
+        }
+        return tail
     }
 }
