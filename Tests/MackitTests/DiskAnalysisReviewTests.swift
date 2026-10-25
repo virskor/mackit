@@ -18,6 +18,11 @@ import Testing
 /// Everything here is fixture-backed or pure: no window is opened, no scan of
 /// the real startup disk runs, and the only real path touched is the volume
 /// root's own listing in `directoriesSkipsMountPointsAtTheVolumeRoot`.
+/// Serialized: the throttling test below counts analyzer progress events
+/// over a wide fixture, and sibling scans stealing CPU in parallel skew that
+/// count. (`@Test(.serialized)` on a plain function is a no-op — the trait
+/// only orders a parameterized test's cases — so the suite carries it.)
+@Suite(.serialized)
 struct DiskAnalysisReviewTests {
     private func write(size: Int, at url: URL) throws {
         try FileManager.default.createDirectory(
@@ -227,14 +232,16 @@ struct DiskAnalysisReviewTests {
     /// Progress events are throttled: one per directory would wake the main
     /// actor thousands of times a second for a label that changes too fast to
     /// read. The count of events must stay well under the directory count.
-    @Test(.serialized)
+    @Test
     func progressEventsAreThrottledAndStayInsideTheTree() async throws {
         let base = try makeBase("throttle")
         defer { try? FileManager.default.removeItem(at: base) }
         try makeWideTree(at: base, fanout: 10, depth: 3)
 
         let (events, node, directories) = await scan(root: base.path)
-        let root = try #require(node)
+        // Still a real assertion — a tree that scans to nil makes every
+        // count below meaningless — but its value is unused here.
+        _ = try #require(node)
         let progress = events.compactMap { event -> String? in
             guard case .progress(_, let current) = event else { return nil }
             return current

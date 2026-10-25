@@ -691,9 +691,10 @@ struct HomebrewModelTests {
         let packages = model.packages(for: .installed)
         #expect(model.selectedPackage(from: packages) == nil)
 
-        // #require rather than a subscript: a load that never lands must
+        // Selected by name, not by subscript: a load that never lands must
         // fail this test, not kill the whole suite with an index crash.
-        model.selectPackage(try #require(packages.first))
+        let wget = try #require(packages.first { $0.name == "wget" })
+        model.selectPackage(wget)
         #expect(model.selectedPackage(from: packages)?.name == "wget")
 
         // A package removed by an uninstall must not leave a ghost selected.

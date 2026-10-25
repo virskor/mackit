@@ -42,10 +42,10 @@ struct AppScannerTests {
     }
 
     /// Resolves symlinks in a path to the real path (realpath), matching what
-    /// contentsOfDirectory returns.
+    /// contentsOfDirectory returns. The app's own canonicalizer, so the two
+    /// spellings can never drift apart.
     private func canonical(_ path: String) -> String {
-        var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
-        return realpath(path, &buffer) != nil ? String(cString: buffer) : path
+        FileSystem.canonical(path)
     }
 
     private func cleanup(_ url: URL) {

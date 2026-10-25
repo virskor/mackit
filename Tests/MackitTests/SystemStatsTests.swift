@@ -103,7 +103,7 @@ struct MemoryReleaserTests {
         let values: [Int64?] = [1_000_000_000, 1_500_000_000]
         var index = 0
 
-        let outcome = await MemoryReleaser.release(
+        let outcome = MemoryReleaser.release(
             run: { _ in (nil, nil) },
             memoryFree: {
                 defer { index += 1 }
@@ -117,7 +117,7 @@ struct MemoryReleaserTests {
     /// When sampling fails the difference is untrustworthy; a freed amount
     /// must not be fabricated.
     @Test func releaseWithoutUsableSamplesReportsNoChange() async {
-        let outcome = await MemoryReleaser.release(
+        let outcome = MemoryReleaser.release(
             run: { _ in (nil, nil) },
             memoryFree: { nil }
         )
@@ -128,7 +128,7 @@ struct MemoryReleaserTests {
     /// freed amount either.
     @Test func releaseWithFailedFollowUpSampleReportsNoChange() async {
         var calls = 0
-        let outcome = await MemoryReleaser.release(
+        let outcome = MemoryReleaser.release(
             run: { _ in (nil, nil) },
             memoryFree: {
                 calls += 1
@@ -142,7 +142,7 @@ struct MemoryReleaserTests {
     @Test func releaseRunsTheElevatedPurgeScript() async {
         var seen: String?
 
-        _ = await MemoryReleaser.release(
+        _ = MemoryReleaser.release(
             run: { source in
                 seen = source
                 return (nil, nil)
@@ -156,7 +156,7 @@ struct MemoryReleaserTests {
     /// No change in memory across the run must not be reported as 0 bytes —
     /// the user would think something ran but did nothing.
     @Test func releaseWithoutChangeIsItsOwnOutcome() async {
-        let outcome = await MemoryReleaser.release(
+        let outcome = MemoryReleaser.release(
             run: { _ in (nil, nil) },
             memoryFree: { 4_000_000 }
         )
@@ -166,7 +166,7 @@ struct MemoryReleaserTests {
     /// Cancellation in the authorization dialog must be reported separately;
     /// it cannot be called a failure.
     @Test func releaseReportsCancellation() async {
-        let outcome = await MemoryReleaser.release(
+        let outcome = MemoryReleaser.release(
             run: { _ in ("User cancelled", MemoryReleaser.cancelledErrorNumber) },
             memoryFree: { 0 }
         )
@@ -176,7 +176,7 @@ struct MemoryReleaserTests {
     /// A failure must carry an explanation; the user needs to know why nothing
     /// was released.
     @Test func releaseCarriesFailureMessage() async {
-        let outcome = await MemoryReleaser.release(
+        let outcome = MemoryReleaser.release(
             run: { _ in ("Operation not permitted", 1) },
             memoryFree: { 0 }
         )

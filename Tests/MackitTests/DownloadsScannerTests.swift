@@ -4,7 +4,7 @@ import Testing
 @testable import Mackit
 
 struct DownloadsScannerTests {
-    private func makeDownloads(home: URL, files: [String], directories: [String] = []) throws -> URL {
+    private func makeDownloads(home: URL, files: [String], directories: [String] = []) throws {
         let downloads = home.appendingPathComponent("Downloads", isDirectory: true)
         try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: true)
         for name in directories {
@@ -20,7 +20,6 @@ struct DownloadsScannerTests {
                 encoding: .utf8
             )
         }
-        return downloads
     }
 
     @Test func groupsInstallersAndArchives() throws {

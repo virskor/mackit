@@ -222,14 +222,13 @@ struct AppsUninstallTests {
     @Test func scanAppsMergesIntoList() async throws {
         // Subpaths returned by FileManager have symlinks resolved
         // (/var → /private/var); the temporary directory must be normalized
-        // before comparing with the probed paths.
+        // before comparing with the probed paths. The app's own
+        // canonicalizer keeps the spelling identical to the scanner's.
         func canonicalDirectory(_ label: String) throws -> URL {
             let raw = FileManager.default.temporaryDirectory
                 .appendingPathComponent("mackit-vm-\(label)-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: raw, withIntermediateDirectories: true)
-            var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
-            let resolved = realpath(raw.path, &buffer) != nil ? String(cString: buffer) : raw.path
-            return URL(fileURLWithPath: resolved)
+            return URL(fileURLWithPath: FileSystem.canonical(raw.path))
         }
 
         let appsDir = try canonicalDirectory("apps")

@@ -11,6 +11,12 @@ import MachO
 /// depth budget, and the skip rules — symlinked and `com.apple.*` children
 /// (the latter would pop a TCC authorization dialog on macOS 26+), mount
 /// points, and the TCC-protected home trio.
+/// Serialized: the footprint test below measures this process's resident
+/// memory during a deep scan; a sibling test allocating in parallel would
+/// land in the same measurement. (`@Test(.serialized)` on a plain function
+/// is a no-op — the trait only orders a parameterized test's cases — so the
+/// suite carries it instead.)
+@Suite(.serialized)
 struct DiskAnalyzerTests {
     private func write(size: Int, at url: URL) throws {
         try FileManager.default.createDirectory(
@@ -214,9 +220,12 @@ struct DiskAnalyzerTests {
     @Test func missingRootComesBackFlagged() async {
         let (progressEvents, node, _) = await scan(root: "/definitely/not/a/real/path")
         #expect(progressEvents >= 1)
-        let root = try? #require(node)
-        #expect(root?.isUnreadable == true)
-        #expect(root?.children.isEmpty == true)
+        guard let root = node else {
+            Issue.record("a missing root must still come back flagged, not nil")
+            return
+        }
+        #expect(root.isUnreadable == true)
+        #expect(root.children.isEmpty == true)
     }
 
     /// A symlink is neither followed nor counted — including one that points
@@ -289,7 +298,7 @@ struct DiskAnalyzerTests {
     /// measurement: the worker pool grows resident memory by about 31 MB
     /// here, where a task per directory would add roughly 3 KB per directory,
     /// some 280 MB.
-    @Test(.serialized)
+    @Test
     func scanningADeepTreeKeepsItsFootprintBounded() async throws {
         let base = FileManager.default.temporaryDirectory
             .appendingPathComponent("mackit-deep-\(UUID().uuidString)", isDirectory: true)

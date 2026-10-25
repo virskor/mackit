@@ -12,10 +12,15 @@ import Testing
 /// launch, which is covered by manual verification (see AppLanguage's
 /// comment: write AppleLanguages → restart → the UI follows).
 ///
-/// The persistence cases each use a brand-new domain and are marked
-/// `.serialized` (they share a preferences directory, so leftover cleanup
-/// cannot run in parallel). The app's real preferences (the standard domain)
-/// are never touched.
+/// The persistence cases each use a brand-new domain, but their `suite()`
+/// helper deletes every leftover `AppLanguageTests.*` preferences file —
+/// running them in parallel would let one case's cleanup unlink a live
+/// case's not-yet-flushed plist. The suite is therefore `.serialized`;
+/// on a plain test function the trait has no effect (it only orders the
+/// cases of a parameterized test), which is why it sits here and not on
+/// the five tests that need it. The app's real preferences (the standard
+/// domain) are never touched.
+@Suite(.serialized)
 struct AppLanguageTests {
     /// A brand-new UserDefaults domain, along with the domain name (for
     /// asserting this domain's snapshot).
@@ -43,12 +48,12 @@ struct AppLanguageTests {
 
     // MARK: - Persistence
 
-    @Test(.serialized) func storedDefaultsToSystemWhenNothingRecorded() {
+    @Test func storedDefaultsToSystemWhenNothingRecorded() {
         let (defaults, _) = suite()
         #expect(AppLanguage.stored(in: defaults) == .system)
     }
 
-    @Test(.serialized) func storedRoundTripsEveryLanguage() {
+    @Test func storedRoundTripsEveryLanguage() {
         let (defaults, _) = suite()
         for language in [AppLanguage.en, .zhHans, .zhHant] {
             AppLanguage.store(language, in: defaults)
@@ -56,13 +61,13 @@ struct AppLanguageTests {
         }
     }
 
-    @Test(.serialized) func storeSyncsAppleLanguagesForNextLaunch() {
+    @Test func storeSyncsAppleLanguagesForNextLaunch() {
         let (defaults, _) = suite()
         AppLanguage.store(.zhHant, in: defaults)
         #expect(defaults.stringArray(forKey: "AppleLanguages") == ["zh-Hant"])
     }
 
-    @Test(.serialized) func storeSystemRemovesBothKeys() {
+    @Test func storeSystemRemovesBothKeys() {
         let (defaults, name) = suite()
         AppLanguage.store(.en, in: defaults)
         AppLanguage.store(.system, in: defaults)
@@ -77,7 +82,7 @@ struct AppLanguageTests {
         #expect(domain["AppleLanguages"] == nil)
     }
 
-    @Test(.serialized) func unknownStoredValueFallsBackToSystem() {
+    @Test func unknownStoredValueFallsBackToSystem() {
         let (defaults, _) = suite()
         defaults.set("kl", forKey: AppLanguage.defaultsKey)
         #expect(AppLanguage.stored(in: defaults) == .system)
