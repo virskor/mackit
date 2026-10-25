@@ -34,44 +34,18 @@ struct HomebrewInstallPane: View {
 
     // MARK: - Search field
 
+    // The spinner-while-searching and clear-button behavior live in
+    // `SearchField`; the binding routes through the model so typing and
+    // clearing both run the debounced search.
     private func searchField(_ model: HomebrewModel) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField(text: Binding(
+        SearchField(
+            text: Binding(
                 get: { model.searchQuery },
                 set: { model.updateSearchQuery($0) }
-            )) {
-                Text(verbatim: L10n.tr("homebrew.install.placeholder"))
-                    .font(.system(size: 12))
-            }
-            .textFieldStyle(.plain)
-            .font(.system(size: 12))
-
-            // The spinner replaces the clear button while a search runs: a
-            // second search over stale results is the one state where the
-            // field must say "working on it" without moving the rows.
-            if model.isSearching {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(width: 14, height: 14)
-            } else if !model.searchQuery.isEmpty {
-                Button {
-                    model.updateSearchQuery("")
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help(L10n.tr("homebrew.install.clear"))
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(Color.primary.opacity(0.06))
+            ),
+            placeholder: L10n.tr("homebrew.install.placeholder"),
+            isSearching: model.isSearching,
+            clearButtonHelp: L10n.tr("homebrew.install.clear")
         )
     }
 

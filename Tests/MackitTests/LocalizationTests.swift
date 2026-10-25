@@ -59,6 +59,7 @@ struct LocalizationTests {
             "settings.tab.general", "settings.launchAtLogin", "settings.moveToTrash",
             "settings.autoSelect.none", "settings.autoSelectHint.none",
             "settings.projects.quickAdd", "settings.about.subtitle", "toast.trashed",
+            "toast.copied",
             "count.items.one", "count.items.other",
             "scan.apps", "clean.confirm.uninstall", "clean.error.appRunning",
             "apps.version", "apps.confirm.title", "apps.confirm.note",
@@ -134,7 +135,9 @@ struct LocalizationTests {
             "homebrew.stat.formulae", "homebrew.stat.casks", "homebrew.stat.cache",
             "homebrew.stat.cellar", "homebrew.stat.separator",
             "homebrew.filter.all", "homebrew.filter.formula", "homebrew.filter.cask",
-            "homebrew.filter.hideDependencies",
+            "homebrew.dependencyFilter.all", "homebrew.dependencyFilter.onlyDependencies",
+            "homebrew.dependencyFilter.excludeDependencies", "homebrew.dependencyFilter.help",
+            "homebrew.dependencyFilter.title",
             "homebrew.searchPlaceholder", "homebrew.kind.formula", "homebrew.kind.cask",
             "homebrew.install.placeholder", "homebrew.install.clear",
             "homebrew.install.searching", "homebrew.install.prompt",
@@ -158,7 +161,7 @@ struct LocalizationTests {
             "homebrew.detail.upgradeAllHelp", "homebrew.detail.upgradeAction",
             "homebrew.detail.uninstall", "homebrew.detail.uninstallHelp",
             "homebrew.detail.uninstallAction", "homebrew.detail.uninstallConfirm",
-            "homebrew.detail.uninstallConfirmAction",
+            "homebrew.detail.uninstallConfirmNote", "homebrew.detail.uninstallConfirmAction",
             "homebrew.services.filter.all", "homebrew.services.filter.running",
             "homebrew.services.filter.stopped", "homebrew.services.loading",
             "homebrew.services.failed", "homebrew.services.empty", "homebrew.services.emptyHelp",
@@ -194,6 +197,8 @@ struct LocalizationTests {
             "homebrew.error.autoremoveFailed", "homebrew.error.actionFailed",
             "homebrew.notInstalled.title", "homebrew.notInstalled.explain",
             "homebrew.notInstalled.action",
+            "homebrew.notInstalled.commandCaption",
+            "homebrew.notInstalled.refresh", "homebrew.notInstalled.refresh.help",
         ]
         for key in keys {
             #expect(!isFallback(L10n.tr(key), key: key), "\(key) not localized")
@@ -277,6 +282,14 @@ struct LocalizationTests {
         #expect(overflowLabel.contains("740.35MB"))
         #expect(!overflowLabel.contains("%1$@"))
         #expect(!overflowLabel.contains("%2$@"))
+
+        // The dependency filter's menu items: option name beside the row
+        // count choosing it would leave
+        let dependencyOption = L10n.fmt("homebrew.dependencyFilter.count", "Manually installed", 52)
+        #expect(dependencyOption.contains("Manually installed"))
+        #expect(dependencyOption.contains("52"))
+        #expect(!dependencyOption.contains("%1$@"))
+        #expect(!dependencyOption.contains("%2$lld"))
     }
 
     @Test func itemCountHandlesSingularAndPlural() {
@@ -382,6 +395,7 @@ struct LocalizationTests {
             ("diskAnalysis.overflow.accessibility", 2),
             ("homebrew.header.version", 2),
             ("homebrew.section.badge", 2),
+            ("homebrew.dependencyFilter.count", 2),
             ("homebrew.progress.count", 2),
             ("homebrew.progress.steps.one", 1),
             ("homebrew.progress.steps.other", 1),

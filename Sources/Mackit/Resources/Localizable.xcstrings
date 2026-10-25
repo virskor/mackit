@@ -8340,6 +8340,28 @@
         }
       }
     },
+    "toast.copied": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制到剪贴板"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied to the clipboard"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已複製到剪貼簿"
+          }
+        }
+      }
+    },
     "toast.launchAtLoginOnFailed": {
       "localizations": {
         "zh-Hans": {
@@ -12982,6 +13004,138 @@
         }
       }
     },
+    "homebrew.dependencyFilter.all": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示全部"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show all"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示全部"
+          }
+        }
+      }
+    },
+    "homebrew.dependencyFilter.onlyDependencies": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅依赖安装"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dependencies only"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "僅相依安裝"
+          }
+        }
+      }
+    },
+    "homebrew.dependencyFilter.excludeDependencies": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅手动安装"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manually installed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "僅手動安裝"
+          }
+        }
+      }
+    },
+    "homebrew.dependencyFilter.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按依赖项筛选"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter by dependencies"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "依相依套件篩選"
+          }
+        }
+      }
+    },
+    "homebrew.dependencyFilter.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "依赖项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dependencies"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相依套件"
+          }
+        }
+      }
+    },
+    "homebrew.dependencyFilter.count": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld"
+          }
+        }
+      }
+    },
     "homebrew.searchPlaceholder": {
       "localizations": {
         "zh-Hans": {
@@ -14263,19 +14417,41 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "确认卸载 %@？如需再次使用必须重新安装。"
+            "value": "确认卸载 %@？"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uninstall %@? You will have to reinstall it to use it again."
+            "value": "Uninstall %@?"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "確認卸載 %@？如需再次使用必須重新安裝。"
+            "value": "確認卸載 %@？"
+          }
+        }
+      }
+    },
+    "homebrew.detail.uninstallConfirmNote": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如需再次使用必须重新安装。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You will have to reinstall it to use it again."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如需再次使用必須重新安裝。"
           }
         }
       }
@@ -15622,24 +15798,68 @@
         }
       }
     },
-    "homebrew.filter.hideDependencies": {
+    "homebrew.notInstalled.commandCaption": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "隐藏依赖项"
+            "value": "官方安装命令 — 复制后在终端中运行"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hide dependencies"
+            "value": "The official install command — copy it into Terminal and run it"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "隱藏相依套件"
+            "value": "官方安裝命令 — 複製後在終端機中執行"
+          }
+        }
+      }
+    },
+    "homebrew.notInstalled.refresh": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装，重新检查"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed — check again"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安裝，重新檢查"
+          }
+        }
+      }
+    },
+    "homebrew.notInstalled.refresh.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端完成安装后，重新检查 Homebrew 是否可用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-check whether Homebrew has become available after installing it in Terminal"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在終端機完成安裝後，重新檢查 Homebrew 是否可用"
           }
         }
       }

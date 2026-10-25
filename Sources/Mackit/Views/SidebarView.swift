@@ -36,6 +36,8 @@ struct SidebarView: View {
             // developer category filters: they are utilities, a different
             // kind of destination from either cleanup module — overviews
             // with their own housekeeping actions, not scan-driven cleaning.
+            // Hardware detection belongs among them for the same reason: a
+            // read-only report about the machine, nothing to clean.
             Section(L10n.tr("sidebar.tools")) {
                 row(
                     symbol: "chart.pie",
@@ -56,6 +58,14 @@ struct SidebarView: View {
                     action: { vm.showHomebrew() }
                 )
                 .help(L10n.tr("sidebar.homebrew.help"))
+
+                row(
+                    symbol: "cpu",
+                    tint: .accentColor,
+                    title: L10n.tr("hw.title"),
+                    isSelected: vm.showsHardware,
+                    action: { vm.showHardware() }
+                )
             }
 
             if !vm.developerCategories.isEmpty {
@@ -77,19 +87,11 @@ struct SidebarView: View {
                 }
             }
 
-            // The hardware detection and settings entries sit at the very
-            // bottom of the list, sharing the same row style as the category
-            // rows; clicking switches the right detail area entirely to the
-            // corresponding embedded page, not a separate window.
+            // Settings sits at the very bottom of the list, sharing the same
+            // row style as the category rows; clicking switches the right
+            // detail area entirely to the corresponding embedded page, not a
+            // separate window.
             Section {
-                row(
-                    symbol: "cpu",
-                    tint: .accentColor,
-                    title: L10n.tr("hw.title"),
-                    isSelected: vm.showsHardware,
-                    action: { vm.showHardware() }
-                )
-
                 row(
                     symbol: "gear",
                     tint: .accentColor,

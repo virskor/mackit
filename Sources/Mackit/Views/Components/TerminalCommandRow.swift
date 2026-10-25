@@ -8,6 +8,8 @@ import SwiftUI
 /// command that failed in the GUI is one they can paste into a terminal to
 /// see the full error.
 struct TerminalCommandRow: View {
+    @Environment(AppViewModel.self) private var vm
+
     let command: String
 
     var body: some View {
@@ -25,13 +27,16 @@ struct TerminalCommandRow: View {
             Spacer(minLength: 8)
 
             Button {
-                Clipboard.copy(command)
+                vm.copyToClipboard(command)
             } label: {
                 Image(systemName: "doc.on.doc")
                     .font(.system(size: 11))
             }
             .buttonStyle(.borderless)
             .help(L10n.tr("homebrew.action.copy"))
+            // The label is a bare SF Symbol, so VoiceOver needs the words the
+            // tooltip carries.
+            .accessibilityLabel(L10n.tr("homebrew.action.copy"))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)

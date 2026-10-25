@@ -10,8 +10,8 @@ enum GlassStyle {
     /// content.
     case regular
     /// Regular glass carrying a tint, how a plate keeps a semantic color
-    /// (the toast's green, the CTA's brand green) on 26+, where the
-    /// fallback's colored hairline is no longer drawn.
+    /// (the brand CTA's green, the menu-bar panel's clean capsule) on 26+,
+    /// where the fallback's colored hairline is no longer drawn.
     case tinted(Color)
 
     /// The `Glass` this style resolves to on macOS 26+.

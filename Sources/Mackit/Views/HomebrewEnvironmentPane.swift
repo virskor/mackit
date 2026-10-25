@@ -42,7 +42,7 @@ struct HomebrewEnvironmentPane: View {
 
                 if let copyText {
                     Button {
-                        Clipboard.copy(copyText)
+                        vm.copyToClipboard(copyText)
                     } label: {
                         Label(L10n.tr(copyLabel), systemImage: "doc.on.doc")
                     }

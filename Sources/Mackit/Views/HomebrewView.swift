@@ -14,30 +14,22 @@ import SwiftUI
 struct HomebrewView: View {
     @Environment(AppViewModel.self) private var vm
 
-    /// The corner pill's visibility: on while an action runs, and briefly
-    /// after it finishes so the log stays reachable.
-    @State private var showsStatusPill = false
-    /// Whether the action's log popover is open. Lifted out of the pill so
-    /// reading the log holds the pill up instead of it vanishing mid-read.
-    @State private var showsActionLog = false
-    @State private var pillDismissTask: Task<Void, Never>?
-
     var body: some View {
         let model = vm.homebrew
         VStack(spacing: 0) {
             header(model)
 
             if model.isNotInstalled {
-                notInstalled
+                notInstalled(model)
             } else {
                 // One chrome band: the section picker, the space totals and
-                // the transient action feedback. The divider sits under all
-                // of it — the way the main content card puts one under its
-                // toolbar row (see ContentView) — so what follows reads as
-                // the working area, not as more scaffolding.
+                // the last outcome. The divider sits under all of it — the
+                // way the main content card puts one under its toolbar row
+                // (see ContentView) — so what follows reads as the working
+                // area, not as more scaffolding.
                 sectionPicker(model)
                 statsStrip(model)
-                feedback(model)
+                outcomeNotice(model)
                 Divider()
                 // The section content claims the rest of the card: without
                 // this the panes size to their content and the page reads as
@@ -50,60 +42,29 @@ struct HomebrewView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .overlay(alignment: .bottomTrailing) {
-            if showsStatusPill, let progress = model.progress {
+            // The pill's visibility is the model's, not this view's: it goes
+            // up on the turn an action starts and survives the view being
+            // rebuilt by a sidebar switch. Deriving it here from change
+            // notifications loses any action that finishes between two render
+            // passes — the coalesced notification never arrives.
+            if model.showsStatusPill, let progress = model.progress {
                 HomebrewProgressPill(
                     progress: progress,
                     outcome: model.outcome,
                     onCopyLog: {
                         vm.showToast(.success, L10n.tr("homebrew.progress.copied"))
                     },
-                    showsLog: $showsActionLog
+                    showsLog: Binding(
+                        get: { model.showsActionLog },
+                        set: { model.setActionLogVisible($0) }
+                    )
                 )
                 .padding(.trailing, 20)
                 .padding(.bottom, 18)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: showsStatusPill)
-        .onAppear {
-            // An action can already be running when the page is entered —
-            // the sidebar keeps the model alive across page switches.
-            if model.runningAction != nil { showsStatusPill = true }
-        }
-        .onChange(of: model.runningAction) { _, running in
-            pillDismissTask?.cancel()
-            pillDismissTask = nil
-            if running != nil {
-                showsStatusPill = true
-            } else if model.outcome != nil {
-                schedulePillDismiss()
-            } else {
-                showsStatusPill = false
-            }
-        }
-        .onChange(of: showsActionLog) { _, open in
-            if open {
-                pillDismissTask?.cancel()
-                pillDismissTask = nil
-            } else if model.runningAction == nil, model.outcome != nil {
-                schedulePillDismiss()
-            }
-        }
-    }
-
-    /// Keeps the result pill up long enough to read the result and open the
-    /// log, then gets out of the corner. The notice above the section content
-    /// remains the durable record of the outcome.
-    private func schedulePillDismiss() {
-        pillDismissTask?.cancel()
-        pillDismissTask = nil
-        // The log popover is anchored to the pill: dismissing the pill while
-        // the log is open would pull the popover out from under the reader.
-        guard !showsActionLog else { return }
-        pillDismissTask = Task {
-            try? await Task.sleep(for: .seconds(10))
-            showsStatusPill = false
-        }
+        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: model.showsStatusPill)
     }
 
     // MARK: - Header
@@ -295,24 +256,12 @@ struct HomebrewView: View {
         stat(label, String(value))
     }
 
-    /// The in-flight action and the last outcome. One row each, above the
-    /// section content, so an action's result is visible whichever section
-    /// is open.
+    /// The last outcome, one row above the section content so an action's
+    /// result is visible whichever section is open. The in-flight state is
+    /// deliberately not repeated here: the corner pill already carries it
+    /// with the progress bar, the step count and the elapsed clock.
     @ViewBuilder
-    private func feedback(_ model: HomebrewModel) -> some View {
-        if let running = model.runningAction {
-            HStack(spacing: 8) {
-                ProgressView()
-                    .controlSize(.small)
-                Text(verbatim: running.runningTitle)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 28)
-            .padding(.bottom, 10)
-        }
-
+    private func outcomeNotice(_ model: HomebrewModel) -> some View {
         if let outcome = model.outcome {
             NoticeRow(
                 systemImage: outcome.succeeded ? "checkmark.circle" : "exclamationmark.triangle",
@@ -346,7 +295,13 @@ struct HomebrewView: View {
 
     // MARK: - Not installed
 
-    private var notInstalled: some View {
+    /// The official installer from brew.sh, shown for copying rather than run
+    /// in-app: it wants an interactive RETURN confirmation and possibly a
+    /// sudo password, which the app's non-interactive runner cannot answer.
+    private static let brewInstallCommand =
+        "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+
+    private func notInstalled(_ model: HomebrewModel) -> some View {
         VStack(spacing: 12) {
             Spacer()
             Image(systemName: "shippingbox")
@@ -361,6 +316,33 @@ struct HomebrewView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 380)
+
+            VStack(spacing: 8) {
+                Text(verbatim: L10n.tr("homebrew.notInstalled.commandCaption"))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+
+                TerminalCommandRow(command: Self.brewInstallCommand)
+                    .frame(width: 480)
+            }
+            .padding(.top, 8)
+
+            // The recheck is the page's main action: `activate()` skips a
+            // not-installed page on re-entry, so this button — the same
+            // reload the header refresh runs — is what flips the page into
+            // the manager once Terminal is done.
+            BrandCTAButton(
+                title: L10n.tr("homebrew.notInstalled.refresh"),
+                systemImage: "arrow.clockwise",
+                style: .primary,
+                compact: true,
+                showsProgress: model.isLoading
+            ) {
+                model.reload()
+            }
+            .disabled(model.isLoading || model.runningAction != nil)
+            .help(L10n.tr("homebrew.notInstalled.refresh.help"))
+            .padding(.top, 4)
 
             Button {
                 if let url = URL(string: "https://brew.sh") {

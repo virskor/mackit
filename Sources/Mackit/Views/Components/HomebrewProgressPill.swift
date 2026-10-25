@@ -34,9 +34,13 @@ struct HomebrewProgressPill: View {
 
     private var plate: some View {
         GlassSurface(
-            // The result state carries its semantic color the way the toast
-            // does; while the action runs the plate stays neutral.
-            style: style,
+            // Neutral in both states — the same plate the toast wears, so the
+            // window's floating furniture reads as one family. A `Glass.tint`
+            // covers the entire surface on 26+, and success is the outcome
+            // this pill shows most, so a tinted result state left the corner
+            // glowing green after every brew action. The semantic color lives
+            // in the state icon and the fallback hairline instead.
+            style: .regular,
             interactive: true,
             outline: .rounded(cornerRadius: 12),
             fallback: .material(.regularMaterial),
@@ -94,11 +98,6 @@ struct HomebrewProgressPill: View {
             .padding(.vertical, 11)
             .frame(width: 268)
         }
-    }
-
-    private var style: GlassStyle {
-        guard let outcome else { return .regular }
-        return .tinted(outcome.succeeded ? .green : .red)
     }
 
     private var outcomeHairline: (color: Color, width: CGFloat)? {

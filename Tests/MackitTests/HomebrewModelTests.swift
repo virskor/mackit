@@ -45,7 +45,10 @@ struct HomebrewModelTests {
         _ name: String,
         kind: HomebrewPackage.Kind = .formula,
         outdated: Bool = false,
-        dependencies: [String] = []
+        dependencies: [String] = [],
+        /// The on-request flag; nil is what degraded mode produces for every
+        /// package.
+        onRequest: Bool? = true
     ) -> HomebrewPackage {
         HomebrewPackage(
             name: name,
@@ -60,7 +63,7 @@ struct HomebrewModelTests {
             tap: "homebrew/core",
             dependencies: dependencies,
             installedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            installedOnRequest: true,
+            installedOnRequest: onRequest,
             pouredFromBottle: true,
             pinned: false,
             size: 1024
@@ -89,6 +92,10 @@ struct HomebrewModelTests {
     private func makeModel(
         counters: Counters = Counters(),
         snapshot: HomebrewSnapshot? = nil,
+        /// Replaces the fixed snapshot answer on every inspect; a test whose
+        /// brew "installs" mid-run injects a closure that changes its mind
+        /// between loads.
+        inspectOverride: (@MainActor () -> HomebrewSnapshot?)? = nil,
         services: [HomebrewService]? = [],
         outcome: HomebrewOutcome = HomebrewOutcome(action: .cleanup, measure: 512, failure: nil),
         /// Lines the fake action streams while it "runs"; empty means the
@@ -96,12 +103,16 @@ struct HomebrewModelTests {
         streaming: [String] = [],
         /// What the fake search seam returns for any query; nil means "brew
         /// could not be read".
-        searchResults: [HomebrewSearchResult]? = nil
+        searchResults: [HomebrewSearchResult]? = nil,
+        /// How long the finished action's pill stays up. Long by default so
+        /// the "still up after the action" assertions cannot flake; the dwell
+        /// tests inject a short one.
+        pillDwell: Duration = .seconds(30)
     ) -> HomebrewModel {
         HomebrewModel(
             inspect: {
                 counters.inspect += 1
-                return snapshot
+                return inspectOverride?() ?? snapshot
             },
             loadServices: {
                 counters.services += 1
@@ -118,7 +129,7 @@ struct HomebrewModelTests {
             perform: { action, onLine in
                 counters.actions.append(action)
                 for line in streaming {
-                    await onLine(line)
+                    onLine(line)
                     counters.streamed.append(line)
                 }
                 return outcome
@@ -126,7 +137,8 @@ struct HomebrewModelTests {
             runSearch: { query in
                 counters.searches.append(query)
                 return searchResults
-            }
+            },
+            pillDwell: pillDwell
         )
     }
 
@@ -152,6 +164,32 @@ struct HomebrewModelTests {
         await model.waitUntilSettled()
         #expect(model.isNotInstalled)
         #expect(model.snapshot == nil)
+    }
+
+    /// The install guide's recheck: the answer flips between two loads the
+    /// way a real machine does when the user installs Homebrew in Terminal
+    /// and presses the page's refresh. A box rather than a captured var —
+    /// the closure outlives the mutation, which strict concurrency flags.
+    @Test func reloadAfterInstallingHomebrewClearsTheNotInstalledFlag() async {
+        let counters = Counters()
+        final class Answer: @unchecked Sendable { var installed = false }
+        let answer = Answer()
+        let model = makeModel(
+            counters: counters,
+            inspectOverride: { answer.installed ? makeSnapshot(formulae: [makePackage("wget")]) : nil }
+        )
+
+        model.activate()
+        await model.waitUntilSettled()
+        #expect(model.isNotInstalled)
+        #expect(model.snapshot == nil)
+
+        answer.installed = true
+        model.reload()
+        await model.waitUntilSettled()
+        #expect(!model.isNotInstalled)
+        #expect(model.snapshot?.allPackages.first?.name == "wget")
+        #expect(counters.inspect == 2)
     }
 
     @Test func reloadReplacesAnInFlightLoad() async {
@@ -357,6 +395,83 @@ struct HomebrewModelTests {
         #expect(model.progress?.log == ["==> Upgrading wget"])
     }
 
+    // MARK: - Status pill
+
+    @Test func thePillIsUpTheMomentAnActionStarts() {
+        // The regression this pins: the pill used to be raised by the view
+        // off `runningAction`'s change notification, which SwiftUI coalesces
+        // away when the action finishes before the next render pass — the
+        // pill then never appeared at all. The model now raises it itself, on
+        // the same turn the action starts.
+        let model = makeModel(snapshot: makeSnapshot())
+
+        model.run(.upgrade(.formula, "wget"))
+
+        #expect(model.showsStatusPill)
+        #expect(model.progress != nil)
+    }
+
+    @Test func aFastActionStillShowsThePill() async {
+        // The injected action completes without suspending on real I/O, the
+        // same shape as a brew invocation that fails or finishes instantly.
+        let model = makeModel(snapshot: makeSnapshot())
+        model.run(.upgrade(.formula, "wget"))
+        await model.waitUntilSettled()
+
+        #expect(model.showsStatusPill, "a finished action keeps its pill up for the dwell")
+        #expect(model.outcome != nil)
+    }
+
+    @Test func thePillDropsAfterTheDwell() async {
+        let model = makeModel(snapshot: makeSnapshot(), pillDwell: .milliseconds(20))
+        model.run(.cleanup)
+        await model.waitUntilSettled()
+        #expect(model.showsStatusPill)
+
+        try? await Task.sleep(for: .milliseconds(120))
+
+        #expect(!model.showsStatusPill)
+    }
+
+    @Test func anOpenLogPinsThePillPastTheDwell() async {
+        let model = makeModel(snapshot: makeSnapshot(), pillDwell: .milliseconds(20))
+        model.run(.cleanup)
+        await model.waitUntilSettled()
+
+        model.setActionLogVisible(true)
+        try? await Task.sleep(for: .milliseconds(120))
+        #expect(model.showsStatusPill, "the popover is anchored to the pill; it must not vanish mid-read")
+
+        model.setActionLogVisible(false)
+        try? await Task.sleep(for: .milliseconds(120))
+        #expect(!model.showsStatusPill, "closing the log re-arms the dwell")
+    }
+
+    @Test func aSecondActionRaisesThePillAgain() async {
+        let model = makeModel(snapshot: makeSnapshot(), pillDwell: .milliseconds(20))
+        model.run(.cleanup)
+        await model.waitUntilSettled()
+        try? await Task.sleep(for: .milliseconds(120))
+        #expect(!model.showsStatusPill)
+
+        model.run(.upgrade(.formula, "wget"))
+
+        #expect(model.showsStatusPill)
+        #expect(model.showsActionLog == false)
+        await model.waitUntilSettled()
+    }
+
+    @Test func anIgnoredSecondActionLeavesThePillAlone() async {
+        // A second action is refused while one runs; it must not disturb the
+        // running action's pill.
+        let model = makeModel(snapshot: makeSnapshot(), streaming: ["==> Upgrading wget"])
+        model.run(.upgradeAll)
+        model.run(.autoremove)
+        await model.waitUntilSettled()
+
+        #expect(model.showsStatusPill)
+    }
+
     // MARK: - Install search
 
     @Test func searchReportsItsHitsAfterTheDebounce() async {
@@ -491,9 +606,46 @@ struct HomebrewModelTests {
         #expect(model.packages(for: .services).isEmpty)
 
         let installed = model.packages(for: .installed)
-        #expect(model.filtered(installed, by: "WGET").map(\.name) == ["wget"])
-        #expect(model.filtered(installed, by: "cod").map(\.name) == ["codex"], "casks match by token")
-        #expect(model.filtered(installed, by: "  ").count == 3, "blank search keeps everything")
+        #expect(model.filtered(installed, kind: .all, dependencies: .all, by: "WGET").map(\.name) == ["wget"])
+        #expect(model.filtered(installed, kind: .all, dependencies: .all, by: "cod").map(\.name) == ["codex"], "casks match by token")
+        #expect(model.filtered(installed, kind: .all, dependencies: .all, by: "  ").count == 3, "blank search keeps everything")
+
+        #expect(model.filtered(installed, kind: .formula, dependencies: .all, by: "").count == 2)
+        #expect(model.filtered(installed, kind: .cask, dependencies: .all, by: "").map(\.name) == ["codex"])
+    }
+
+    @Test func theDependencyFilterSplitsByTheOnRequestFlag() {
+        let model = makeModel(snapshot: makeSnapshot(
+            formulae: [
+                makePackage("wget", onRequest: true),
+                makePackage("openssl", onRequest: false),
+                makePackage("pcre2", onRequest: false)
+            ]
+        ))
+        let installed = model.packages(for: .installed)
+
+        #expect(model.filtered(installed, kind: .all, dependencies: .all, by: "").count == 3)
+        #expect(model.filtered(installed, kind: .all, dependencies: .onlyDependencies, by: "").map(\.name) == ["openssl", "pcre2"])
+        #expect(model.filtered(installed, kind: .all, dependencies: .excludeDependencies, by: "").map(\.name) == ["wget"])
+
+        // The two filters compose: a formula-only view of just the
+        // dependencies.
+        #expect(model.filtered(installed, kind: .formula, dependencies: .onlyDependencies, by: "").count == 2)
+    }
+
+    @Test func aMissingOnRequestFlagKeepsEveryPackage() {
+        // Degraded mode: brew's JSON was unreadable, so no package carries
+        // the flag. Both dependency filters must keep the whole list rather
+        // than emptying it — the pane disables the filter in this state
+        // anyway, and a filter that empties the list is the worse failure.
+        let model = makeModel(snapshot: makeSnapshot(
+            formulae: [makePackage("wget", onRequest: nil), makePackage("openssl", onRequest: nil)],
+            detailsAvailable: false
+        ))
+        let installed = model.packages(for: .installed)
+
+        #expect(model.filtered(installed, kind: .all, dependencies: .onlyDependencies, by: "").count == 2)
+        #expect(model.filtered(installed, kind: .all, dependencies: .excludeDependencies, by: "").count == 2)
     }
 
     @Test func dependentsAreTheReverseDependencyIndex() throws {

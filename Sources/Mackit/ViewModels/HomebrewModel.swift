@@ -25,6 +25,27 @@ final class HomebrewModel {
         case config
     }
 
+    /// Which packages a list holds by kind — the pane's first segmented
+    /// filter, the official GUIs' formula/cask split.
+    enum KindFilter: String, CaseIterable, Sendable {
+        case all
+        case formula
+        case cask
+    }
+
+    /// Which packages a list holds by their on-request flag — the pane's
+    /// dropdown filter beside the kind band. The official GUIs offer only a
+    /// "hide dependencies" toggle; the flip side — only what something else
+    /// pulled in, which is what `brew autoremove` would take — deserves its
+    /// own option beside it. Case order is the menu's display order:
+    /// everything, then the packages the user asked for, then the ones
+    /// pulled in as dependencies.
+    enum DependencyFilter: String, CaseIterable, Sendable {
+        case all
+        case excludeDependencies
+        case onlyDependencies
+    }
+
     // MARK: Section state
 
     private(set) var section: Section = .installed
@@ -79,9 +100,18 @@ final class HomebrewModel {
     /// Live progress of the running action — and, once it finishes, of the
     /// one just finished, so the status pill can still open its log.
     private(set) var progress: HomebrewProgress?
+    /// Whether the status pill is on screen. Set on the same turn an action
+    /// starts, because a view that reconstructs this from `runningAction`
+    /// changes loses every action that finishes between two render passes —
+    /// SwiftUI coalesces the two changes into "no change" and the pill never
+    /// appears. Cleared by the dwell below once the action is done.
+    private(set) var showsStatusPill = false
+    /// Whether the pill's log popover is open. It lives beside the pill state
+    /// because an open log pins the pill on screen.
+    private(set) var showsActionLog = false
     /// The package awaiting uninstall confirmation. Uninstall is the one
     /// irreversible action on the page, so it goes through an explicit
-    /// confirm step in the detail pane.
+    /// confirm dialog in the detail pane.
     private(set) var pendingUninstall: HomebrewPackage?
 
     private let inspect: () async -> HomebrewSnapshot?
@@ -100,9 +130,14 @@ final class HomebrewModel {
     private var diagnosticsTask: Task<Void, Never>?
     private var configTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
+    /// Takes the pill down once the dwell after a finished action expires.
+    private var pillDismissTask: Task<Void, Never>?
     /// Bumped per search so a superseded search never clears the handle a
     /// newer one owns.
     private var searchGeneration = 0
+    /// How long the finished action's pill stays up. Injected so tests can
+    /// watch the dwell expire without waiting out the real ten seconds.
+    private let pillDwell: Duration
 
     init(
         inspect: @escaping @MainActor () async -> HomebrewSnapshot? = { await HomebrewInspector.inspect() },
@@ -117,7 +152,8 @@ final class HomebrewModel {
                 onLine: onLine
             )
         },
-        runSearch: @escaping @MainActor (String) async -> [HomebrewSearchResult]? = { await HomebrewSearch.search($0) }
+        runSearch: @escaping @MainActor (String) async -> [HomebrewSearchResult]? = { await HomebrewSearch.search($0) },
+        pillDwell: Duration = .seconds(10)
     ) {
         self.inspect = inspect
         self.loadServices = loadServices
@@ -125,6 +161,7 @@ final class HomebrewModel {
         self.loadConfig = loadConfig
         self.perform = perform
         self.runSearch = runSearch
+        self.pillDwell = pillDwell
     }
 
     // MARK: Lifecycle
@@ -209,7 +246,7 @@ final class HomebrewModel {
     func selectPackage(_ package: HomebrewPackage?) {
         selectedPackageID = package?.id
         // Switching the subject clears a pending confirmation for the old
-        // one, so a confirm row can never apply to a different package.
+        // one, so a confirm dialog can never apply to a different package.
         if pendingUninstall?.id != package?.id { pendingUninstall = nil }
     }
 
@@ -225,6 +262,13 @@ final class HomebrewModel {
         outcome = nil
         pendingUninstall = nil
         progress = HomebrewProgress(action: action, total: plannedTotal(for: action))
+        // The pill goes up on this same turn. Leaving it to the view means
+        // deriving it from `runningAction`'s change notification, which
+        // SwiftUI coalesces away when an action finishes before the next
+        // render pass — the pill then never appears for that action at all.
+        pillDismissTask?.cancel()
+        pillDismissTask = nil
+        showsStatusPill = true
         Task { [perform, self] in
             let outcome = await perform(action) { line in
                 self.consumeLine(line)
@@ -238,6 +282,7 @@ final class HomebrewModel {
                 current.finish()
                 self.progress = current
             }
+            self.schedulePillDismiss()
             guard outcome.succeeded else {
                 // A failed action changes nothing; reloading would only hide
                 // the failure behind an identical snapshot.
@@ -249,6 +294,34 @@ final class HomebrewModel {
             case .startService, .stopService, .restartService:
                 self.refreshServices()
             }
+        }
+    }
+
+    /// Opens or closes the action log. Closing it re-arms the dwell so the
+    /// finished result stays reachable a little longer; opening it pins the
+    /// pill (see `schedulePillDismiss`).
+    func setActionLogVisible(_ visible: Bool) {
+        showsActionLog = visible
+        pillDismissTask?.cancel()
+        pillDismissTask = nil
+        if !visible, runningAction == nil, outcome != nil {
+            schedulePillDismiss()
+        }
+    }
+
+    /// Keeps the finished action's pill up long enough to read the result and
+    /// open the log, then takes it down. The notice above the section content
+    /// remains the durable record of the outcome.
+    ///
+    /// An open log pins the pill: the popover is anchored to it, so dismissing
+    /// the pill mid-read would pull the popover out from under the reader.
+    private func schedulePillDismiss() {
+        pillDismissTask?.cancel()
+        pillDismissTask = nil
+        guard !showsActionLog else { return }
+        pillDismissTask = Task {
+            try? await Task.sleep(for: pillDwell)
+            self.showsStatusPill = false
         }
     }
 
@@ -350,10 +423,32 @@ final class HomebrewModel {
         }
     }
 
-    func filtered(_ packages: [HomebrewPackage], by text: String) -> [HomebrewPackage] {
+    /// The list a package pane shows: the section's packages, narrowed by the
+    /// kind filter, then the dependency filter, then the search text.
+    ///
+    /// A nil on-request flag — only brew's JSON carries it, and degraded mode
+    /// has none — counts as "on request", so the dependency filters never
+    /// empty the list when brew cannot tell.
+    func filtered(
+        _ packages: [HomebrewPackage],
+        kind: KindFilter,
+        dependencies: DependencyFilter,
+        by text: String
+    ) -> [HomebrewPackage] {
+        var result: [HomebrewPackage]
+        switch kind {
+        case .all: result = packages
+        case .formula: result = packages.filter { $0.kind == .formula }
+        case .cask: result = packages.filter { $0.kind == .cask }
+        }
+        switch dependencies {
+        case .all: break
+        case .onlyDependencies: result = result.filter { $0.installedOnRequest == false }
+        case .excludeDependencies: result = result.filter { $0.installedOnRequest != false }
+        }
         let needle = text.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !needle.isEmpty else { return packages }
-        return packages.filter { $0.name.lowercased().contains(needle) || $0.displayName.lowercased().contains(needle) }
+        guard !needle.isEmpty else { return result }
+        return result.filter { $0.name.lowercased().contains(needle) || $0.displayName.lowercased().contains(needle) }
     }
 
     func selectedPackage(from packages: [HomebrewPackage]) -> HomebrewPackage? {

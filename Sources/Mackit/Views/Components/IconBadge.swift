@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Large icon badge on a tinted circle, used on the confirmation panel, the
-/// results page, the About page and the menu bar panel.
+/// Icon badge on a tinted circle (or squircle, via `cornerRadius`), used on
+/// the confirmation panel, the results page, the About page, the menu bar
+/// panel — and as the toast's small leading chip.
 struct IconBadge: View {
     let systemImage: String
     /// Brand icon (full-color PNG, see BrandIcon); pass it to use it, and fall back to an SF Symbol when nil.

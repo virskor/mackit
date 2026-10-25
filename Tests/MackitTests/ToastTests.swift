@@ -63,4 +63,64 @@ struct ToastTests {
         vm.dismissToast()
         #expect(vm.banner == nil)
     }
+
+    /// Each raised toast gets its own appearance timestamp, so raising the
+    /// same message twice — which reuses the banner's id — still re-anchors
+    /// the countdown hairline instead of draining the first one's leftover.
+    @Test func shownAtAdvancesForRepeatedMessages() async {
+        let vm = AppViewModel()
+        vm.showToast(.success, "same")
+        let first = vm.banner?.shownAt
+
+        vm.showToast(.success, "same")
+        let second = vm.banner?.shownAt
+
+        #expect(first != nil && second != nil)
+        #expect(second! >= first!)
+    }
+
+    /// The regression this pins: every copy affordance except the action log's
+    /// used to be silent, so a successful copy was indistinguishable from a
+    /// dead button. The pasteboard itself is swapped for a recorder — a test
+    /// must not clobber the developer's clipboard.
+    @Test func copyingConfirmsItselfWithAToast() {
+        let vm = AppViewModel()
+        var copied: [String] = []
+        vm.pasteboardSink = { text in
+            copied.append(text)
+        }
+
+        vm.copyToClipboard("brew upgrade")
+
+        #expect(copied == ["brew upgrade"])
+        #expect(vm.banner?.style == .success)
+        #expect(vm.banner?.message == L10n.tr("toast.copied"))
+    }
+}
+
+/// The countdown hairline's math, which has to hold without a rendering
+/// context.
+struct ToastCountdownTests {
+    @Test func fullBudgetAtStart() {
+        #expect(ToastCountdown.remainingFraction(elapsed: 0, total: 3.5) == 1)
+    }
+
+    @Test func halfBudgetAtHalfway() {
+        #expect(ToastCountdown.remainingFraction(elapsed: 1.75, total: 3.5) == 0.5)
+    }
+
+    /// A timeline tick can land after the view model's timer already cleared
+    /// the toast; a negative width would be an invalid frame.
+    @Test func elapsedPastBudgetClampsToZero() {
+        #expect(ToastCountdown.remainingFraction(elapsed: 4, total: 3.5) == 0)
+    }
+
+    /// The first tick can predate the anchor by a hair.
+    @Test func elapsedBeforeAnchorClampsToOne() {
+        #expect(ToastCountdown.remainingFraction(elapsed: -0.1, total: 3.5) == 1)
+    }
+
+    @Test func zeroTotalDoesNotDivideByZero() {
+        #expect(ToastCountdown.remainingFraction(elapsed: 1, total: 0) == 0)
+    }
 }

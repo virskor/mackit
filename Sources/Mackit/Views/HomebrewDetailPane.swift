@@ -213,7 +213,14 @@ struct HomebrewDetailPane: View {
     // MARK: - Actions
 
     private func actionBlocks(_ package: HomebrewPackage, model: HomebrewModel) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        // Read the pending confirmation here, in the body, rather than only
+        // inside the alert binding's getter: a property the body never
+        // touches directly is not an observed dependency, so requesting the
+        // confirmation would not re-render the pane and the dialog would
+        // never appear.
+        let awaitingUninstallConfirmation = model.pendingUninstall?.id == package.id
+
+        return VStack(alignment: .leading, spacing: 0) {
             if package.isOutdated {
                 SectionHeader(title: L10n.tr("homebrew.detail.upgrade"), symbol: nil, trailing: nil)
                     .padding(.top, 20)
@@ -243,52 +250,44 @@ struct HomebrewDetailPane: View {
             TerminalCommandRow(command: package.uninstallCommand)
                 .padding(.top, 8)
 
-            if model.pendingUninstall?.id == package.id {
-                // The one irreversible action on the page gets an explicit
-                // confirm step rather than a silent delete.
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                    Text(verbatim: L10n.fmt("homebrew.detail.uninstallConfirm", package.displayName))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: L10n.tr("homebrew.detail.uninstallHelp"))
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .padding(.top, 6)
 
-                    Spacer(minLength: 4)
-
-                    Button(L10n.tr("homebrew.detail.uninstallConfirmAction")) {
-                        model.confirmUninstall()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .tint(.red)
-
-                    Button(L10n.tr("common.cancel")) {
-                        model.cancelUninstall()
-                    }
-                    .controlSize(.small)
+            HStack(spacing: 8) {
+                Button(L10n.tr("homebrew.detail.uninstallAction")) {
+                    model.requestUninstall(package)
                 }
-                .padding(.top, 8)
-            } else {
-                Text(verbatim: L10n.tr("homebrew.detail.uninstallHelp"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 6)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(.red)
+                .disabled(model.runningAction != nil)
 
-                HStack(spacing: 8) {
-                    Button(L10n.tr("homebrew.detail.uninstallAction")) {
-                        model.requestUninstall(package)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .tint(.red)
-                    .disabled(model.runningAction != nil)
-
-                    Spacer(minLength: 0)
-                }
-                .padding(.top, 8)
+                Spacer(minLength: 0)
             }
+            .padding(.top, 8)
         }
+        // The one irreversible action on the page asks in a dialog rather
+        // than deleting on the first press. The destructive button leads so
+        // it lands on the trailing side as the default action — the same
+        // arrangement as the clean confirmation panel.
+        .alert(
+            Text(verbatim: L10n.fmt("homebrew.detail.uninstallConfirm", package.displayName)),
+            isPresented: Binding(
+                get: { awaitingUninstallConfirmation },
+                set: { if !$0 { model.cancelUninstall() } }
+            ),
+            actions: {
+                Button(L10n.tr("homebrew.detail.uninstallConfirmAction"), role: .destructive) {
+                    model.confirmUninstall()
+                }
+                Button(L10n.tr("common.cancel"), role: .cancel) {}
+            },
+            message: {
+                Text(verbatim: L10n.tr("homebrew.detail.uninstallConfirmNote"))
+            }
+        )
     }
 
     // MARK: - Fact row

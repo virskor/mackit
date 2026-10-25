@@ -153,38 +153,16 @@ struct ContentToolbarRow: View {
 
     /// In-card search field: `.searchable` can only attach to the window
     /// toolbar, so after moving into the card, a custom search field with
-    /// equivalent visuals is used (rounded background + magnifying glass +
-    /// clear button).
+    /// equivalent visuals is used. `SearchField` gives it the same glass
+    /// plate the scan button rides on macOS 26, and the flat pill below.
     private var searchField: some View {
         @Bindable var vm = vm
 
-        return HStack(spacing: 4) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-
-            TextField(L10n.tr("toolbar.searchPlaceholder"), text: $vm.searchText)
-            .textFieldStyle(.plain)
-            .font(.system(size: 13))
-            .frame(minWidth: 120)
-
-            if !vm.searchText.isEmpty {
-                Button {
-                    vm.searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help(L10n.tr("toolbar.clearSearch"))
-            }
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
-        .background(
-            .quaternary.opacity(0.45),
-            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+        return SearchField(
+            text: $vm.searchText,
+            placeholder: L10n.tr("toolbar.searchPlaceholder"),
+            variant: .toolbar,
+            clearButtonHelp: L10n.tr("toolbar.clearSearch")
         )
         // Flexible rather than a fixed width: the sort button beside it now
         // names the sort in force, which widens the row, and this field is

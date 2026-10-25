@@ -1593,7 +1593,7 @@ final class AppViewModel {
 
     // MARK: - Operation Hints (Toast)
 
-    /// Pops an operation hint, auto-dismissed after 3.5 seconds.
+    /// Pops an operation hint, auto-dismissed after `Banner.autoDismissSeconds`.
     /// A new hint cancels the previous one's timer task, so hints are not
     /// cleared prematurely during rapid successive operations.
     func showToast(_ style: Banner.Style, _ message: String) {
@@ -1601,7 +1601,7 @@ final class AppViewModel {
         banner = Banner(style: style, message: message)
 
         bannerDismissTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            try? await Task.sleep(nanoseconds: UInt64(Banner.autoDismissSeconds * 1_000_000_000))
             guard !Task.isCancelled else { return }
             self?.banner = nil
         }
@@ -1665,9 +1665,26 @@ final class AppViewModel {
             .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
+    /// Puts text on the general pasteboard. A seam so a unit test's copy does
+    /// not clobber the developer's clipboard; never reassigned in production,
+    /// where it writes the real pasteboard.
+    var pasteboardSink: @MainActor (String) -> Void = { Clipboard.copy($0) }
+
+    /// Copies text and confirms it with a toast.
+    ///
+    /// A copy that succeeds silently reads as a dead button — the user cannot
+    /// tell "it worked" from "nothing happened" without pasting somewhere
+    /// first. The action log's copy already confirmed itself; this is that
+    /// confirmation for every other copy affordance: the Homebrew command
+    /// rows, the diagnostics and config copies, and the item list's Copy Path.
+    func copyToClipboard(_ text: String) {
+        pasteboardSink(text)
+        showToast(.success, L10n.tr("toast.copied"))
+    }
+
     func copyPath(_ item: JunkItem) {
         let text = item.path.isEmpty ? item.command.joined(separator: " ") : item.path
-        Clipboard.copy(text)
+        copyToClipboard(text)
     }
 
     func trashSingle(_ item: JunkItem) {
@@ -2238,6 +2255,11 @@ enum ItemSort: String, CaseIterable, Identifiable {
 
 /// Top banner.
 struct Banner: Equatable, Identifiable {
+    /// How long a toast stays up before it dismisses itself. One definition
+    /// shared by the view model's timer and the toast's countdown hairline,
+    /// so the bar and the dismissal cannot drift apart.
+    static let autoDismissSeconds: TimeInterval = 3.5
+
     enum Style: Equatable {
         case info, success, error
 
@@ -2261,11 +2283,13 @@ struct Banner: Equatable, Identifiable {
             }
         }
 
+        /// Filled variants: the toast shows these in a small chip, where an
+        /// outlined glyph's stroke thins out and the mark reads as a smudge.
         var symbol: String {
             switch self {
-            case .info: return "info.circle"
-            case .success: return "checkmark.circle"
-            case .error: return "exclamationmark.triangle"
+            case .info: return "info.circle.fill"
+            case .success: return "checkmark.circle.fill"
+            case .error: return "exclamationmark.triangle.fill"
             }
         }
 
@@ -2280,6 +2304,11 @@ struct Banner: Equatable, Identifiable {
 
     let style: Style
     let message: String
+    /// When the toast was raised; anchors the countdown hairline. Defaulted
+    /// rather than required so raising the same message twice — which reuses
+    /// the toast's identity and would keep a stale appearance time — still
+    /// gets a fresh anchor.
+    let shownAt: Date = Date()
 
     var id: String { "\(style)-\(message)" }
 }
