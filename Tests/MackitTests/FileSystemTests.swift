@@ -97,6 +97,22 @@ struct FileSystemTests {
         #expect(names == ["com.tencent.dieMigration", "go-build"], "com.apple.* should be skipped, got: \(names)")
     }
 
+    /// The system-data skip is scoped to the Mac's own trees. Simulator
+    /// device data under CoreSimulator/Devices is plain files — no TCC, no
+    /// Full Disk Access needed — yet nearly every entry in a device's
+    /// Caches is `com.apple.*` service data (27 of 27 on one observed
+    /// device), so an unscoped skip blanked the simulator device cache
+    /// rules entirely.
+    @Test func systemDataSkipExemptsSimulatorDeviceTrees() {
+        let devicesRoot = NSHomeDirectory() + "/Library/Developer/CoreSimulator/Devices"
+        #expect(!FileSystem.skipsSystemData(under: "\(devicesRoot)/UDID/data/Library/Caches"))
+        #expect(!FileSystem.skipsSystemData(under: "\(devicesRoot)/UDID/data/tmp"))
+        // The Mac's own trees keep the skip, as do paths outside the home.
+        #expect(FileSystem.skipsSystemData(under: NSHomeDirectory() + "/Library/Caches"))
+        #expect(FileSystem.skipsSystemData(under: NSHomeDirectory() + "/Library/Logs"))
+        #expect(FileSystem.skipsSystemData(under: "/Library/Caches"))
+    }
+
     /// A directory wider than one `getattrlistbulk` buffer: the enumeration
     /// has to keep calling until the kernel reports the directory exhausted.
     /// Stopping after the first batch silently drops the tail — the defect

@@ -154,12 +154,47 @@ enum GeneralCleanLayout {
             ruleIDs: ["browser.edge-cache", "browser.edge-code-cache"],
             risk: .safe
         ),
-        ruleRow("browser.chromium-cache"),
-        ruleRow("browser.brave-cache"),
-        ruleRow("browser.arc-cache"),
-        ruleRow("browser.opera-cache"),
+        GeneralRuleRow(
+            id: "browser.chromium",
+            title: L10n.tr("rule.browser.chromium-cache.title"),
+            note: L10n.tr("rule.browser.chromium-cache.note"),
+            category: .browser,
+            ruleIDs: ["browser.chromium-cache", "browser.chromium-code-cache"],
+            risk: .safe
+        ),
+        GeneralRuleRow(
+            id: "browser.brave",
+            title: L10n.tr("rule.browser.brave-cache.title"),
+            note: L10n.tr("rule.browser.brave-cache.note"),
+            category: .browser,
+            ruleIDs: ["browser.brave-cache", "browser.brave-code-cache"],
+            risk: .safe
+        ),
+        GeneralRuleRow(
+            id: "browser.arc",
+            title: L10n.tr("rule.browser.arc-cache.title"),
+            note: L10n.tr("rule.browser.arc-cache.note"),
+            category: .browser,
+            ruleIDs: ["browser.arc-cache", "browser.arc-code-cache"],
+            risk: .safe
+        ),
+        GeneralRuleRow(
+            id: "browser.opera",
+            title: L10n.tr("rule.browser.opera-cache.title"),
+            note: L10n.tr("rule.browser.opera-cache.note"),
+            category: .browser,
+            ruleIDs: ["browser.opera-cache", "browser.opera-code-cache"],
+            risk: .safe
+        ),
+        GeneralRuleRow(
+            id: "browser.qqbrowser",
+            title: L10n.tr("rule.browser.qqbrowser-cache.title"),
+            note: L10n.tr("rule.browser.qqbrowser-cache.note"),
+            category: .browser,
+            ruleIDs: ["browser.qqbrowser-cache", "browser.qqbrowser-code-cache"],
+            risk: .safe
+        ),
         ruleRow("browser.firefox-cache"),
-        ruleRow("browser.qqbrowser-cache"),
     ]
 
     /// The rows of one group, in display order.

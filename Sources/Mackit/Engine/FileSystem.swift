@@ -11,7 +11,27 @@ enum FileSystem {
     /// "Allow Mackit to access media library in Apple Music"). This is data
     /// maintained by the system itself, which third-party cleaning tools
     /// should not touch anyway, so it is skipped during enumeration.
+    ///
+    /// The skip is scoped to the Mac's own trees: simulator device data is
+    /// plain files that any process can read — enumerating a device's Caches
+    /// works without Full Disk Access and pops no dialog (verified from a
+    /// process that lacks FDA) — yet almost every entry under
+    /// `Devices/<UDID>/data/Library/Caches` is `com.apple.*` service data
+    /// (27 of 27 on one observed device), so an unscoped skip blanked the
+    /// simulator device cache rules entirely.
     static let systemDataPrefix = "com.apple."
+
+    /// Where simulator device data trees live. See `systemDataPrefix` for why
+    /// the system-data skip does not apply beneath this root.
+    static let simulatorDevicesRoot = expand("~/Library/Developer/CoreSimulator/Devices")
+
+    /// Whether the `com.apple.*` system-data skip applies to entries listed
+    /// from `directory`. True everywhere except inside simulator device data
+    /// trees, whose Library-like layout holds per-simulator service caches
+    /// rather than the Mac's TCC-protected system data.
+    static func skipsSystemData(under directory: String) -> Bool {
+        !(directory + "/").hasPrefix(simulatorDevicesRoot + "/")
+    }
 
     /// Whether this is system-managed data (skipped during enumeration).
     static func isSystemData(_ name: String) -> Bool {
@@ -39,7 +59,15 @@ enum FileSystem {
         var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
         errno = 0
         guard realpath(path, &buffer) != nil else { return path }
-        return String(cString: buffer)
+        // Decode only up to the NUL terminator: the buffer is a fixed PATH_MAX
+        // array, not a count-delimited slice. CChar rebinds to UTF-8's code
+        // unit — same width, unsigned view of the same bytes.
+        let end = buffer.firstIndex(of: 0) ?? buffer.count
+        return buffer[..<end].withUnsafeBufferPointer { chars in
+            chars.withMemoryRebound(to: UInt8.self) { bytes in
+                String(decoding: bytes, as: UTF8.self)
+            }
+        }
     }
 
     static func exists(_ path: String) -> Bool {
@@ -217,9 +245,10 @@ enum FileSystem {
         // duplicate separators) — path comparisons rely on it.
         let parentPath = url(path).path
         var entries: [DirectoryEntry] = []
+        let skipSystemData = skipsSystemData(under: parentPath)
         let readable = enumerateBulk(atPath: parentPath) { entry in
             // com.apple.* system data is TCC-protected; enumerating it pops an authorization dialog, so it is skipped directly
-            if isSystemData(entry.name) { return }
+            if skipSystemData && isSystemData(entry.name) { return }
             entries.append(
                 DirectoryEntry(
                     name: entry.name,
@@ -260,6 +289,7 @@ enum FileSystem {
         guard let dir = opendir(path) else { return nil }
         defer { closedir(dir) }
         let parentPath = url(path).path
+        let skipSystemData = skipsSystemData(under: parentPath)
         var directories: [String] = []
         while let entry = readdir(dir) {
             let name = withUnsafePointer(to: &entry.pointee.d_name) { pointer in
@@ -268,7 +298,7 @@ enum FileSystem {
                 }
             }
             if name == "." || name == ".." { continue }
-            if isSystemData(name) { continue }
+            if skipSystemData && isSystemData(name) { continue }
             // d_type comes from the directory entry itself on APFS and HFS+.
             // DT_UNKNOWN (some network and FUSE mounts) reports no type, so it
             // is resolved with a stat — rare enough not to matter for the
@@ -328,7 +358,9 @@ enum FileSystem {
                     guard manager.isReadableFile(atPath: parent.path) else { continue }
                     guard let names = try? manager.contentsOfDirectory(atPath: parent.path) else { continue }
                     // com.apple.* system data is TCC-protected: do not expand or descend into it
-                    for name in names where !isSystemData(name) && fnmatch(component, name, 0) == 0 {
+                    // (except inside simulator device trees, which are plain files)
+                    let skipSystemData = skipsSystemData(under: parent.path)
+                    for name in names where !(skipSystemData && isSystemData(name)) && fnmatch(component, name, 0) == 0 {
                         next.append(parent.appendingPathComponent(name))
                     }
                 }

@@ -205,19 +205,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "DocumentationCache"
+            "value": "Xcode 文档缓存"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "DocumentationCache"
+            "value": "Xcode Documentation Cache"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "DocumentationCache"
+            "value": "Xcode 文件快取"
           }
         }
       }
@@ -227,19 +227,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "离线文档缓存"
+            "value": "下载的离线文档与搜索索引，删除后 Xcode 会重建"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Offline documentation cache"
+            "value": "Downloaded documentation and its search index; Xcode rebuilds both"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "離線文件快取"
+            "value": "下載的離線文件與搜尋索引，刪除後 Xcode 會重建"
           }
         }
       }
@@ -799,19 +799,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kotlin Multiplatform 依赖"
+            "value": "Kotlin/Native 工具链与依赖缓存，删除后需重新下载"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kotlin Multiplatform dependencies"
+            "value": "Kotlin/Native toolchain and dependency caches; re-downloaded after deletion"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kotlin Multiplatform 相依"
+            "value": "Kotlin/Native 工具鏈與相依快取，刪除後需重新下載"
           }
         }
       }
@@ -1340,50 +1340,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "tsc 增量編譯快取"
-          }
-        }
-      }
-    },
-    "rule.node.eslint.title": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ESLint 缓存"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ESLint Cache"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ESLint 快取"
-          }
-        }
-      }
-    },
-    "rule.node.eslint.note": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ESLint 本地缓存"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ESLint local cache"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ESLint 本機快取"
           }
         }
       }
@@ -2224,50 +2180,6 @@
         }
       }
     },
-    "rule.ide.vscode-cacheddata.title": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VS Code CachedData"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VS Code CachedData"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VS Code CachedData"
-          }
-        }
-      }
-    },
-    "rule.ide.vscode-cacheddata.note": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "启动时生成的 CachedData 与 GPUCache"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CachedData and GPUCache generated at launch"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "啟動時產生的 CachedData 與 GPUCache"
-          }
-        }
-      }
-    },
     "rule.ide.cursor.title": {
       "localizations": {
         "zh-Hans": {
@@ -2317,19 +2229,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "插件与扩展缓存"
+            "value": "插件与扩展"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plug-ins and Extensions Cache"
+            "value": "Plug-ins and Extensions"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "外掛與擴充功能快取"
+            "value": "外掛與擴充功能"
           }
         }
       }
@@ -2339,19 +2251,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alcatraz 等插件缓存"
+            "value": "Xcode 源编辑器扩展等插件，删除后需重新安装"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plugin caches such as Alcatraz"
+            "value": "Xcode source editor extensions and other plug-ins; reinstalled after deletion"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alcatraz 等外掛快取"
+            "value": "Xcode 原始碼編輯器擴充功能等外掛，刪除後需重新安裝"
           }
         }
       }
@@ -15926,6 +15838,424 @@
           "stringUnit": {
             "state": "translated",
             "value": "在終端機完成安裝後，重新檢查 Homebrew 是否可用"
+          }
+        }
+      }
+    },
+    "rule.xcode.swiftpm.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SwiftPM 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SwiftPM Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SwiftPM 快取"
+          }
+        }
+      }
+    },
+    "rule.xcode.swiftpm.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swift Package Manager 的依赖与元数据缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swift Package Manager dependency and metadata caches"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swift Package Manager 的相依與元資料快取"
+          }
+        }
+      }
+    },
+    "rule.android.sdk-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android SDK 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android SDK Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android SDK 快取"
+          }
+        }
+      }
+    },
+    "rule.android.sdk-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SDK 管理器下载的仓库清单，下次查询时自动刷新"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repository manifests downloaded by the SDK manager; refreshed on the next query"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SDK 管理器下載的儲存庫清單，下次查詢時自動重新整理"
+          }
+        }
+      }
+    },
+    "rule.android.gradle-jdks.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle 下载的 JDK"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle-downloaded JDKs"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle 下載的 JDK"
+          }
+        }
+      }
+    },
+    "rule.android.gradle-jdks.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle 工具链自动下载的 JDK 发行版，下次构建重新下载"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JDK distributions the Gradle toolchain downloads; re-downloaded by the next build"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle 工具鏈自動下載的 JDK 發行版，下次建置重新下載"
+          }
+        }
+      }
+    },
+    "rule.node.npx.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "npx 缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "npx Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "npx 快取"
+          }
+        }
+      }
+    },
+    "rule.node.npx.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "npx 为一次性命令下载的运行环境，下次运行重新下载"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Environments npx downloads for one-off commands; re-downloaded on the next run"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "npx 為一次性指令下載的執行環境，下次執行重新下載"
+          }
+        }
+      }
+    },
+    "rule.browser.chromium-code-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium 代码缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium Code Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium 程式碼快取"
+          }
+        }
+      }
+    },
+    "rule.browser.chromium-code-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium 编译后的 JavaScript 缓存，重新访问网页即可生成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium's compiled JavaScript cache; regenerated as you browse"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium 編譯後的 JavaScript 快取，重新瀏覽網頁即可產生"
+          }
+        }
+      }
+    },
+    "rule.browser.brave-code-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave 代码缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave Code Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave 程式碼快取"
+          }
+        }
+      }
+    },
+    "rule.browser.brave-code-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave 编译后的 JavaScript 缓存，重新访问网页即可生成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave's compiled JavaScript cache; regenerated as you browse"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brave 編譯後的 JavaScript 快取，重新瀏覽網頁即可產生"
+          }
+        }
+      }
+    },
+    "rule.browser.arc-code-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc 代码缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc Code Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc 程式碼快取"
+          }
+        }
+      }
+    },
+    "rule.browser.arc-code-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc 编译后的 JavaScript 缓存，重新访问网页即可生成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc's compiled JavaScript cache; regenerated as you browse"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arc 編譯後的 JavaScript 快取，重新瀏覽網頁即可產生"
+          }
+        }
+      }
+    },
+    "rule.browser.opera-code-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera 代码缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera Code Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera 程式碼快取"
+          }
+        }
+      }
+    },
+    "rule.browser.opera-code-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera 编译后的 JavaScript 缓存，重新访问网页即可生成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera's compiled JavaScript cache; regenerated as you browse"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opera 編譯後的 JavaScript 快取，重新瀏覽網頁即可產生"
+          }
+        }
+      }
+    },
+    "rule.browser.qqbrowser-code-cache.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ 浏览器代码缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ Browser Code Cache"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ 瀏覽器程式碼快取"
+          }
+        }
+      }
+    },
+    "rule.browser.qqbrowser-code-cache.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ 浏览器编译后的 JavaScript 缓存，重新访问网页即可生成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ Browser's compiled JavaScript cache; regenerated as you browse"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QQ 瀏覽器編譯後的 JavaScript 快取，重新瀏覽網頁即可產生"
+          }
+        }
+      }
+    },
+    "rule.cli.sim-delete-unavailable.note": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除运行时已卸载、无法启动的模拟器设备"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete simulator devices whose runtime is no longer installed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刪除執行時已解除安裝、無法啟動的模擬器裝置"
           }
         }
       }

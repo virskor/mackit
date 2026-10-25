@@ -28,10 +28,20 @@ enum RulesCatalog {
             target: .children("~/Library/Developer/Xcode/watchOS DeviceSupport"),
             risk: .review
         ),
+        // DocumentationCache holds the downloaded DocC archives and
+        // DocumentationIndex their search index; deleting either is the
+        // documented fix for broken doc search, and Xcode re-downloads and
+        // re-indexes both on demand. One glob covers the pair.
         ScanRule(
             id: "xcode.docs",
             category: .xcode,
-            target: .children("~/Library/Developer/Xcode/DocumentationCache"),
+            target: .glob("~/Library/Developer/Xcode/Documentation*"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "xcode.swiftpm",
+            category: .xcode,
+            target: .children("~/Library/Caches/org.swift.swiftpm"),
             risk: .safe
         ),
         ScanRule(
@@ -101,17 +111,33 @@ enum RulesCatalog {
             target: .children("~/.android/build-cache"),
             risk: .safe
         ),
+        // sdkmanager's downloaded repository manifests; refreshed on the next query
+        ScanRule(
+            id: "android.sdk-cache",
+            category: .android,
+            target: .children("~/.android/cache"),
+            risk: .safe
+        ),
+        // JDK distributions the Gradle toolchain downloads; big re-downloads, hence review
+        ScanRule(
+            id: "android.gradle-jdks",
+            category: .android,
+            target: .children("~/.gradle/jdks"),
+            risk: .review
+        ),
         ScanRule(
             id: "android.studio-caches",
             category: .android,
             target: .glob("~/Library/Caches/Google/AndroidStudio*/*"),
             risk: .safe
         ),
+        // Review, not safe: ~/.konan also holds the Kotlin/Native compiler
+        // distributions, which are hundreds of MB to re-download.
         ScanRule(
             id: "android.konan",
             category: .android,
             target: .children("~/.konan"),
-            risk: .safe
+            risk: .review
         ),
         ScanRule(
             id: "android.maven",
@@ -188,16 +214,19 @@ enum RulesCatalog {
             target: .children("~/Library/Caches/typescript"),
             risk: .safe
         ),
-        ScanRule(
-            id: "node.eslint",
-            category: .node,
-            target: .directory("~/.cache/eslint"),
-            risk: .safe
-        ),
+        // DENO_DIR defaults to the OS cache directory — `~/Library/Caches/deno`
+        // on macOS; the Linux `~/.cache/deno` spelling never exists here.
         ScanRule(
             id: "node.deno",
             category: .node,
-            target: .children("~/.cache/deno"),
+            target: .children("~/Library/Caches/deno"),
+            risk: .safe
+        ),
+        // One environment per package ever run through npx; re-downloaded on demand
+        ScanRule(
+            id: "node.npx",
+            category: .node,
+            target: .children("~/.npm/_npx"),
             risk: .safe
         ),
 
@@ -306,15 +335,18 @@ enum RulesCatalog {
             target: .children("~/Library/Caches/JetBrains"),
             risk: .safe
         ),
+        // Electron apps scatter their regenerable caches across sibling
+        // directories named `*Cache*` (Cache, CachedData, Code Cache,
+        // GPUCache, DawnCache… — the set verified against a real Code data
+        // directory). The glob takes each as one entry; `Service
+        // Worker/CacheStorage` stays out because the top-level name carries
+        // no "Cache".
         ScanRule(
             id: "ide.vscode-cache",
             category: .ide,
-            target: .glob("~/Library/Application Support/Code/Cache*"),
+            target: .glob("~/Library/Application Support/Code/*Cache*"),
             risk: .safe
         ),
-        // CachedData has no rule of its own: the Cache* glob above already
-        // takes it as one entry, and its children are opaque hash names that
-        // read as noise in the list anyway.
         ScanRule(
             id: "ide.vscode-logs",
             category: .ide,
@@ -324,14 +356,17 @@ enum RulesCatalog {
         ScanRule(
             id: "ide.cursor",
             category: .ide,
-            target: .glob("~/Library/Application Support/Cursor/Cache*"),
+            target: .glob("~/Library/Application Support/Cursor/*Cache*"),
             risk: .safe
         ),
+        // Review, not safe: this directory hosts user-installed Xcode source
+        // editor extensions (.appex) alongside legacy plug-ins — software to
+        // reinstall, not a cache to regenerate.
         ScanRule(
             id: "ide.xcode-plugins",
             category: .ide,
             target: .children("~/Library/Application Support/Developer/Shared/Xcode/Plug-ins"),
-            risk: .safe
+            risk: .review
         ),
 
         // MARK: Browsers
@@ -358,6 +393,12 @@ enum RulesCatalog {
             risk: .safe
         ),
         ScanRule(
+            id: "browser.chromium-code-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/Chromium/*/Code Cache"),
+            risk: .safe
+        ),
+        ScanRule(
             id: "browser.edge-cache",
             category: .browser,
             target: .glob("~/Library/Caches/Microsoft Edge/*/Cache"),
@@ -376,15 +417,33 @@ enum RulesCatalog {
             risk: .safe
         ),
         ScanRule(
+            id: "browser.brave-code-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/BraveSoftware/Brave-Browser/*/Code Cache"),
+            risk: .safe
+        ),
+        ScanRule(
             id: "browser.arc-cache",
             category: .browser,
             target: .glob("~/Library/Caches/Arc/User Data/*/Cache"),
             risk: .safe
         ),
         ScanRule(
+            id: "browser.arc-code-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/Arc/User Data/*/Code Cache"),
+            risk: .safe
+        ),
+        ScanRule(
             id: "browser.opera-cache",
             category: .browser,
             target: .glob("~/Library/Caches/com.operasoftware.Opera/*/Cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "browser.opera-code-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/com.operasoftware.Opera/*/Code Cache"),
             risk: .safe
         ),
         ScanRule(
@@ -397,6 +456,14 @@ enum RulesCatalog {
             id: "browser.qqbrowser-cache",
             category: .browser,
             target: .glob("~/Library/Caches/QQBrowser2/*/Cache"),
+            risk: .safe
+        ),
+        // Every Chromium-based browser keeps a `Code Cache` beside `Cache`,
+        // so the remaining ones mirror the chrome / edge / chromium pair.
+        ScanRule(
+            id: "browser.qqbrowser-code-cache",
+            category: .browser,
+            target: .glob("~/Library/Caches/QQBrowser2/*/Code Cache"),
             risk: .safe
         ),
 
@@ -534,6 +601,19 @@ enum RulesCatalog {
             arguments: ["cache", "clean"],
             title: "uv cache clean",
             sizeHints: ["~/.cache/uv"]
+        ),
+        // The standard way to reclaim simulator space: devices whose runtime
+        // is gone cannot boot, so deleting them loses nothing reachable. No
+        // size hint — the freed bytes live inside device trees the path rules
+        // deliberately do not enumerate whole.
+        CLIRule(
+            id: "cli.sim-delete-unavailable",
+            category: .simulator,
+            executable: "xcrun",
+            arguments: ["simctl", "delete", "unavailable"],
+            title: "xcrun simctl delete unavailable",
+            risk: .review,
+            sizeHints: []
         ),
         CLIRule(
             id: "cli.brew-cleanup",
