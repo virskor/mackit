@@ -250,7 +250,7 @@ enum HomebrewInspector {
     static func parseInfoJSON(_ json: String, kind: HomebrewPackage.Kind) -> [BrewDetail] {
         guard let info = try? JSONDecoder().decode(BrewInfo.self, from: Data(json.utf8)) else { return [] }
         switch kind {
-        case .formula: return (info.formulae ?? []).compactMap(\.detail)
+        case .formula: return (info.formulae ?? []).map(\.detail)
         case .cask: return (info.casks ?? []).compactMap(\.detail)
         }
     }
@@ -360,19 +360,21 @@ private struct BrewFormulaDetail: Decodable {
         let poured_from_bottle: Bool?
     }
 
-    /// Bridges into the shared shape. A formula with no installed entry
-    /// (stale index naming a formula that was since removed) yields nil and
-    /// the merge drops it.
-    var detail: BrewDetail? {
+    /// Bridges into the shared shape. `installedVersion` is nil for a
+    /// formula that is not installed — a search hit, for instance — which
+    /// the inspector's merge never asks about: it looks details up by name
+    /// from the installed list, so an uninstalled entry cannot resurrect
+    /// one.
+    var detail: BrewDetail {
         // Several versions can sit side by side before a cleanup; the newest
         // is what a row shows.
-        guard let installed = installed?.sorted(by: {
+        let installed = installed?.sorted(by: {
             $0.version.compare($1.version, options: .numeric) == .orderedDescending
-        }).first else { return nil }
+        }).first
         return BrewDetail(
             name: name,
             displayName: nil,
-            installedVersion: installed.version,
+            installedVersion: installed?.version,
             latestVersion: versions?.stable,
             isOutdated: outdated ?? false,
             description: desc,
@@ -380,9 +382,9 @@ private struct BrewFormulaDetail: Decodable {
             license: license?.text,
             tap: tap,
             dependencies: dependencies ?? [],
-            installedAt: installed.time.map { Date(timeIntervalSince1970: $0) },
-            installedOnRequest: installed.installed_on_request,
-            pouredFromBottle: installed.poured_from_bottle,
+            installedAt: installed?.time.map { Date(timeIntervalSince1970: $0) },
+            installedOnRequest: installed?.installed_on_request,
+            pouredFromBottle: installed?.poured_from_bottle,
             pinned: pinned ?? false
         )
     }
@@ -401,10 +403,14 @@ private struct BrewCaskDetail: Decodable {
     let version: String?
     let installed: String?
 
+    /// Bridges into the shared shape. The token is the name every brew
+    /// subcommand takes, so an entry without one cannot be acted on and is
+    /// dropped; `installedVersion` is nil for a cask that is not installed —
+    /// a search hit, which the inspector's merge never asks about.
     var detail: BrewDetail? {
-        guard let installed else { return nil }
+        guard let token else { return nil }
         return BrewDetail(
-            name: token ?? name?.first ?? "",
+            name: token,
             displayName: name?.first,
             installedVersion: installed,
             latestVersion: version,

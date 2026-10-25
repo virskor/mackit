@@ -15,6 +15,10 @@ enum HomebrewAction: Equatable, Sendable {
     case upgrade(HomebrewPackage.Kind, String)
     /// `brew uninstall --formula/--cask <name>`.
     case uninstall(HomebrewPackage.Kind, String)
+    /// `brew install <name>` — a new package from the index. No kind flag:
+    /// brew resolves formulae and casks from the name itself, the same way
+    /// the command line does.
+    case install(String)
     /// `brew services start/stop/restart <name>`.
     case startService(String)
     case stopService(String)
@@ -28,6 +32,7 @@ enum HomebrewAction: Equatable, Sendable {
         case .upgradeAll: return L10n.tr("homebrew.running.upgradeAll")
         case .upgrade: return L10n.tr("homebrew.running.upgrade")
         case .uninstall: return L10n.tr("homebrew.running.uninstall")
+        case .install: return L10n.tr("homebrew.running.install")
         case .startService, .stopService, .restartService: return L10n.tr("homebrew.running.service")
         }
     }
@@ -69,6 +74,8 @@ struct HomebrewOutcome: Equatable, Sendable {
                 return L10n.fmt("homebrew.result.upgraded", name)
             case .uninstall(_, let name):
                 return L10n.fmt("homebrew.result.uninstalled", name)
+            case .install(let name):
+                return L10n.fmt("homebrew.result.installed", name)
             case .startService(let name):
                 return L10n.fmt("homebrew.result.serviceStarted", name)
             case .stopService(let name):
@@ -111,6 +118,8 @@ enum HomebrewActions {
             return await plain(action, arguments: ["upgrade", kind.commandFlag, name], stream: stream, timeout: timeout, onLine: onLine)
         case .uninstall(let kind, let name):
             return await plain(action, arguments: ["uninstall", kind.commandFlag, name], stream: stream, timeout: timeout, onLine: onLine)
+        case .install(let name):
+            return await plain(action, arguments: ["install", name], stream: stream, timeout: timeout, onLine: onLine)
         case .startService(let name):
             return await plain(action, arguments: ["services", "start", name], stream: stream, timeout: timeout, onLine: onLine)
         case .stopService(let name):

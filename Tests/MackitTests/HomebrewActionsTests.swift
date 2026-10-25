@@ -189,6 +189,35 @@ struct HomebrewActionsTests {
         #expect(lines.calls == [["uninstall", "--cask", "codex"]])
     }
 
+    @Test func installRunsWithoutAKindFlag() async {
+        // brew resolves formulae and casks from the name itself, the same way
+        // the command line does.
+        let lines = LineProbe()
+        let outcome = await HomebrewActions.run(
+            .install("meilisearch"),
+            stream: stream("==> Pouring meilisearch--1.55.0", into: lines)
+        )
+        #expect(outcome.succeeded)
+        #expect(outcome.action == .install("meilisearch"))
+        #expect(lines.calls == [["install", "meilisearch"]])
+        #expect(outcome.message == L10n.fmt("homebrew.result.installed", "meilisearch"))
+    }
+
+    @Test func installStreamsItsOutputForTheProgressPill() async {
+        let lines = LineProbe()
+        _ = await HomebrewActions.run(
+            .install("meilisearch"),
+            stream: stream("""
+            ==> Downloading https://ghcr.io/v2/homebrew/core/meilisearch/manifests/1.55.0
+            ==> Fetching downloads for: meilisearch
+            ==> Pouring meilisearch--1.55.0.arm64_sonoma.bottle.tar.gz
+            🍺  /opt/homebrew/Cellar/meilisearch/1.55.0: 1,234 files, 89MB
+            """, into: lines)
+        )
+        #expect(lines.lines.count == 4, "every brew line reaches the log")
+        #expect(lines.lines.last?.hasPrefix("🍺") == true)
+    }
+
     @Test func upgradeAllRunsPlainUpgrade() async {
         let lines = LineProbe()
         _ = await HomebrewActions.run(.upgradeAll, stream: stream("==> Upgraded 3 outdated packages", into: lines))
@@ -240,6 +269,7 @@ struct HomebrewActionsTests {
         #expect(HomebrewAction.cleanup.runningTitle == L10n.tr("homebrew.running.cleanup"))
         #expect(HomebrewAction.upgradeAll.runningTitle == L10n.tr("homebrew.running.upgradeAll"))
         #expect(HomebrewAction.upgrade(.cask, "codex").runningTitle == L10n.tr("homebrew.running.upgrade"))
+        #expect(HomebrewAction.install("meilisearch").runningTitle == L10n.tr("homebrew.running.install"))
         #expect(HomebrewAction.startService("mysql").runningTitle == L10n.tr("homebrew.running.service"))
     }
 }

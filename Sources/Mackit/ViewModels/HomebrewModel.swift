@@ -19,6 +19,7 @@ final class HomebrewModel {
     enum Section: String, CaseIterable, Sendable {
         case installed
         case upgrade
+        case install
         case services
         case diagnostics
         case config
@@ -56,6 +57,19 @@ final class HomebrewModel {
     private(set) var isLoadingConfig = false
     private(set) var config: [HomebrewConfigEntry]?
 
+    // MARK: Install search
+
+    /// What the install section's field holds, updated on every keystroke;
+    /// the search itself is debounced off it.
+    private(set) var searchQuery = ""
+    /// Hits for the last completed search; nil before the first one and
+    /// after the query is cleared.
+    private(set) var searchResults: [HomebrewSearchResult]?
+    private(set) var isSearching = false
+    /// True when brew could not be read at all — distinct from "no matches",
+    /// which is an empty result set.
+    private(set) var searchFailed = false
+
     // MARK: Action state
 
     private(set) var runningAction: HomebrewAction?
@@ -78,11 +92,17 @@ final class HomebrewModel {
     /// line sink is how the page's progress pill stays live during a
     /// `brew upgrade` that runs for minutes.
     private let perform: (HomebrewAction, @escaping @MainActor @Sendable (String) -> Void) async -> HomebrewOutcome
+    /// Searches the local index for the install section's query.
+    private let runSearch: (String) async -> [HomebrewSearchResult]?
 
     private var loadTask: Task<Void, Never>?
     private var servicesTask: Task<Void, Never>?
     private var diagnosticsTask: Task<Void, Never>?
     private var configTask: Task<Void, Never>?
+    private var searchTask: Task<Void, Never>?
+    /// Bumped per search so a superseded search never clears the handle a
+    /// newer one owns.
+    private var searchGeneration = 0
 
     init(
         inspect: @escaping @MainActor () async -> HomebrewSnapshot? = { await HomebrewInspector.inspect() },
@@ -96,13 +116,15 @@ final class HomebrewModel {
                 stream: HomebrewRunner.stream,
                 onLine: onLine
             )
-        }
+        },
+        runSearch: @escaping @MainActor (String) async -> [HomebrewSearchResult]? = { await HomebrewSearch.search($0) }
     ) {
         self.inspect = inspect
         self.loadServices = loadServices
         self.loadDiagnostics = loadDiagnostics
         self.loadConfig = loadConfig
         self.perform = perform
+        self.runSearch = runSearch
     }
 
     // MARK: Lifecycle
@@ -136,7 +158,7 @@ final class HomebrewModel {
     func showSection(_ section: Section) {
         self.section = section
         switch section {
-        case .installed, .upgrade:
+        case .installed, .upgrade, .install:
             break
         case .services:
             if services == nil, !isLoadingServices { refreshServices() }
@@ -222,7 +244,7 @@ final class HomebrewModel {
                 return
             }
             switch action {
-            case .cleanup, .autoremove, .upgradeAll, .upgrade, .uninstall:
+            case .cleanup, .autoremove, .upgradeAll, .upgrade, .uninstall, .install:
                 self.reload()
             case .startService, .stopService, .restartService:
                 self.refreshServices()
@@ -234,14 +256,15 @@ final class HomebrewModel {
     /// denominator, known before brew prints anything (it never states a
     /// total outside a dry run). Nil where only brew knows: autoremove
     /// decides what is unneeded as it goes, cleanup removes an unknown
-    /// number of paths, and a service restart is a single opaque step.
+    /// number of paths, and an install is a single opaque step brew reports
+    /// no per-package lines for.
     private func plannedTotal(for action: HomebrewAction) -> Int? {
         switch action {
         case .upgradeAll:
             return snapshot?.outdated.count
         case .upgrade, .uninstall:
             return 1
-        case .cleanup, .autoremove, .startService, .stopService, .restartService:
+        case .cleanup, .autoremove, .install, .startService, .stopService, .restartService:
             return nil
         }
     }
@@ -252,6 +275,52 @@ final class HomebrewModel {
         guard var current = progress else { return }
         current.append(line)
         progress = current
+    }
+
+    // MARK: Install search
+
+    /// Live search entry: the install section's field calls this on every
+    /// edit. The debounce lives here so the field stays a plain binding and
+    /// the query survives section switches.
+    func updateSearchQuery(_ query: String) {
+        searchQuery = query
+        searchTask?.cancel()
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            searchTask = nil
+            searchResults = nil
+            isSearching = false
+            searchFailed = false
+            return
+        }
+        // A superseded search's failure must not outlive the keystroke that
+        // replaced it.
+        searchGeneration += 1
+        searchFailed = false
+        let generation = searchGeneration
+        searchTask = Task { [runSearch] in
+            // A keystroke a second apart would otherwise start a brew search
+            // per character; brew takes a few hundred milliseconds to boot.
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            self.isSearching = true
+            let results = await runSearch(trimmed)
+            guard !Task.isCancelled else { return }
+            self.isSearching = false
+            // nil is "brew could not be read"; an empty array is a real
+            // "nothing matches" — the section shows a different state for
+            // each.
+            self.searchResults = results ?? []
+            self.searchFailed = results == nil
+            if self.searchGeneration == generation { self.searchTask = nil }
+        }
+    }
+
+    /// Whether a search hit is already installed. The id — kind plus name —
+    /// is the same identity the installed list uses, so a cask sharing a
+    /// formula's name is its own package rather than a false "installed".
+    func isInstalled(_ result: HomebrewSearchResult) -> Bool {
+        snapshot?.allPackages.contains { $0.id == result.id } ?? false
     }
 
     /// Asks for uninstall confirmation for a package.
@@ -277,7 +346,7 @@ final class HomebrewModel {
         switch section {
         case .installed: return snapshot.allPackages
         case .upgrade: return snapshot.outdated
-        case .services, .diagnostics, .config: return []
+        case .install, .services, .diagnostics, .config: return []
         }
     }
 
@@ -304,7 +373,9 @@ final class HomebrewModel {
     /// Test seam: waits until no load or action is in flight. Same polling
     /// contract as `DiskAnalysisModel.waitUntilSettled`.
     func waitUntilSettled() async {
-        while isLoading || isLoadingServices || isLoadingDiagnostics || isLoadingConfig || runningAction != nil {
+        // A pending search counts even inside its debounce window: the task
+        // holds the handle until it lands or is superseded.
+        while isLoading || isLoadingServices || isLoadingDiagnostics || isLoadingConfig || runningAction != nil || isSearching || searchTask != nil {
             try? await Task.sleep(for: .milliseconds(10))
         }
     }

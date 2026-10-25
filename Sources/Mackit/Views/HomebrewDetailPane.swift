@@ -55,20 +55,10 @@ struct HomebrewDetailPane: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
 
-                Text(verbatim: package.kind.tagTitle)
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(package.kind == .formula ? .orange : .blue)
+                PackageKindTag(kind: package.kind)
 
                 if package.isOutdated {
-                    Text(verbatim: L10n.tr("homebrew.package.outdated"))
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.orange)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(Color.orange.opacity(0.15))
-                        )
+                    OutdatedBadge()
                 }
 
                 Spacer(minLength: 0)

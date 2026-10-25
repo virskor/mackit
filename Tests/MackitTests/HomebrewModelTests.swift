@@ -20,6 +20,25 @@ struct HomebrewModelTests {
         var actions: [HomebrewAction] = []
         /// Lines the action streamed, in arrival order.
         var streamed: [String] = []
+        /// Queries the search seam saw, in order.
+        var searches: [String] = []
+    }
+
+    private func makeResult(
+        _ name: String,
+        kind: HomebrewPackage.Kind = .formula,
+        description: String? = nil
+    ) -> HomebrewSearchResult {
+        HomebrewSearchResult(
+            name: name,
+            kind: kind,
+            description: description,
+            latestVersion: "1.0.0",
+            homepage: nil,
+            license: nil,
+            tap: nil,
+            dependencies: []
+        )
     }
 
     private func makePackage(
@@ -74,7 +93,10 @@ struct HomebrewModelTests {
         outcome: HomebrewOutcome = HomebrewOutcome(action: .cleanup, measure: 512, failure: nil),
         /// Lines the fake action streams while it "runs"; empty means the
         /// action prints nothing.
-        streaming: [String] = []
+        streaming: [String] = [],
+        /// What the fake search seam returns for any query; nil means "brew
+        /// could not be read".
+        searchResults: [HomebrewSearchResult]? = nil
     ) -> HomebrewModel {
         HomebrewModel(
             inspect: {
@@ -100,6 +122,10 @@ struct HomebrewModelTests {
                     counters.streamed.append(line)
                 }
                 return outcome
+            },
+            runSearch: { query in
+                counters.searches.append(query)
+                return searchResults
             }
         )
     }
@@ -329,6 +355,91 @@ struct HomebrewModelTests {
         #expect(model.runningAction == nil)
         #expect(model.outcome != nil)
         #expect(model.progress?.log == ["==> Upgrading wget"])
+    }
+
+    // MARK: - Install search
+
+    @Test func searchReportsItsHitsAfterTheDebounce() async {
+        let counters = Counters()
+        let model = makeModel(
+            counters: counters,
+            snapshot: makeSnapshot(formulae: [makePackage("wget")]),
+            searchResults: [makeResult("meilisearch", description: "Full-text search API")]
+        )
+
+        model.updateSearchQuery("meili")
+        // Nothing before the debounce lands: a keystroke a second apart must
+        // not start a brew search per character.
+        #expect(model.searchResults == nil)
+        #expect(counters.searches.isEmpty)
+
+        await model.waitUntilSettled()
+
+        #expect(counters.searches == ["meili"])
+        #expect(model.searchQuery == "meili")
+        #expect(model.searchResults?.first?.description == "Full-text search API")
+        #expect(model.isSearching == false)
+        #expect(model.searchFailed == false)
+    }
+
+    @Test func clearingTheQueryDropsTheResults() async {
+        let model = makeModel(searchResults: [makeResult("meilisearch")])
+        model.updateSearchQuery("meili")
+        await model.waitUntilSettled()
+        #expect(model.searchResults?.isEmpty == false)
+
+        model.updateSearchQuery("")
+        await model.waitUntilSettled()
+
+        #expect(model.searchResults == nil)
+        #expect(model.searchFailed == false)
+        #expect(model.searchQuery == "")
+    }
+
+    @Test func aFailedSearchIsDistinctFromNoMatches() async {
+        let failure = makeModel(searchResults: nil)
+        failure.updateSearchQuery("meili")
+        await failure.waitUntilSettled()
+        #expect(failure.searchFailed)
+        #expect(failure.searchResults?.isEmpty == true)
+
+        let none = makeModel(searchResults: [])
+        none.updateSearchQuery("meili")
+        await none.waitUntilSettled()
+        #expect(!none.searchFailed, "an empty result set is a real answer")
+        #expect(none.searchResults?.isEmpty == true)
+    }
+
+    @Test func installedHitsAreMarked() {
+        let model = makeModel(snapshot: makeSnapshot(formulae: [makePackage("wget")]))
+        #expect(model.isInstalled(makeResult("wget")))
+        #expect(!model.isInstalled(makeResult("node")))
+        #expect(!model.isInstalled(makeResult("wget", kind: .cask)),
+                "a cask sharing a formula's name is still its own package")
+    }
+
+    @Test func installReloadsTheInstalledList() async {
+        let counters = Counters()
+        let model = makeModel(counters: counters, snapshot: makeSnapshot())
+        model.activate()
+        await model.waitUntilSettled()
+
+        model.run(.install("meilisearch"))
+        await model.waitUntilSettled()
+
+        #expect(counters.actions == [.install("meilisearch")])
+        #expect(counters.inspect == 2, "a successful install re-queries the list")
+        #expect(model.outcome?.succeeded == true)
+    }
+
+    @Test func anInstallIsIndeterminateWhileItRuns() async {
+        // brew prints no per-package lines for an install, so the bar stays
+        // indeterminate rather than sitting at zero.
+        let model = makeModel(snapshot: makeSnapshot())
+        model.run(.install("meilisearch"))
+        #expect(model.progress?.total == nil)
+        #expect(model.progress?.fraction == nil)
+        await model.waitUntilSettled()
     }
 
     // MARK: - Uninstall confirmation

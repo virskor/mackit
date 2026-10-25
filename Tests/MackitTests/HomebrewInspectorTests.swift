@@ -108,13 +108,40 @@ struct HomebrewInspectorTests {
         #expect(HomebrewInspector.parseInfoJSON("", kind: .cask).isEmpty)
     }
 
-    @Test func formulaWithoutAnInstalledEntryIsDropped() {
-        // A stale index can name a formula that was since removed; it must
-        // not resurrect as an installed package.
+    @Test func formulaWithoutAnInstalledEntryDecodesWithoutAVersion() {
+        // A stale index can name a formula that was since removed: the detail
+        // decodes (search results need it), but it carries no installed
+        // version — and the merge below must not resurrect it.
         let json = """
         {"formulae":[{"name":"ghost","versions":{"stable":"1.0"},"installed":[]}]}
         """
-        #expect(HomebrewInspector.parseInfoJSON(json, kind: .formula).isEmpty)
+        let details = HomebrewInspector.parseInfoJSON(json, kind: .formula)
+        #expect(details.count == 1)
+        #expect(details[0].name == "ghost")
+        #expect(details[0].installedVersion == nil)
+        #expect(details[0].latestVersion == "1.0")
+    }
+
+    @Test func aDetailForAnUninstalledPackageNeverResurrectsOne() async throws {
+        // The info payload names a package the installed list does not have;
+        // the snapshot stays the list's size.
+        let run: BrewCommand = { arguments, _ in
+            switch arguments {
+            case ["--version"]: "Homebrew 4.4.15"
+            case ["--prefix"]: "/opt/homebrew"
+            case ["--cache"]: "/nonexistent-cache"
+            case ["--cellar"]: "/nonexistent-cellar"
+            case ["list", "--versions"]: "brotli 1.2.0"
+            case ["list", "--cask", "--versions"]: ""
+            case ["info", "--json=v2", "brotli"]:
+                """
+                {"formulae":[{"name":"brotli","versions":{"stable":"1.2.1"},"installed":[{"version":"1.2.0"}],"desc":"Generic-purpose lossless compression"},{"name":"ghost","versions":{"stable":"1.0"}}]}
+                """
+            default: nil
+            }
+        }
+        let snapshot = try #require(await HomebrewInspector.inspect(brewPath: "/fake/brew", run: run))
+        #expect(snapshot.formulae.map(\.name) == ["brotli"])
     }
 
     @Test func newestOfSeveralInstalledVersionsWins() {

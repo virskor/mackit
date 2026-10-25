@@ -32,6 +32,11 @@ struct BrandCTAButton: View {
     /// full-size button would overwhelm the row.
     var compact = false
 
+    /// When set, a spinner replaces the leading image and the button reads as
+    /// busy instead of inviting another press — the disabled state alone looks
+    /// like "not now" rather than "working on it".
+    var showsProgress = false
+
     /// When set, that shortcut activates the button. The results page's
     /// "Done" keeps Return as the default action, which the previous
     /// borderedProminent button provided.
@@ -49,7 +54,13 @@ struct BrandCTAButton: View {
         Button(action: action) {
             surface {
                 HStack(spacing: 6) {
-                    if let systemImage {
+                    if showsProgress {
+                        ProgressView()
+                            .controlSize(.small)
+                            // A spinner inside a flexible-width HStack
+                            // stretches to fill it; the button keeps its size.
+                            .fixedSize()
+                    } else if let systemImage {
                         Image(systemName: systemImage)
                     }
                     // The header variant's title embeds a size ("Clean 1.2 GB");

@@ -130,13 +130,20 @@ struct HomebrewView: View {
             Spacer(minLength: 12)
 
             HStack(spacing: 8) {
-                Button {
+                // While the re-query runs the button swaps its label for a
+                // spinner and a "refreshing" title: a disabled button alone
+                // reads as "not now" rather than "working on it".
+                BrandCTAButton(
+                    title: model.isLoading
+                        ? L10n.tr("homebrew.action.refreshing")
+                        : L10n.tr("homebrew.action.refresh"),
+                    systemImage: "arrow.clockwise",
+                    style: .secondary,
+                    compact: true,
+                    showsProgress: model.isLoading
+                ) {
                     model.reload()
-                } label: {
-                    Label(L10n.tr("homebrew.action.refresh"), systemImage: "arrow.clockwise")
                 }
-                .buttonStyle(.plain)
-                .font(.system(size: 12))
                 .disabled(model.isLoading || model.runningAction != nil)
                 .help(L10n.tr("homebrew.action.refresh.help"))
 
@@ -189,6 +196,8 @@ struct HomebrewView: View {
                 .tag(HomebrewModel.Section.installed)
             Text(verbatim: pickerLabel("homebrew.section.upgrade", count: model.snapshot?.outdated.count))
                 .tag(HomebrewModel.Section.upgrade)
+            Text(verbatim: L10n.tr("homebrew.section.install"))
+                .tag(HomebrewModel.Section.install)
             Text(verbatim: L10n.tr("homebrew.section.services"))
                 .tag(HomebrewModel.Section.services)
             Text(verbatim: L10n.tr("homebrew.section.diagnostics"))
@@ -225,6 +234,11 @@ struct HomebrewView: View {
         if let snapshot = model.snapshot,
            model.section == .installed || model.section == .upgrade {
             HStack(spacing: 6) {
+                // Symmetric spacers center the stats in the normal case; the
+                // degraded/unusable notices below push the group right when
+                // either one appears, which keeps them out of the stats' way.
+                Spacer(minLength: 0)
+
                 ForEach(Array(stats(snapshot).enumerated()), id: \.offset) { index, item in
                     if index > 0 {
                         // The dot the scan banner puts between its facts
@@ -319,6 +333,8 @@ struct HomebrewView: View {
             HomebrewPackagesPane(mode: .installed)
         case .upgrade:
             HomebrewPackagesPane(mode: .upgrade)
+        case .install:
+            HomebrewInstallPane()
         case .services:
             HomebrewServicesPane()
         case .diagnostics:

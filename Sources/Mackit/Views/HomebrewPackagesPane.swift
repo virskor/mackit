@@ -182,10 +182,10 @@ struct HomebrewPackagesPane: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
 
-                        kindTag(package.kind)
+                        PackageKindTag(kind: package.kind)
 
                         if package.isOutdated {
-                            outdatedBadge
+                            OutdatedBadge()
                         }
 
                         if package.pinned {
@@ -234,18 +234,6 @@ struct HomebrewPackagesPane: View {
         return L10n.fmt("homebrew.package.upgrade", package.installedVersion, latest)
     }
 
-    private var outdatedBadge: some View {
-        Text(verbatim: L10n.tr("homebrew.package.outdated"))
-            .font(.system(size: 9, weight: .medium))
-            .foregroundStyle(.orange)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 1)
-            .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(Color.orange.opacity(0.15))
-            )
-    }
-
     private var pinnedBadge: some View {
         Text(verbatim: L10n.tr("homebrew.package.pinned"))
             .font(.system(size: 9, weight: .medium))
@@ -256,12 +244,6 @@ struct HomebrewPackagesPane: View {
                 RoundedRectangle(cornerRadius: 3, style: .continuous)
                     .fill(Color.primary.opacity(0.08))
             )
-    }
-
-    private func kindTag(_ kind: HomebrewPackage.Kind) -> some View {
-        Text(verbatim: kind.tagTitle)
-            .font(.system(size: 9, weight: .semibold))
-            .foregroundStyle(kind == .formula ? .orange : .blue)
     }
 
     private var loadingList: some View {
