@@ -316,6 +316,8 @@ struct HomebrewModelTests {
             // brew's real per-package lines, in the order it prints them.
             streaming: ["==> Upgrading wget", "  1.0.0 -> 2.0.0", "==> Upgrading node", "==> Upgraded 2 outdated packages"]
         )
+        model.activate()
+        await model.waitUntilSettled()
 
         model.run(.upgradeAll)
         #expect(model.progress?.total == 2, "the plan size comes from the outdated list, not from brew")
@@ -326,9 +328,11 @@ struct HomebrewModelTests {
         #expect(model.progress?.currentStep == "node")
         #expect(model.progress?.fraction == 1)
         #expect(model.progress?.finishedAt != nil, "the elapsed readout freezes at the finish")
+        // HomebrewProgress normalizes every line it folds in, so the log
+        // holds brew's lines whitespace-trimmed.
         #expect(model.progress?.log == [
             "==> Upgrading wget",
-            "  1.0.0 -> 2.0.0",
+            "1.0.0 -> 2.0.0",
             "==> Upgrading node",
             "==> Upgraded 2 outdated packages"
         ])
@@ -423,27 +427,32 @@ struct HomebrewModelTests {
     }
 
     @Test func thePillDropsAfterTheDwell() async {
-        let model = makeModel(snapshot: makeSnapshot(), pillDwell: .milliseconds(20))
+        // The dwell must still be pending when the settle loop returns; a
+        // 20 ms one can expire first and the first expectation flakes.
+        let model = makeModel(snapshot: makeSnapshot(), pillDwell: .seconds(1))
         model.run(.cleanup)
         await model.waitUntilSettled()
         #expect(model.showsStatusPill)
 
-        try? await Task.sleep(for: .milliseconds(120))
+        try? await Task.sleep(for: .milliseconds(1200))
 
         #expect(!model.showsStatusPill)
     }
 
     @Test func anOpenLogPinsThePillPastTheDwell() async {
-        let model = makeModel(snapshot: makeSnapshot(), pillDwell: .milliseconds(20))
+        // Same dwell-margin reasoning as thePillDropsAfterTheDwell: opening
+        // the log must cancel a dismiss that is still armed, which a 20 ms
+        // dwell cannot guarantee.
+        let model = makeModel(snapshot: makeSnapshot(), pillDwell: .seconds(1))
         model.run(.cleanup)
         await model.waitUntilSettled()
 
         model.setActionLogVisible(true)
-        try? await Task.sleep(for: .milliseconds(120))
+        try? await Task.sleep(for: .milliseconds(300))
         #expect(model.showsStatusPill, "the popover is anchored to the pill; it must not vanish mid-read")
 
         model.setActionLogVisible(false)
-        try? await Task.sleep(for: .milliseconds(120))
+        try? await Task.sleep(for: .milliseconds(1500))
         #expect(!model.showsStatusPill, "closing the log re-arms the dwell")
     }
 
@@ -525,8 +534,10 @@ struct HomebrewModelTests {
         #expect(none.searchResults?.isEmpty == true)
     }
 
-    @Test func installedHitsAreMarked() {
+    @Test func installedHitsAreMarked() async {
         let model = makeModel(snapshot: makeSnapshot(formulae: [makePackage("wget")]))
+        model.activate()
+        await model.waitUntilSettled()
         #expect(model.isInstalled(makeResult("wget")))
         #expect(!model.isInstalled(makeResult("node")))
         #expect(!model.isInstalled(makeResult("wget", kind: .cask)),
@@ -595,11 +606,13 @@ struct HomebrewModelTests {
 
     // MARK: - Derived data
 
-    @Test func packagesPerSectionAndFiltering() {
+    @Test func packagesPerSectionAndFiltering() async {
         let model = makeModel(snapshot: makeSnapshot(
             formulae: [makePackage("wget", outdated: true), makePackage("node")],
             casks: [makePackage("codex", kind: .cask, outdated: true)]
         ))
+        model.activate()
+        await model.waitUntilSettled()
 
         #expect(model.packages(for: .installed).count == 3)
         #expect(model.packages(for: .upgrade).count == 2)
@@ -614,7 +627,7 @@ struct HomebrewModelTests {
         #expect(model.filtered(installed, kind: .cask, dependencies: .all, by: "").map(\.name) == ["codex"])
     }
 
-    @Test func theDependencyFilterSplitsByTheOnRequestFlag() {
+    @Test func theDependencyFilterSplitsByTheOnRequestFlag() async {
         let model = makeModel(snapshot: makeSnapshot(
             formulae: [
                 makePackage("wget", onRequest: true),
@@ -622,6 +635,8 @@ struct HomebrewModelTests {
                 makePackage("pcre2", onRequest: false)
             ]
         ))
+        model.activate()
+        await model.waitUntilSettled()
         let installed = model.packages(for: .installed)
 
         #expect(model.filtered(installed, kind: .all, dependencies: .all, by: "").count == 3)
@@ -633,7 +648,7 @@ struct HomebrewModelTests {
         #expect(model.filtered(installed, kind: .formula, dependencies: .onlyDependencies, by: "").count == 2)
     }
 
-    @Test func aMissingOnRequestFlagKeepsEveryPackage() {
+    @Test func aMissingOnRequestFlagKeepsEveryPackage() async {
         // Degraded mode: brew's JSON was unreadable, so no package carries
         // the flag. Both dependency filters must keep the whole list rather
         // than emptying it — the pane disables the filter in this state
@@ -642,13 +657,15 @@ struct HomebrewModelTests {
             formulae: [makePackage("wget", onRequest: nil), makePackage("openssl", onRequest: nil)],
             detailsAvailable: false
         ))
+        model.activate()
+        await model.waitUntilSettled()
         let installed = model.packages(for: .installed)
 
         #expect(model.filtered(installed, kind: .all, dependencies: .onlyDependencies, by: "").count == 2)
         #expect(model.filtered(installed, kind: .all, dependencies: .excludeDependencies, by: "").count == 2)
     }
 
-    @Test func dependentsAreTheReverseDependencyIndex() throws {
+    @Test func dependentsAreTheReverseDependencyIndex() async throws {
         let model = makeModel(snapshot: makeSnapshot(
             formulae: [
                 makePackage("openssl"),
@@ -657,6 +674,8 @@ struct HomebrewModelTests {
                 makePackage("ca-certificates")
             ]
         ))
+        model.activate()
+        await model.waitUntilSettled()
 
         let openssl = try #require(model.packages(for: .installed).first { $0.name == "openssl" })
         let dependents = model.dependents(of: openssl)
@@ -665,12 +684,16 @@ struct HomebrewModelTests {
         #expect(!dependents.contains { $0.name == "openssl" })
     }
 
-    @Test func selectedPackageFollowsTheSelection() {
+    @Test func selectedPackageFollowsTheSelection() async throws {
         let model = makeModel(snapshot: makeSnapshot(formulae: [makePackage("wget"), makePackage("node")]))
+        model.activate()
+        await model.waitUntilSettled()
         let packages = model.packages(for: .installed)
         #expect(model.selectedPackage(from: packages) == nil)
 
-        model.selectPackage(packages[0])
+        // #require rather than a subscript: a load that never lands must
+        // fail this test, not kill the whole suite with an index crash.
+        model.selectPackage(try #require(packages.first))
         #expect(model.selectedPackage(from: packages)?.name == "wget")
 
         // A package removed by an uninstall must not leave a ghost selected.

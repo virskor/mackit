@@ -321,6 +321,10 @@ final class HomebrewModel {
         guard !showsActionLog else { return }
         pillDismissTask = Task {
             try? await Task.sleep(for: pillDwell)
+            // `try?` swallows the cancellation error that pinning the pill
+            // (an opening log, a new action) raises; without this guard the
+            // fall-through dismisses the pill the cancel meant to keep.
+            guard !Task.isCancelled else { return }
             self.showsStatusPill = false
         }
     }
@@ -427,8 +431,8 @@ final class HomebrewModel {
     /// kind filter, then the dependency filter, then the search text.
     ///
     /// A nil on-request flag — only brew's JSON carries it, and degraded mode
-    /// has none — counts as "on request", so the dependency filters never
-    /// empty the list when brew cannot tell.
+    /// has none — is kept by both filters: an unknown flag never excludes a
+    /// package, so the filters cannot empty the list when brew cannot tell.
     func filtered(
         _ packages: [HomebrewPackage],
         kind: KindFilter,
@@ -443,7 +447,7 @@ final class HomebrewModel {
         }
         switch dependencies {
         case .all: break
-        case .onlyDependencies: result = result.filter { $0.installedOnRequest == false }
+        case .onlyDependencies: result = result.filter { $0.installedOnRequest != true }
         case .excludeDependencies: result = result.filter { $0.installedOnRequest != false }
         }
         let needle = text.trimmingCharacters(in: .whitespaces).lowercased()

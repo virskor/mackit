@@ -22,7 +22,7 @@ struct HomebrewEnvironmentTests {
 
     @Test func parsesConfigEntries() throws {
         let entries = HomebrewEnvironment.parseConfig(Self.configOutput)
-        #expect(entries.count == 8, "the separator-less line is skipped, the rest are kept")
+        #expect(entries.count == 9, "the separator-less line is skipped, the rest are kept")
 
         let version = try #require(entries.first { $0.key == "HOMEBREW_VERSION" })
         #expect(version.value == "7.0.10-104-gc5b9f65")

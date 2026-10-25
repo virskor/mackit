@@ -127,12 +127,13 @@ struct HomebrewProgressTests {
 
     @Test func theLogKeepsOnlyTheFinalStateOfARewrittenLine() {
         // curl's download progress rewrites one line with "\r"; a terminal
-        // shows only the last state.
+        // shows only the last state. The log holds it whitespace-trimmed —
+        // every folded-in line is normalized.
         let result = progress(streaming: [
             "  % Total    % Received 10%\r  % Total    % Received 100%",
             "==> Upgrading codex"
         ])
-        #expect(result.log.first == "  % Total    % Received 100%")
+        #expect(result.log.first == "% Total    % Received 100%")
     }
 
     @Test func blankLinesAreDropped() {

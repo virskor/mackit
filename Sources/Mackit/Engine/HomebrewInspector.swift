@@ -214,8 +214,11 @@ enum HomebrewInspector {
     static func parseVersion(_ output: String) -> String? {
         guard let first = output.split(separator: "\n").first else { return nil }
         let line = first.trimmingCharacters(in: .whitespaces)
-        guard line.hasPrefix("Homebrew ") else { return line.isEmpty ? nil : line }
-        let version = line.dropFirst("Homebrew ".count).trimmingCharacters(in: .whitespaces)
+        // The trim above strips the trailing space of a prefix-only line, so
+        // match the bare word too: "Homebrew" with no version after it must
+        // read as unknown, not as a version literally spelled "Homebrew".
+        guard line.hasPrefix("Homebrew") else { return line.isEmpty ? nil : line }
+        let version = line.dropFirst("Homebrew".count).trimmingCharacters(in: .whitespaces)
         return version.isEmpty ? nil : version
     }
 
