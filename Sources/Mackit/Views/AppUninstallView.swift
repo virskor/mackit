@@ -255,12 +255,16 @@ struct AppUninstallView: View {
                 Color.clear.frame(width: 14)
             }
 
+            // The app's real icon, drawn at 24: this page is where the user
+            // picks an app to remove, and a 16pt thumbnail next to a
+            // 13pt name reads as a list of paths rather than of apps — the
+            // size Finder and every uninstaller use for the same job.
             if let icon = model.icon(forPath: entry.bundle.path) {
                 Image(nsImage: icon)
                     .resizable()
-                    .frame(width: 16, height: 16)
+                    .frame(width: 24, height: 24)
             } else {
-                CategoryIcon(category: .apps)
+                CategoryIcon(category: .apps, size: 18, width: 24)
             }
 
             VStack(alignment: .leading, spacing: 2) {
