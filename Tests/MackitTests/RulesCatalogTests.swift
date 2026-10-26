@@ -28,13 +28,14 @@ struct RulesCatalogTests {
 
     @Test func everyCategoryExceptProjectsHasStaticRules() {
         // .projects is produced dynamically by the custom project directory scan,
-        // and .apps is produced dynamically by the app scan; neither goes through
-        // the static rule table. .language (useless .lproj inside app bundles)
-        // and .downloads (installers in ~/Downloads) are produced by their own
-        // scanners, whose matching logic can't be expressed as static targets.
-        // .appJunk rides along with the app scan: its entries are the same
-        // ~/Library paths the residue probe already walks, only filed under the
-        // general module instead of the uninstall flow.
+        // and .apps is produced dynamically by the app uninstall tool's scan;
+        // neither goes through the static rule table. .language (useless .lproj
+        // inside app bundles) and .downloads (installers in ~/Downloads) are
+        // produced by their own scanners, whose matching logic can't be
+        // expressed as static targets. .appJunk rides along with the app junk
+        // scan: its entries are the same ~/Library paths the residue probe
+        // already walks, only filed under the general module instead of the
+        // uninstall tool.
         let staticCategories = Set(RulesCatalog.scanRules.map(\.category))
             .union(RulesCatalog.cliRules.map(\.category))
         for category in JunkCategory.allCases

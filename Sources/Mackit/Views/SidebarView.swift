@@ -66,6 +66,16 @@ struct SidebarView: View {
                     isSelected: vm.showsHardware,
                     action: { vm.showHardware() }
                 )
+
+                row(
+                    icon: .symbol("square.grid.2x2.fill"),
+                    tint: .accentColor,
+                    title: L10n.tr("sidebar.appUninstall"),
+                    isSelected: vm.showsAppUninstall,
+                    isBusy: vm.appUninstall.isLoading,
+                    action: { vm.showAppUninstall() }
+                )
+                .help(L10n.tr("sidebar.appUninstall.help"))
             }
 
             if !vm.developerCategories.isEmpty {
@@ -119,7 +129,7 @@ struct SidebarView: View {
     /// sidebar has one selected item at a time, and switching pages has to
     /// clear the highlight.
     private var itemListIsActive: Bool {
-        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew
+        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsAppUninstall
     }
 
     /// One sidebar row: icon, title, and the trailing slot that carries the

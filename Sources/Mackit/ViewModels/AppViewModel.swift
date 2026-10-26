@@ -74,6 +74,11 @@ final class AppViewModel {
     /// The Homebrew manager tool row is selected in the sidebar: the detail
     /// area switches to the manager page, same embedded-page pattern again.
     var showsHomebrew: Bool = false
+    /// The app uninstall tool row is selected in the sidebar: the detail
+    /// area switches to the uninstall page, the same embedded-page pattern.
+    /// Apps are no longer part of the cleanup scan — uninstalling is its own
+    /// tool, and this flag is what shows it.
+    var showsAppUninstall: Bool = false
 
     /// Row selection set, consistent with the list checkmarks. All of the
     /// state and every rule that decides it live in `CleanupSelection`; this
@@ -97,6 +102,12 @@ final class AppViewModel {
     /// and injectability contract as `diskAnalysis`: the snapshot survives
     /// page switches, and tests drive the page against fake inspections.
     let homebrew: HomebrewModel
+
+    /// State model of the app uninstall tool page. Same session-lifetime and
+    /// injectability contract as `diskAnalysis` and `homebrew`: the scanned
+    /// app list survives page switches, and tests drive the page against
+    /// fixture apps.
+    let appUninstall: AppUninstallModel
 
     /// Cleanup result summary.
     var lastReclaimed: Int64 = 0
@@ -135,8 +146,11 @@ final class AppViewModel {
         get { selectionState.rememberedRows }
         set { selectionState.rememberedRows = newValue }
     }
-    /// Whether installed apps are enumerated in the main scan (the "Apps"
-    /// category).
+    /// Whether the regenerable junk installed apps leave behind (caches,
+    /// HTTP storages, WebKit data, logs, crash reports) is enumerated in
+    /// the main scan, feeding the general module's app-junk row. The apps
+    /// themselves are not part of the scan — uninstalling them is the app
+    /// uninstall tool's job.
     var includeApps: Bool = true
     var projectRoots: [String] = []
     /// Whether the app is registered to launch at login — the user's choice,
@@ -271,9 +285,10 @@ final class AppViewModel {
     /// "emit one event, assert one snapshot" in tests. Visible within the
     /// module so tests can drive it directly; the default value is the
     /// app's startup behavior.
-    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel()) {
+    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel()) {
         self.diskAnalysis = diskAnalysis
         self.homebrew = homebrew
+        self.appUninstall = appUninstall
         // A remembered row selection is the one piece of selection state that
         // outlives a process, so the model's user actions route through here
         // to persist it. `loadSettings` below assigns the stored value
@@ -635,6 +650,7 @@ final class AppViewModel {
         showsHardware = true
         dismissDiskAnalysis()
         dismissHomebrew()
+        dismissAppUninstall()
         hardwareProfile = HardwareSampler.profile()
     }
 
@@ -656,6 +672,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         dismissDiskAnalysis()
         dismissHomebrew()
+        dismissAppUninstall()
     }
 
     /// Opens the disk analysis tool page from the sidebar. Same
@@ -669,6 +686,7 @@ final class AppViewModel {
         showsHardware = false
         showsGeneralCleanup = false
         showsHomebrew = false
+        showsAppUninstall = false
         if cleanPhase == .done { dismissCleanResult() }
         diskAnalysis.activate()
     }
@@ -700,6 +718,7 @@ final class AppViewModel {
         showsSettings = false
         showsHardware = false
         showsGeneralCleanup = false
+        showsAppUninstall = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
         homebrew.activate()
@@ -711,6 +730,32 @@ final class AppViewModel {
     private func dismissHomebrew() {
         guard showsHomebrew else { return }
         showsHomebrew = false
+    }
+
+    /// Opens the app uninstall tool page from the sidebar. Same
+    /// embedded-page pattern as the other tools: the detail area swaps
+    /// entirely and the main toolbar hides. The first entry scans once;
+    /// coming back to a scanned list is instant.
+    func showAppUninstall() {
+        guard !showsAppUninstall else { return }
+        showsAppUninstall = true
+        selectedCategory = nil
+        showsSettings = false
+        showsHardware = false
+        showsGeneralCleanup = false
+        showsHomebrew = false
+        dismissDiskAnalysis()
+        if cleanPhase == .done { dismissCleanResult() }
+        appUninstall.activate()
+    }
+
+    /// Leaves the app uninstall page. Deliberately does not touch the scanned
+    /// list — same contract as the other tools: the scan belongs to the
+    /// session, not to the page being visible, and an in-flight uninstall is
+    /// the model's to keep or cancel.
+    private func dismissAppUninstall() {
+        guard showsAppUninstall else { return }
+        showsAppUninstall = false
     }
 
     // MARK: - Memory Release
@@ -1218,7 +1263,7 @@ final class AppViewModel {
         selectionDidChange()
         publishMenuSnapshot(force: true)
         scanStartedAt = .now
-        MackitLog.scan.info("scan started: \(self.projectRoots.count, privacy: .public) project roots, CLI \(self.includeCLI, privacy: .public), app discovery \(self.includeApps, privacy: .public)")
+        MackitLog.scan.info("scan started: \(self.projectRoots.count, privacy: .public) project roots, CLI \(self.includeCLI, privacy: .public), app junk \(self.includeApps, privacy: .public)")
 
         let options = ScanOptions(
             autoSelectRisk: autoSelectRisk,
@@ -1242,12 +1287,12 @@ final class AppViewModel {
                 MackitLog.scan.info("rule scan phase finished: \(self.items.count, privacy: .public) items, took \(MackitLog.duration(.now - startedAt), privacy: .public)")
             }
 
-            // App discovery comes before project directories: it always
+            // App junk comes before project directories: it always
             // enumerates two directories, is quick and predictable, letting
-            // the "Apps" category appear as early as possible; project
-            // roots can be very large, so they go last.
+            // the general module's app-junk row appear as early as possible;
+            // project roots can be very large, so they go last.
             if self.includeApps {
-                await self.scanApps()
+                await self.scanAppJunk()
             }
             guard !Task.isCancelled else { return }
 
@@ -1440,6 +1485,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         dismissDiskAnalysis()
         dismissHomebrew()
+        dismissAppUninstall()
         if cleanPhase == .done { dismissCleanResult() }
     }
 
@@ -1452,6 +1498,7 @@ final class AppViewModel {
         showsHardware = false
         dismissDiskAnalysis()
         dismissHomebrew()
+        dismissAppUninstall()
         if cleanPhase == .done { dismissCleanResult() }
     }
 
@@ -1954,16 +2001,22 @@ final class AppViewModel {
         }
     }
 
-    // MARK: - App Scanning
+    // MARK: - App Junk Scanning
 
-    /// Enumerates installed apps and their residue files, merging the
-    /// results into the list.
+    /// Enumerates the regenerable junk installed apps leave behind (caches,
+    /// HTTP storages, WebKit data, logs, crash reports), merging the results
+    /// into the general module's app-junk row.
+    ///
+    /// Apps themselves are no longer part of the scan: uninstalling lives in
+    /// the app uninstall tool (`AppUninstallModel`), which owns the bundles
+    /// and the data residue. This scan deliberately produces junk entries
+    /// only, so no app data is ever reachable from the cleanup scan.
     ///
     /// roots and home are injectable for testing. Size measurement is
     /// handed to `ScanEngine.measure`: it throttles internally against the
     /// same concurrency limit, and the engine manages the bookkeeping of
     /// intra-batch concurrency and inter-batch serialization.
-    func scanApps(roots: [String] = AppScanner.defaultRoots, home: String = NSHomeDirectory()) async {
+    func scanAppJunk(roots: [String] = AppScanner.defaultRoots, home: String = NSHomeDirectory()) async {
         progressLabel = L10n.tr("scan.apps")
 
         // Discovery and measurement are placed in the same detached task:
@@ -1973,16 +2026,15 @@ final class AppViewModel {
         // seconds). After detaching, measurement runs on the cooperation
         // thread pool, throttled by ScanEngine's semaphore.
         let measured = await Task.detached(priority: .utility) {
-            let discovered = AppScanner.scanApps(roots: roots, home: home)
+            let discovered = AppScanner.scanAppJunk(roots: roots, home: home)
             return await ScanEngine.measure(discovered)
         }.value
         if Task.isCancelled { return }
         guard !measured.isEmpty else {
-            MackitLog.apps.info("app discovery: no installed apps found")
+            MackitLog.apps.info("app junk scan: no regenerable app junk found")
             return
         }
-        let bundleCount = measured.filter { $0.appKind == .bundle }.count
-        MackitLog.apps.info("app discovery: \(bundleCount, privacy: .public) apps, \(measured.count, privacy: .public) entries")
+        MackitLog.apps.info("app junk scan: \(measured.count, privacy: .public) entries")
 
         mergeDiscovered(measured)
     }
@@ -2034,26 +2086,23 @@ final class AppViewModel {
     }
 
     /// Merges a batch of new items into the list, deduplicating by id
-    /// (shared by project scanning, app scanning, and the new scanners).
-    /// Visible within the module so tests can drive it directly.
+    /// (shared by project scanning, app junk scanning, and the other
+    /// scanners). Visible within the module so tests can drive it directly.
     func mergeDiscovered(_ fresh: [JunkItem]) {
         guard !fresh.isEmpty else { return }
         let existing = Set(items.map(\.id))
         // Path-level dedup on top of the id dedup: two rules can target the
-        // same path — an app's log directory is both a residue entry of the
-        // app scan and a child of the user-logs rule, and the same bytes
-        // must never be counted (or shown) twice. First one wins; the static
-        // rules stream in before the app scan, so the generic rule owns the
-        // path and the residue scan simply doesn't re-list it.
+        // same path — an app's log directory is both an app-junk entry of
+        // the app junk scan and a child of the user-logs rule, and the same
+        // bytes must never be counted (or shown) twice. First one wins; the
+        // static rules stream in before the app junk scan, so the generic
+        // rule owns the path and the junk scan simply doesn't re-list it.
         var seenPaths = Set(items.map(\.path))
         // The same bytes are also double-counted when one entry *contains*
         // another: Homebrew's cache directory is a single app-junk entry
         // while the brew rule lists each download inside it. The coarser
         // entry is the one that loses — the finer entries stay, so nothing
-        // disappears from the list that was not already covered. Only this
-        // direction is checked: an app bundle contains the language packs
-        // listed for it, and those are junk the bundle's own uninstall does
-        // not replace, so a bundle must not swallow them.
+        // disappears from the list that was not already covered.
         let listedPaths = items.map(\.path)
         var unique: [JunkItem] = []
         for item in fresh where !existing.contains(item.id) && !item.path.isEmpty {
@@ -2077,138 +2126,16 @@ final class AppViewModel {
         return listedPaths.contains { $0.hasPrefix(prefix) }
     }
 
-    // MARK: - App Uninstall
+    // MARK: - App Icons
 
-    /// All residue file entries of a given app bundle.
-    private func residueItems(bundleID: String) -> [JunkItem] {
-        items.filter { $0.appKind?.isResidue == true && $0.bundleID == bundleID }
-    }
-
-    /// All residue file entry ids of a given app bundle.
-    func residueIDs(for item: JunkItem) -> [String] {
-        guard item.appKind == .bundle, let bundleID = item.bundleID else { return [] }
-        return residueItems(bundleID: bundleID).map(\.id)
-    }
-
-    /// Uninstall an app: check the bundle itself and all residue files,
-    /// entering cleanup confirmation directly.
-    func uninstallApp(_ item: JunkItem) {
-        guard item.appKind == .bundle else { return }
-        var next: Set<String> = [item.id]
-        next.formUnion(residueIDs(for: item))
-        selectionState.replace(with: next)
-        selectionDidChange()
-        // allScopes: apps live in the general mode, but this action is
-        // launched from a context menu row and targets exactly these items,
-        // whichever mode the window happens to be showing.
-        requestClean(allScopes: true)
-    }
-
-    /// Only clean an app's residue files, keeping the app bundle itself.
-    func selectAppResidues(_ item: JunkItem) {
-        guard item.appKind == .bundle else { return }
-        let next = Set(residueIDs(for: item))
-        guard !next.isEmpty else { return }
-        selectionState.replace(with: next)
-        selectionDidChange()
-        requestClean(allScopes: true)
-    }
-
-    /// Whether the selected items contain an app bundle (the confirmation
-    /// panel switches uninstall wording accordingly).
-    var hasSelectedApps: Bool {
-        selectedItems.contains { $0.appKind == .bundle }
-    }
-
-    /// Apps whose bundle is checked but whose related files are not yet
-    /// all checked, one entry per app.
-    ///
-    /// When only the app's row is checked in the table and clean is
-    /// clicked, files like caches and application support are silently left
-    /// on disk; the confirmation panel warns accordingly and offers a
-    /// "select all" one-click fix.
-    ///
-    /// The computation is O(items × apps), likewise cached by revision,
-    /// and not re-run on every body evaluation.
-    @ObservationIgnored private var unselectedResiduesCache: (key: (Int, Int), value: [AppResidueSummary])?
-
-    var unselectedAppResidues: [AppResidueSummary] {
-        let key = (itemsRevision, selectionRevision)
-        if let cached = unselectedResiduesCache, cached.key == key { return cached.value }
-        var summaries: [AppResidueSummary] = []
-        var seen: Set<String> = []
-        for item in selectedItems where item.appKind == .bundle {
-            guard let bundleID = item.bundleID, !seen.contains(bundleID) else { continue }
-            seen.insert(bundleID)
-            let pending = residueItems(bundleID: bundleID).filter { !selection.contains($0.id) }
-            guard !pending.isEmpty else { continue }
-            summaries.append(
-                AppResidueSummary(
-                    appName: item.title,
-                    count: pending.count,
-                    size: pending.reduce(0) { $0 + $1.size }
-                )
-            )
-        }
-        unselectedResiduesCache = (key, summaries)
-        return summaries
-    }
-
-    /// Adds all related files of the selected apps into the selection (the
-    /// confirmation panel's one-click action).
-    func selectResiduesForSelectedApps() {
-        var next = selection
-        for item in selectedItems where item.appKind == .bundle {
-            guard let bundleID = item.bundleID else { continue }
-            next.formUnion(residueItems(bundleID: bundleID).map(\.id))
-        }
-        guard next != selection else { return }
-        selectionState.setItems(next, selected: true)
-        selectionDidChange()
-    }
-
-    /// Names of the selected apps that are currently running. Uninstalling
-    /// them will be refused by the clean engine, so they are listed here
-    /// in advance in the confirmation panel, sparing the user a wasted
-    /// trip.
-    ///
-    /// `runningApplications` is one workspace XPC query, and the
-    /// confirmation panel's list reads this property on every scroll /
-    /// recompute; cached by items/selection revision, so only one query
-    /// per confirmation.
-    @ObservationIgnored private var runningAppsCache: (key: (Int, Int), value: [String])?
-
-    var runningAppNames: [String] {
-        let key = (itemsRevision, selectionRevision)
-        if let cached = runningAppsCache, cached.key == key { return cached.value }
-        let running = NSWorkspace.shared.runningApplications
-        let value = selectedItems
-            .filter { $0.appKind == .bundle }
-            .filter { item in
-                guard let bundleID = item.bundleID else { return false }
-                return running.contains { $0.bundleIdentifier == bundleID }
-            }
-            .map(\.title)
-        runningAppsCache = (key, value)
-        return value
-    }
-
-    /// The real icon of an app bundle; returns nil for non-app items, and
-    /// the view falls back to a category symbol.
+    /// Gets the icon by .app path, with caching. The memory ranking reads
+    /// this one; the uninstall tool keeps its own cache inside its model.
     ///
     /// The cache is excluded from Observation: if filling the cache during
     /// first render triggered a view update, it would add a pointless
     /// extra round of body recomputation.
     @ObservationIgnored private var appIconCache: [String: NSImage] = [:]
 
-    func icon(for item: JunkItem) -> NSImage? {
-        guard item.appKind == .bundle, !item.path.isEmpty else { return nil }
-        return appIcon(forPath: item.path)
-    }
-
-    /// Gets the icon by .app path, with caching. Cleanup items and the
-    /// memory ranking share one cache: when the same app appears in both
-    /// places, NSWorkspace is queried only once.
     func appIcon(forPath path: String) -> NSImage? {
         guard !path.isEmpty else { return nil }
         if let cached = appIconCache[path] { return cached }
@@ -2216,14 +2143,6 @@ final class AppViewModel {
         appIconCache[path] = icon
         return icon
     }
-}
-
-/// A summary of the related files of a checked app that are not yet
-/// checked.
-struct AppResidueSummary: Equatable, Hashable, Sendable {
-    let appName: String
-    let count: Int
-    let size: Int64
 }
 
 /// One state snapshot of the menu bar panel.

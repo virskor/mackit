@@ -23,19 +23,19 @@ struct InstalledApp: Sendable, Hashable {
 /// Residue is split by what it holds (see `ResidueKind.isRegenerableJunk`):
 /// regenerable junk becomes general-module app-junk entries, so a user can
 /// sweep an app's caches without uninstalling it, while data (preferences,
-/// Application Support, containers, cookies…) stays with the bundle in the
-/// uninstall flow, where removing it is the user's explicit intent and the
-/// "app is running" guard applies. The split also keeps the two cleanup
-/// features' path sets disjoint — the same directory never appears in both.
+/// Application Support, containers, cookies…) stays with the bundle, which is
+/// what the uninstall tool (`AppUninstallModel`) lists and removes together.
+/// The split also keeps the two surfaces' path sets disjoint — the same
+/// directory never appears in both.
 enum AppScanner {
     /// Default discovery locations: system-level and user-level Applications.
     static let defaultRoots = ["/Applications", "~/Applications"]
 
-    /// Rule id: the app bundle itself.
+    /// Rule id: the app bundle itself. Only the uninstall tool lists it.
     static let bundleRuleID = "app.bundle"
     /// Rule id: residue files that hold app data (preferences, Application
     /// Support, containers…). They stay with the app bundle in the uninstall
-    /// flow, where deleting them is the user's explicit intent.
+    /// tool, where deleting them is the user's explicit intent.
     static let residueRuleID = "app.residue"
     /// Rule id: regenerable residue (caches, HTTP storages, WebKit data). They
     /// roll up into the general module's app-junk row, so an app's caches can
@@ -51,6 +51,20 @@ enum AppScanner {
         // The Application Support index is built by one shallow traversal shared by all apps
         let index = supportIndex(home: home)
         return apps.flatMap { items(for: $0, home: home, index: index) }
+    }
+
+    /// Discover apps and generate only their regenerable-junk entries — what
+    /// the general cleanup module's app-junk row sweeps. The main scan no
+    /// longer lists apps for uninstalling (that lives in `AppUninstallModel`),
+    /// so this is the only composition the scan itself runs; it deliberately
+    /// produces no bundle entries and no data residue, so no app data is ever
+    /// reachable from the cleanup scan.
+    static func scanAppJunk(roots: [String] = defaultRoots, home: String = NSHomeDirectory()) -> [JunkItem] {
+        let apps = discoverApps(roots: roots)
+        guard !apps.isEmpty else { return [] }
+        let index = supportIndex(home: home)
+        return apps.flatMap { items(for: $0, home: home, index: index) }
+            .filter { $0.category == .appJunk }
     }
 
     /// All entries for a single app: the bundle first, with junk residue

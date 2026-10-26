@@ -6343,19 +6343,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "扫描已安装应用"
+            "value": "扫描应用垃圾"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scan Installed Apps"
+            "value": "Scan App Junk"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "掃描已安裝的應用程式"
+            "value": "掃描應用垃圾"
           }
         }
       }
@@ -6365,19 +6365,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在「应用卸载」分类中列出 /Applications 与 ~/Applications 下的应用及其残留文件，可逐个卸载"
+            "value": "在通用清理的「应用垃圾」一行中列出各应用可再生的缓存、日志等残留文件；卸载应用请使用工具区的「应用卸载」"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lists apps from /Applications and ~/Applications with their leftover files in the App Uninstall category, ready to uninstall"
+            "value": "Lists the regenerable junk installed apps leave behind (caches, logs, …) in the general cleanup's App Junk row; to uninstall apps, use the App Uninstall tool"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在「應用卸載」分類中列出 /Applications 與 ~/Applications 下的應用程式及其殘留檔案，可逐個卸載"
+            "value": "在通用清理的「應用垃圾」一行中列出各應用可再生的快取、日誌等殘留檔案；卸載應用請使用工具區的「應用卸載」"
           }
         }
       }
@@ -7962,6 +7962,226 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 個殘留檔案"
+          }
+        }
+      }
+    },
+    "apps.tool.header": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 个应用 · 共计 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld apps · %2$@ total"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個應用程式 · 共計 %2$@"
+          }
+        }
+      }
+    },
+    "apps.tool.rescanning": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在扫描…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在掃描…"
+          }
+        }
+      }
+    },
+    "apps.tool.rescan.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新枚举 /Applications 与 ~/Applications 下的应用及其残留文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-enumerate the apps in /Applications and ~/Applications with their leftover files"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新列舉 /Applications 與 ~/Applications 下的應用程式及其殘留檔案"
+          }
+        }
+      }
+    },
+    "apps.tool.search": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索应用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search apps"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜尋應用程式"
+          }
+        }
+      }
+    },
+    "apps.tool.empty.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有发现可卸载的应用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Uninstallable Apps Found"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有發現可卸載的應用程式"
+          }
+        }
+      }
+    },
+    "apps.tool.empty.message": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/Applications 与 ~/Applications 下没有发现第三方应用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No third-party apps were found in /Applications or ~/Applications"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/Applications 與 ~/Applications 下沒有發現第三方應用程式"
+          }
+        }
+      }
+    },
+    "apps.tool.noMatch.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有匹配的应用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Matching Apps"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有符合的應用程式"
+          }
+        }
+      }
+    },
+    "apps.tool.noMatch.message": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "换个关键词试试"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try a different keyword"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "換個關鍵字試試"
+          }
+        }
+      }
+    },
+    "apps.tool.selected": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选 %1$lld 项 · %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld items selected · %2$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已選 %1$lld 項 · %2$@"
+          }
+        }
+      }
+    },
+    "apps.tool.uninstall": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载所选"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall Selected"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸載所選"
           }
         }
       }
@@ -11614,6 +11834,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "檢視已安裝的套件與更新狀態，並清理快取、舊版本和無用依賴"
+          }
+        }
+      }
+    },
+    "sidebar.appUninstall": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用卸载"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Uninstall"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "應用卸載"
+          }
+        }
+      }
+    },
+    "sidebar.appUninstall.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载已安装的应用，连同其在 ~/Library 下的残留文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall installed apps together with their leftover files in ~/Library"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸載已安裝的應用程式，連同其在 ~/Library 下的殘留檔案"
           }
         }
       }

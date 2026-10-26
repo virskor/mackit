@@ -322,6 +322,44 @@ struct AppScannerTests {
         #expect(Set(items.map(\.id)).count == items.count)
     }
 
+    /// The composition the cleanup scan itself runs: regenerable junk only.
+    /// The general module's app-junk row must never see an app bundle or a
+    /// data residue — those belong to the uninstall tool, and a scan that
+    /// listed them would make app data reachable from "clean everything".
+    @Test func scanAppJunkYieldsOnlyRegenerableJunk() {
+        let appsDir = tempDirectory("scan-junk")
+        let home = tempDirectory("scan-junk-home")
+        defer { cleanup(appsDir); cleanup(home) }
+
+        makeApp(at: appsDir, name: "Foo.app", bundleID: "com.example.foo", version: "1.0")
+        makeDirectory("Library/Caches/com.example.foo", under: home)
+        makeFile("Library/Preferences/com.example.foo.plist", under: home)
+        makeDirectory("Library/Application Support/com.example.foo", under: home)
+
+        let junk = AppScanner.scanAppJunk(roots: [appsDir.path], home: home.path)
+
+        #expect(junk.count == 1, "only the cache is regenerable junk, got \(junk.map(\.path))")
+        let cache = junk[0]
+        #expect(cache.category == .appJunk)
+        #expect(cache.ruleID == AppScanner.junkRuleID)
+        #expect(cache.appKind == .residue(.caches))
+        #expect(cache.holdsLiveAppData == false)
+        // Every entry still carries the app identity the general page groups by
+        #expect(cache.bundleID == "com.example.foo")
+        #expect(cache.appName == "Foo")
+    }
+
+    @Test func scanAppJunkReturnsEmptyForCleanHome() {
+        let appsDir = tempDirectory("scan-junk-clean")
+        let home = tempDirectory("scan-junk-clean-home")
+        defer { cleanup(appsDir); cleanup(home) }
+
+        makeApp(at: appsDir, name: "Foo.app", bundleID: "com.example.foo", version: "1.0")
+        makeFile("Library/Preferences/com.example.foo.plist", under: home)
+
+        #expect(AppScanner.scanAppJunk(roots: [appsDir.path], home: home.path).isEmpty)
+    }
+
     // MARK: - Clean engine running-app checks
 
     /// The running-app guard is scoped to what deleting it would actually

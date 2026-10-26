@@ -33,7 +33,8 @@ What Mackit does:
 
 - **One-click scan**: 60+ path rules + 12 command-line clean rules, streamed into the list while the scan is still running
 - **Three risk levels**: `Safe` (pure cache, recreated by the tool) / `Careful` (needs re-download or rebuild) / `Caution` (Trash, iOS backups, etc. — extra confirmation required)
-- **App uninstall**: scans installed apps in `/Applications` and `~/Applications` together with their leftovers in `~/Library` (app support, caches, containers, preferences, login items…); running apps are refused
+- **App uninstall**: a tool page (sidebar "Tools" section) listing installed apps in `/Applications` and `~/Applications` together with their leftovers in `~/Library` (app support, caches, containers, preferences, login items…), uninstalling an app with its leftovers or sweeping the leftovers alone; running apps are refused
+- **App junk sweep**: the cleanup scan covers the regenerable part of an app's leftovers (caches, HTTP storages, WebKit data, logs, crash reports) in the general module's "App Junk" row — per app, so you can keep one app's caches while sweeping the rest
 - **Build artifact scan**: point it at a directory (e.g. `~/Projects`) to find `node_modules`, `build`, `Pods`, `.dart_tool`, `DerivedData`, `target`, `.venv` and other rebuildable folders
 - **Command-line cleaning**: `go clean -cache`, `npm cache clean`, `brew cleanup`, `dart pub cache clean`, etc.
 - **Menu bar panel**: a resident menu bar icon opens a panel with reclaimable space, CPU / memory / temperature, per-app memory ranking with one-tap "free memory", free disk space and a CPU graph
@@ -89,7 +90,7 @@ swift test
 1. The first launch scans automatically; **nothing is checked by default** — you decide what to delete
 2. Browse by category in the sidebar, or search items / paths from the toolbar
 3. Add your code roots under "Settings › Project directories" to scan for build artifacts like `node_modules`
-4. To uninstall an app: right-click the app row in the "Apps" category → "Uninstall with leftover files…" (or "Clean leftover files only…")
+4. To uninstall an app: open the "App Uninstall" tool in the sidebar's Tools section, check the app (or expand the row to check individual leftover files), and confirm
 5. After checking items, click "Clean X GB" in the toolbar; the confirmation panel lists the details and risk notes
 6. Keep "Move to Trash" enabled and empty the Trash only after you're sure
 
@@ -106,7 +107,6 @@ Keyboard shortcuts:
 
 | Category | Contents |
 | --- | --- |
-| Apps | Installed apps in `/Applications` and `~/Applications`, plus their leftovers in `~/Library` (app support, caches, containers, preferences, ByHost, window state, HTTP storage, WebKit, cookies, app scripts, login items, logs, crash reports) |
 | Build artifacts | node_modules, build, Pods, .gradle, .dart_tool, DerivedData, dist, target, .venv, __pycache__, etc. |
 | Xcode | DerivedData, Archives, iOS/watchOS DeviceSupport, DocumentationCache, module caches |
 | Simulators | dyld caches, in-device app caches, device temp dirs, simulator logs |
@@ -126,14 +126,16 @@ Command-line clean items are grouped under their tool's category, shown alongsid
 
 ### App uninstall
 
-The "Apps" category is produced together with the main scan. Each app takes one row in the table showing its real icon, version, size and leftover-file count; every leftover file is also an independent row that can be checked on its own. Right-clicking an app row offers two shortcuts:
+App uninstalling is its own tool page in the sidebar's Tools section, not part of the cleanup scan: the page lists every installed app with its real icon, version, size and leftover-file count, and one row per app with a tri-state checkbox — checking it selects the app bundle and all of its leftover files at once, and expanding the row reveals each leftover file with its own checkbox, so a single cache or preferences file can be kept or removed on its own. Right-clicking an app row offers the two shortcuts:
 
-- **Uninstall with leftover files…**: checks the app itself plus all of its leftover files and opens the clean confirmation
+- **Uninstall with leftover files…**: checks the app itself plus all of its leftover files and opens the confirmation
 - **Clean leftover files only…**: cleans leftovers, keeps the app
 
-Uninstalling reuses the unified clean flow: both the app and its leftover files follow the "Settings › Clean method" setting — move to Trash (reversible) or delete permanently. Running apps are refused, with a result note asking you to quit them first. Leftover files are labeled by location — caches and logs are "Safe"; app support, preferences, containers and other places that may hold user data are "Careful".
+Uninstalling reuses the unified clean flow: both the app and its leftover files follow the "Settings › Clean method" setting — move to Trash (reversible) or delete permanently. Running apps are refused, with a result note asking you to quit them first; the confirmation sheet names them in advance. Leftover files are labeled by location — caches and logs are "Safe"; app support, preferences, containers and other places that may hold user data are "Careful".
 
-If only the app itself is checked, the clean confirmation panel points out how many associated files are still unchecked (count and size per app) and offers a "Select all" shortcut, so you don't end up with an empty shell of a directory and the caches still on disk.
+If only the app itself is checked, the confirmation sheet points out how many associated files are still unchecked (count and size per app) and offers a "Select all" shortcut, so you don't end up with an empty shell of a directory and the caches still on disk.
+
+What the cleanup scan keeps from the app world is the regenerable half: the general module's "App Junk" row sweeps caches, HTTP storages, WebKit data, logs and crash reports per app — junk an app rebuilds on demand — so you can free that space without uninstalling anything, and no app data is ever reachable from the cleanup scan.
 
 Known limitations: Group Containers (requires reading per-app entitlements), app-bundled uninstallers and system-level LaunchAgents/Daemons (need admin rights) are not covered; apps installed in custom locations discovered via a full Spotlight scan are out of scope as well.
 
@@ -206,7 +208,7 @@ Sources/Mackit/
 ├── Models/                       # data models: items, categories, risk levels, scan rules, comparators
 ├── Engine/
 │   ├── RulesCatalog.swift        # 60+ scan rules and 12 CLI clean commands
-│   ├── AppScanner.swift          # installed-app discovery and leftover detection
+│   ├── AppScanner.swift          # installed-app discovery and leftover detection (feeds the uninstall tool and the app-junk row)
 │   ├── FileSystem.swift          # size computation, globbing, tool lookup, volume capacity
 │   ├── Scanner.swift             # concurrent scanning + project directory traversal
 │   ├── DiskAnalyzer.swift        # disk space analysis: per-directory listing + recursive measurement
@@ -218,7 +220,9 @@ Sources/Mackit/
 │   └── UpdateController.swift    # Sparkle auto-update
 ├── ViewModels/
 │   ├── AppViewModel.swift        # state machine: scan, selection, clean, settings (one per process)
-│   └── DiskAnalysisModel.swift   # disk analysis page: navigation, streaming measurement, cache
+│   ├── DiskAnalysisModel.swift   # disk analysis page: navigation, streaming measurement, cache
+│   ├── HomebrewModel.swift       # Homebrew manager page: snapshot, sections, actions, search
+│   └── AppUninstallModel.swift   # app uninstall page: app list, selection, uninstall flow
 ├── Views/                        # SwiftUI: main window, tray panel, overlay, settings, hardware, disk analysis
 │   └── Components/               #   reusable components (badges, progress ring, notice rows, flow layout…)
 └── Utilities/
@@ -231,12 +235,12 @@ Sources/Mackit/
     ├── Localizable.xcstrings     # three languages (zh-Hans / en / zh-Hant)
     └── sparkle-blue.png          # brand icon (shared by in-app display and the app icon)
 Scripts/                          # build / packaging / icon generation scripts
-Tests/MackitTests/                # 22 test files
+Tests/MackitTests/                # 52 test files
 ```
 
 ### Tests
 
-`swift test`. 22 test files cover the scan engine, clean engine, rule catalog, app uninstall, shared storage, sort comparators, localization key integrity, the update controller and more.
+`swift test`. 52 test files cover the scan engine, clean engine, rule catalog, app uninstall, app junk scanning, shared storage, sort comparators, localization key integrity, the update controller and more.
 
 ### Releasing
 

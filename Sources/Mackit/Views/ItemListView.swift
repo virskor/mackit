@@ -125,15 +125,10 @@ struct ItemListView: View {
 
             TableColumn(L10n.tr("table.name"), sortUsing: JunkItemComparator(field: .name, order: .forward)) { item in
                 HStack(spacing: 8) {
-                    // The app bundle shows its real icon; other entries use the
-                    // category symbol
-                    if let icon = vm.icon(for: item) {
-                        Image(nsImage: icon)
-                            .resizable()
-                            .frame(width: 16, height: 16)
-                    } else {
-                        CategoryIcon(category: item.category)
-                    }
+                    // App bundles no longer appear in this list — uninstalling
+                    // them is the app uninstall tool's page — so every row
+                    // here uses the category symbol.
+                    CategoryIcon(category: item.category)
                     ItemTitleBlock(title: item.title, subtitle: item.detail)
                 }
             }
@@ -188,16 +183,9 @@ struct ItemListView: View {
                 .disabled(single.path.isEmpty)
             Button(L10n.tr("ctx.copyPath"), systemImage: "doc.on.doc") { vm.copyPath(single) }
             Divider()
-            // The two uninstall entry points for the app bundle: the checked
-            // content is decided by the action, independent of the checkbox state
-            // already in the table, so it directly replaces selection before
-            // entering the confirmation panel.
-            if single.appKind == .bundle {
-                Button(L10n.tr("apps.ctx.uninstallWithResidue"), systemImage: "xmark.circle.fill") { vm.uninstallApp(single) }
-                Button(L10n.tr("apps.ctx.residueOnly"), systemImage: "folder.badge.minus") { vm.selectAppResidues(single) }
-                    .disabled(vm.residueIDs(for: single).isEmpty)
-                Divider()
-            }
+            // The uninstall entry points used to live here; uninstalling an
+            // app is now the app uninstall tool's own page, with its own
+            // rows and confirmation.
             Button(L10n.tr("ctx.moveToTrash"), systemImage: "trash", role: .destructive) { vm.trashSingle(single) }
                 .disabled(single.path.isEmpty)
             Divider()

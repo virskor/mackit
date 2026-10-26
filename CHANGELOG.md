@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- App uninstall is its own tool page in the sidebar's Tools section, beside disk analysis, the Homebrew manager and hardware detection. The page lists every installed app in `/Applications` and `~/Applications` with its real icon, version, size and leftover-file count: one row per app with a tri-state checkbox that selects the bundle and all of its leftover files at once, expandable into the individual leftover files — each with its own checkbox, risk label and path — so a single cache or preferences file can be kept or removed on its own. Right-clicking an app row keeps the two shortcuts ("Uninstall with leftover files…" and "Clean leftover files only…"), the confirmation sheet names the apps that are running before the clean refuses them, points out how many leftover files of a checked app are still unchecked with a one-tap "Select all", and the clean itself runs through the same engine the cleanup scan uses — move to Trash or delete permanently per the shared setting, with the running-app refusal intact. The scanned list belongs to the session: leaving the page keeps it, only an explicit rescan re-enumerates, and a finished uninstall drops the removed app from the list in place
+
+### Changed
+
+- Apps are no longer part of the cleanup scan. The scan's app phase now enumerates only the regenerable junk installed apps leave behind (caches, HTTP storages, WebKit data, logs, crash reports), which still feeds the general module's "App Junk" row — per app, so one app's caches can be kept while the rest are swept — while the app bundles and their data residue (preferences, Application Support, containers, cookies…) live exclusively in the uninstall tool. No app data is reachable from the cleanup scan any more, and the "Scan Installed Apps" setting now reads "Scan App Junk", describing the row it actually fills. The cleanup confirmation panel lost its uninstall wording, running-app list and leftover catch-up — all of which moved to the tool's own sheet — and the clean progress overlay and result card became parameterized components (`CleanProgressOverlay` / `CleanResultCard`) that both pages share instead of two copies
+
 ## [1.0.9] - 2026-10-25
 
 ### Added
