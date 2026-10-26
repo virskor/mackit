@@ -91,7 +91,7 @@ struct AppUninstallModelTests {
     ) -> AppUninstallModel {
         let scanned = items ?? sampleItems()
         return AppUninstallModel(
-            scan: { scanned },
+            scan: { AppUninstallModel.AppScanResult(items: scanned) },
             clean: clean ?? fakeClean(),
             isAppRunning: isAppRunning
         )
@@ -107,7 +107,7 @@ struct AppUninstallModelTests {
         var scans = 0
         let model = AppUninstallModel(scan: {
             scans += 1
-            return sampleItems()
+            return AppUninstallModel.AppScanResult(items: sampleItems())
         })
 
         model.activate()
@@ -169,6 +169,50 @@ struct AppUninstallModelTests {
         #expect(copies[0].residues.count == 2 && copies[1].residues.count == 2)
         #expect(Set(copies[0].residues.map(\.id)) == Set(copies[1].residues.map(\.id)),
                 "both copies claim the same leftover files")
+    }
+
+    // MARK: - Last-opened dates
+
+    @Test func groupingCarriesLastOpenedPerApp() {
+        let opened = Date(timeIntervalSince1970: 0)
+        let grouped = AppUninstallModel.group(
+            sampleItems(),
+            lastOpenedByPath: ["/Applications/Foo.app": opened]
+        )
+        #expect(grouped.first { $0.name == "Foo" }?.lastOpened == opened)
+        #expect(grouped.first { $0.name == "Bar" }?.lastOpened == nil,
+                "an app the map holds no date for simply has none")
+    }
+
+    @Test func lastOpenedUnreadableOnlyWhenNothingCouldBeRead() async {
+        let model = makeModel()
+        model.activate()
+        await model.waitUntilSettled()
+        #expect(model.lastOpenedUnreadable, "an app listed with no date at all reads as unreadable")
+
+        // One date among the apps means the index is readable: the rest were
+        // genuinely never launched, and the page may say so.
+        let withOne = AppUninstallModel(scan: {
+            AppUninstallModel.AppScanResult(items: sampleItems(), lastOpenedByPath: ["/Applications/Foo.app": Date()])
+        })
+        withOne.activate()
+        await withOne.waitUntilSettled()
+        #expect(!withOne.lastOpenedUnreadable)
+        #expect(entry("Foo", in: withOne).lastOpened != nil)
+        #expect(entry("Bar", in: withOne).lastOpened == nil)
+    }
+
+    @Test func lastOpenedUnreadableIsFalseBeforeTheFirstScan() {
+        let model = makeModel()
+        #expect(!model.lastOpenedUnreadable, "an empty list is not a read failure")
+    }
+
+    /// The lookup must degrade to nil, never crash, for paths the system
+    /// holds no metadata for — that is also the shape of an unreadable
+    /// index, which the page reports through `lastOpenedUnreadable`.
+    @Test func appLastOpenedReturnsNilForPathsWithoutARecord() {
+        #expect(AppLastOpened.lastOpened(at: "/definitely/not/an/app.app") == nil)
+        #expect(AppLastOpened.lastOpened(at: "") == nil)
     }
 
     // MARK: - Selection
@@ -282,7 +326,7 @@ struct AppUninstallModelTests {
 
     @Test func beginCleanForwardsTheMoveToTrashSetting() async {
         let call = CleanCall()
-        let model = AppUninstallModel(scan: { sampleItems() }, clean: fakeClean(call: call))
+        let model = AppUninstallModel(scan: { AppUninstallModel.AppScanResult(items: sampleItems()) }, clean: fakeClean(call: call))
         model.activate()
         await model.waitUntilSettled()
         model.setAppSelected(entry("Bar", in: model), selected: true)
@@ -301,7 +345,7 @@ struct AppUninstallModelTests {
         let prefsID = "app.residue::/Users/x/Library/Preferences/com.example.foo.plist"
         let cacheID = "app.junk::/Users/x/Library/Caches/com.example.foo"
         let model = AppUninstallModel(
-            scan: { sample },
+            scan: { AppUninstallModel.AppScanResult(items: sample) },
             clean: fakeClean(failing: [bundleID, prefsID])
         )
         model.activate()
@@ -331,7 +375,7 @@ struct AppUninstallModelTests {
         let prefsID = "app.residue::/Users/x/Library/Preferences/com.example.foo.plist"
         // The bundle and the cache go; only the preferences file is refused.
         let model = AppUninstallModel(
-            scan: { sample },
+            scan: { AppUninstallModel.AppScanResult(items: sample) },
             clean: fakeClean(failing: [prefsID])
         )
         model.activate()
@@ -390,7 +434,7 @@ struct AppUninstallModelTests {
     @Test func cancelCleanMidRunKeepsWhatAlreadyLeftTheDisk() async {
         let gate = Gate()
         let model = AppUninstallModel(
-            scan: { sampleItems() },
+            scan: { AppUninstallModel.AppScanResult(items: sampleItems()) },
             clean: { items, _ in
                 AsyncStream(CleanEvent.self) { continuation in
                     // The blocking wait lives in a detached task: the build
@@ -509,7 +553,7 @@ struct AppUninstallModelTests {
         // every call, so the test can change what the "disk" holds between
         // scans without mutating a captured local.
         let disk = ScanBox(sampleItems())
-        let model = AppUninstallModel(scan: { disk.items })
+        let model = AppUninstallModel(scan: { AppUninstallModel.AppScanResult(items: disk.items) })
         model.activate()
         await model.waitUntilSettled()
         model.setAppSelected(entry("Foo", in: model), selected: true)
@@ -536,7 +580,7 @@ struct AppUninstallModelTests {
     @Test func iconIsCachedPerPath() {
         var calls = 0
         let model = AppUninstallModel(
-            scan: { [] },
+            scan: { AppUninstallModel.AppScanResult(items: []) },
             iconForPath: { _ in
                 calls += 1
                 return NSImage()
@@ -603,7 +647,14 @@ struct AppUninstallModelTests {
             scan: {
                 await Task.detached(priority: .utility) {
                     let discovered = AppScanner.scanApps(roots: [fixture.apps.path], home: fixture.home.path)
-                    return await ScanEngine.measure(discovered)
+                    let measured = await ScanEngine.measure(discovered)
+                    // A fixture app has no Spotlight usage record, so the
+                    // date is supplied here — the plumbing under test is the
+                    // scan-result → entry path, not the system's record.
+                    return AppUninstallModel.AppScanResult(
+                        items: measured,
+                        lastOpenedByPath: [fixture.appPath: Date(timeIntervalSince1970: 0)]
+                    )
                 }.value
             },
             clean: { items, moveToTrash in
@@ -614,6 +665,11 @@ struct AppUninstallModelTests {
         await model.waitUntilSettled()
         #expect(model.apps.count == 1)
         #expect(model.apps[0].residues.count == 2, "cache + preferences")
+        // The last-opened date survived discovery, grouping and the page's
+        // read path, and one date among the apps means the dates are
+        // readable — no "unavailable" notice.
+        #expect(model.apps[0].lastOpened != nil)
+        #expect(!model.lastOpenedUnreadable)
 
         model.setAppSelected(model.apps[0], selected: true)
         model.requestUninstall()
@@ -640,7 +696,7 @@ struct AppUninstallModelTests {
             scan: {
                 await Task.detached(priority: .utility) {
                     let discovered = AppScanner.scanApps(roots: [fixture.apps.path], home: fixture.home.path)
-                    return await ScanEngine.measure(discovered)
+                    return AppUninstallModel.AppScanResult(items: await ScanEngine.measure(discovered))
                 }.value
             },
             clean: { items, moveToTrash in
@@ -654,6 +710,9 @@ struct AppUninstallModelTests {
         await model.waitUntilSettled()
         model.setAppSelected(model.apps[0], selected: true)
         #expect(model.runningAppNames == ["Foo"], "the confirmation lists it in advance")
+        // No dates at all with an app listed: the page reads that as an
+        // unreadable index rather than as "never launched".
+        #expect(model.lastOpenedUnreadable)
 
         model.requestUninstall()
         model.beginClean(moveToTrash: false)

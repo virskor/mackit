@@ -8054,6 +8054,94 @@
         }
       }
     },
+    "apps.tool.lastOpened": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次打开：%1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last opened: %1$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次開啟：%1$@"
+          }
+        }
+      }
+    },
+    "apps.tool.neverOpened": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从未打开"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never opened"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從未開啟"
+          }
+        }
+      }
+    },
+    "apps.tool.lastOpenedUnavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取应用的上次打开时间"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last-Used Times Unavailable"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法讀取應用程式的上次開啟時間"
+          }
+        }
+      }
+    },
+    "apps.tool.lastOpenedUnavailableHint": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取该时间需要完全磁盘访问权限：在「系统设置 › 隐私与安全性 › 完全磁盘访问权限」中为 Mackit 授权，然后重新扫描"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading them requires Full Disk Access: grant Mackit access under System Settings › Privacy & Security › Full Disk Access, then scan again"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "讀取該時間需要完全磁碟存取權限：在「系統設定 › 隱私與安全性 › 完全磁碟存取權限」中為 Mackit 授權，然後重新掃描"
+          }
+        }
+      }
+    },
     "apps.tool.empty.title": {
       "localizations": {
         "zh-Hans": {

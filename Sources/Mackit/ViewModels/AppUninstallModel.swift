@@ -18,12 +18,33 @@ import AppKit
 @MainActor
 @Observable
 final class AppUninstallModel {
+    /// One scan's findings: the items, plus the per-app facts the scanner
+    /// read alongside them.
+    struct AppScanResult: Sendable {
+        let items: [JunkItem]
+        /// App bundle path → when the app was last opened. Apps the system
+        /// holds no record for are simply absent — which is also what an
+        /// unreadable Spotlight index looks like, so the caller must not
+        /// read absence as "never launched" without checking
+        /// `lastOpenedUnreadable` first (see `AppLastOpened`).
+        let lastOpenedByPath: [String: Date]
+
+        init(items: [JunkItem], lastOpenedByPath: [String: Date] = [:]) {
+            self.items = items
+            self.lastOpenedByPath = lastOpenedByPath
+        }
+    }
+
     /// One installed app with the residue entries found for it.
     struct AppEntry: Identifiable, Sendable {
         let bundle: JunkItem
         /// The app's leftover files, largest first — the order the expanded
         /// row lists them in.
         let residues: [JunkItem]
+        /// When the app was last opened, or nil when the system holds no
+        /// readable record — which may also mean the last-used dates are
+        /// unreadable at all (see `AppLastOpened`).
+        let lastOpened: Date?
 
         var id: String { bundle.id }
         var name: String { bundle.title }
@@ -92,10 +113,10 @@ final class AppUninstallModel {
 
     // MARK: Dependencies
 
-    /// Discovers apps and their residue, measured. Runs off the main thread
-    /// by its default implementation — enumerating /Applications and probing
-    /// ~/Library is seconds of IO.
-    private let scan: () async -> [JunkItem]
+    /// Discovers apps, their residue and their last-used dates, measured.
+    /// Runs off the main thread by its default implementation — enumerating
+    /// /Applications and probing ~/Library is seconds of IO.
+    private let scan: () async -> AppScanResult
     /// Removes the given items, reporting each outcome.
     private let clean: ([JunkItem], Bool) -> AsyncStream<CleanEvent>
     /// Whether the app with this bundle ID is running.
@@ -134,14 +155,21 @@ final class AppUninstallModel {
     @ObservationIgnored private var unselectedResiduesCache: (key: Int, value: [AppResidueSummary])?
 
     init(
-        scan: @escaping @MainActor () async -> [JunkItem] = {
+        scan: @escaping @MainActor () async -> AppScanResult = {
             // Discovery and measurement share one detached task, the same
             // shape the cleanup scan's app phase used: synchronous directory
             // traversal on the main thread would freeze the UI, and
             // measurement throttles itself inside ScanEngine.
             await Task.detached(priority: .utility) {
                 let discovered = AppScanner.scanApps()
-                return await ScanEngine.measure(discovered)
+                let measured = await ScanEngine.measure(discovered)
+                var lastOpenedByPath: [String: Date] = [:]
+                for item in measured where item.appKind == .bundle {
+                    if let date = AppLastOpened.lastOpened(at: item.path) {
+                        lastOpenedByPath[item.path] = date
+                    }
+                }
+                return AppScanResult(items: measured, lastOpenedByPath: lastOpenedByPath)
             }.value
         },
         clean: @escaping @MainActor ([JunkItem], Bool) -> AsyncStream<CleanEvent> = { items, moveToTrash in
@@ -191,13 +219,13 @@ final class AppUninstallModel {
         outcomes = []
         let startedAt = ContinuousClock.now
         scanTask = Task { [scan] in
-            let items = await scan()
+            let result = await scan()
             guard !Task.isCancelled else { return }
             self.isLoading = false
             self.hasScanned = true
-            self.apps = Self.group(items)
-            self.selectedIDs.formIntersection(Set(items.map(\.id)))
-            MackitLog.apps.info("uninstall tool: \(self.apps.count, privacy: .public) apps, \(items.count, privacy: .public) entries, took \(MackitLog.duration(.now - startedAt), privacy: .public)")
+            self.apps = Self.group(result.items, lastOpenedByPath: result.lastOpenedByPath)
+            self.selectedIDs.formIntersection(Set(result.items.map(\.id)))
+            MackitLog.apps.info("uninstall tool: \(self.apps.count, privacy: .public) apps, \(result.items.count, privacy: .public) entries, took \(MackitLog.duration(.now - startedAt), privacy: .public)")
         }
     }
 
@@ -211,7 +239,7 @@ final class AppUninstallModel {
     /// uninstall one at a time, and both legitimately claim the same residue
     /// files. Checking both is still safe — the selection is a set of item
     /// ids, so each path is deleted once.
-    static func group(_ items: [JunkItem]) -> [AppEntry] {
+    static func group(_ items: [JunkItem], lastOpenedByPath: [String: Date] = [:]) -> [AppEntry] {
         var residuesByID: [String: [JunkItem]] = [:]
         for item in items where item.appKind?.isResidue == true {
             residuesByID[item.bundleID ?? "", default: []].append(item)
@@ -221,13 +249,28 @@ final class AppUninstallModel {
             .map { bundle in
                 AppEntry(
                     bundle: bundle,
-                    residues: (residuesByID[bundle.bundleID ?? ""] ?? []).sorted { $0.size > $1.size }
+                    residues: (residuesByID[bundle.bundleID ?? ""] ?? []).sorted { $0.size > $1.size },
+                    lastOpened: lastOpenedByPath[bundle.path]
                 )
             }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     // MARK: Derived data
+
+    /// Whether the last-used dates are unreadable rather than merely absent.
+    ///
+    /// An index the process cannot read (Full Disk Access not granted — see
+    /// `AppLastOpened`) and a machine where nothing was ever launched both
+    /// produce zero dates, and the page must not present the second as
+    /// "never opened" for every app. With apps listed but not one date among
+    /// them, the overwhelmingly likely cause is the unreadable index, so the
+    /// page says that instead of inventing launch history. The failure mode
+    /// of the heuristic is a harmless extra notice on a machine where the
+    /// user truly launched none of their apps.
+    var lastOpenedUnreadable: Bool {
+        !apps.isEmpty && apps.allSatisfy { $0.lastOpened == nil }
+    }
 
     /// The apps the search field leaves, in list order.
     var visibleApps: [AppEntry] {
@@ -460,7 +503,11 @@ final class AppUninstallModel {
                 selectedIDs.subtract(entry.residues.map(\.id))
                 return nil
             }
-            return AppEntry(bundle: entry.bundle, residues: entry.residues.filter { !ids.contains($0.id) })
+            return AppEntry(
+                bundle: entry.bundle,
+                residues: entry.residues.filter { !ids.contains($0.id) },
+                lastOpened: entry.lastOpened
+            )
         }
         selectedIDs.subtract(ids)
     }

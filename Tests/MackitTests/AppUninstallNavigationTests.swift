@@ -19,7 +19,7 @@ struct AppUninstallNavigationTests {
         let model = AppUninstallModel(
             scan: {
                 counters.scans += 1
-                return []
+                return AppUninstallModel.AppScanResult(items: [])
             }
         )
         return (model, counters)

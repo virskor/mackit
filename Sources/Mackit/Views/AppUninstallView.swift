@@ -212,21 +212,40 @@ struct AppUninstallView: View {
     }
 
     private var list: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(model.visibleApps) { entry in
-                    appRow(entry)
-
-                    if expandedIDs.contains(entry.id) {
-                        residueRows(entry)
-                    }
-
-                    Divider()
-                        .padding(.leading, 46)
-                }
+        VStack(spacing: 0) {
+            // The last-used dates live in the Spotlight index, which a
+            // process without Full Disk Access cannot read; the page says so
+            // instead of presenting "never opened" for every app — the same
+            // honest-degradation shape the disk analysis tool uses for its
+            // unreadable folders.
+            if model.lastOpenedUnreadable {
+                NoticeRow(
+                    systemImage: "exclamationmark.triangle.fill",
+                    tint: .orange,
+                    title: L10n.tr("apps.tool.lastOpenedUnavailable"),
+                    message: L10n.tr("apps.tool.lastOpenedUnavailableHint")
+                )
+                .padding(.horizontal, 28)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(model.visibleApps) { entry in
+                        appRow(entry)
+
+                        if expandedIDs.contains(entry.id) {
+                            residueRows(entry)
+                        }
+
+                        Divider()
+                            .padding(.leading, 46)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
         }
     }
 
@@ -277,6 +296,7 @@ struct AppUninstallView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                lastOpenedLine(entry)
             }
 
             Spacer(minLength: 8)
@@ -303,6 +323,26 @@ struct AppUninstallView: View {
             .foregroundStyle(state == .none ? Color.secondary : .green)
             .frame(width: 18)
             .symbolEffect(.bounce, value: state == .all)
+    }
+
+    /// "Last opened 3 days ago" — the signal that says whether an app is
+    /// still worth keeping, which is the question this page exists to
+    /// answer. An app with no date on a machine where the dates are
+    /// readable was never launched; when they are unreadable the line is
+    /// omitted rather than claiming a history the system did not give us.
+    @ViewBuilder
+    private func lastOpenedLine(_ entry: AppUninstallModel.AppEntry) -> some View {
+        if let lastOpened = entry.lastOpened {
+            Text(verbatim: L10n.fmt("apps.tool.lastOpened", Formatters.relative(lastOpened)))
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+        } else if !model.lastOpenedUnreadable {
+            Text(verbatim: L10n.tr("apps.tool.neverOpened"))
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+        }
     }
 
     private func residueRows(_ entry: AppUninstallModel.AppEntry) -> some View {
