@@ -274,12 +274,16 @@ struct AppUninstallView: View {
 
     private func appRow(_ entry: AppUninstallModel.AppEntry) -> some View {
         let state = model.selectionState(of: entry)
-        return HStack(spacing: 10) {
-            checkbox(state)
-                .onTapGesture { model.setAppSelected(entry, selected: state != .all) }
-
-            // The disclosure only exists when there are leftover files to
-            // show; a chevron that expands nothing reads as a broken control.
+        // Two sibling buttons, never nested gestures: the row used to be one
+        // onTapGesture with the checkbox and the chevron inside it, so a tap
+        // on the chevron fired the expand *and* the select — the two actions
+        // fought over every click. One button per action is the pattern the
+        // disk analysis rows and the general module's row switches use.
+        return HStack(spacing: 0) {
+            // Expand: the disclosure sits at the row's leading edge, Finder
+            // style, so the "open this app's leftovers" target is next to the
+            // app it belongs to. A row with no leftovers keeps the column so
+            // every row's content shares one left edge.
             if !entry.residues.isEmpty {
                 Button {
                     toggleExpanded(entry)
@@ -288,48 +292,60 @@ struct AppUninstallView: View {
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(expandedIDs.contains(entry.id) ? 90 : 0))
-                        .frame(width: 14)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             } else {
-                Color.clear.frame(width: 14)
+                Color.clear.frame(width: 24)
             }
 
-            // The app's real icon, drawn at 24: this page is where the user
-            // picks an app to remove, and a 16pt thumbnail next to a
-            // 13pt name reads as a list of paths rather than of apps — the
-            // size Finder and every uninstaller use for the same job.
-            if let icon = model.icon(forPath: entry.bundle.path) {
-                Image(nsImage: icon)
-                    .resizable()
-                    .frame(width: 24, height: 24)
-            } else {
-                CategoryIcon(category: .apps, size: 18, width: 24)
+            // Select: the checkbox is the state's indicator and everything
+            // around it is the same action's click target — the general
+            // module's row switch works the same way.
+            Button {
+                model.setAppSelected(entry, selected: state != .all)
+            } label: {
+                HStack(spacing: 10) {
+                    checkbox(state)
+
+                    // The app's real icon, drawn at 24: this page is where
+                    // the user picks an app to remove, and a 16pt thumbnail
+                    // next to a 13pt name reads as a list of paths rather
+                    // than of apps.
+                    if let icon = model.icon(forPath: entry.bundle.path) {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .frame(width: 24, height: 24)
+                    } else {
+                        CategoryIcon(category: .apps, size: 18, width: 24)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: entry.name)
+                            .font(.system(size: 13, weight: .medium))
+                            .lineLimit(1)
+                        // "Version 2.0 · 3 leftover files" — the scanner's
+                        // own composition, with missing parts omitted.
+                        Text(verbatim: entry.bundle.detail)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        lastOpenedLine(entry)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Text(verbatim: Formatters.bytes(entry.totalSize))
+                        .font(.system(size: 11, weight: .medium))
+                        .monospacedDigit()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .contentShape(Rectangle())
             }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: entry.name)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                // "Version 2.0 · 3 leftover files" — the scanner's own
-                // composition, with missing parts omitted.
-                Text(verbatim: entry.bundle.detail)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                lastOpenedLine(entry)
-            }
-
-            Spacer(minLength: 8)
-
-            Text(verbatim: Formatters.bytes(entry.totalSize))
-                .font(.system(size: 11, weight: .medium))
-                .monospacedDigit()
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .contentShape(Rectangle())
-        .onTapGesture { model.setAppSelected(entry, selected: state != .all) }
         .contextMenu { contextMenu(for: entry) }
     }
 
@@ -369,45 +385,53 @@ struct AppUninstallView: View {
     private func residueRows(_ entry: AppUninstallModel.AppEntry) -> some View {
         VStack(spacing: 0) {
             ForEach(entry.residues, id: \.id) { item in
-                HStack(spacing: 10) {
-                    Image(systemName: model.isSelected(item) ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 13))
-                        .foregroundStyle(model.isSelected(item) ? .green : Color.secondary.opacity(0.45))
-                        .frame(width: 16)
-                        .onTapGesture { model.setResidueSelected(item, selected: !model.isSelected(item)) }
+                // One button for the whole row, the checkbox a passive
+                // indicator inside it — the same shape as the general
+                // module's sub-rows. The row used to nest the checkbox's own
+                // tap inside the row's, so a click on the checkbox toggled
+                // twice and nothing happened.
+                Button {
+                    model.setResidueSelected(item, selected: !model.isSelected(item))
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: model.isSelected(item) ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 13))
+                            .foregroundStyle(model.isSelected(item) ? .green : Color.secondary.opacity(0.45))
+                            .frame(width: 16)
 
-                    Text(verbatim: item.title)
-                        .font(.system(size: 12))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(minWidth: 120, alignment: .leading)
+                        Text(verbatim: item.title)
+                            .font(.system(size: 12))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(minWidth: 120, alignment: .leading)
 
-                    Text(verbatim: residueLabel(item))
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        Text(verbatim: residueLabel(item))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
 
-                    Spacer(minLength: 8)
+                        Spacer(minLength: 8)
 
-                    Text(verbatim: item.abbreviatedPath)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.head)
-                        .frame(maxWidth: 240)
-                        .help(item.displayPath)
+                        Text(verbatim: item.abbreviatedPath)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                            .frame(maxWidth: 240)
+                            .help(item.displayPath)
 
-                    Text(verbatim: item.sizeText)
-                        .font(.system(size: 11, weight: .medium))
-                        .monospacedDigit()
+                        Text(verbatim: item.sizeText)
+                            .font(.system(size: 11, weight: .medium))
+                            .monospacedDigit()
 
-                    RiskBadge(risk: item.risk)
+                        RiskBadge(risk: item.risk)
+                    }
+                    .padding(.leading, 60)
+                    .padding(.trailing, 12)
+                    .padding(.vertical, 5)
+                    .contentShape(Rectangle())
                 }
-                .padding(.leading, 60)
-                .padding(.trailing, 12)
-                .padding(.vertical, 5)
-                .contentShape(Rectangle())
-                .onTapGesture { model.setResidueSelected(item, selected: !model.isSelected(item)) }
+                .buttonStyle(.plain)
             }
         }
     }
