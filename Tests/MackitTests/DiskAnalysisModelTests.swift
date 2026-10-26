@@ -625,6 +625,110 @@ struct DiskAnalysisModelTests {
         #expect(!model.canGoBack, "a dropped jump must not touch the history either")
     }
 
+    /// A scan that starts no count of its own — because the history already
+    /// remembers one — must still clear the handle the previous scan's count
+    /// left behind. `waitUntilSettled` polls that handle, so a stale one spins
+    /// the poll forever; the regression this guards used to hang the test
+    /// rather than fail it.
+    @Test func aScanThatStartsNoCountLeavesNoHandleBehind() async throws {
+        // A wide tree with a shallow budget: the count pass walks every
+        // directory while the measurement stops at the budget, so the count is
+        // still in flight when the measurement lands. That is the window in
+        // which a rescan used to inherit the previous count's handle.
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        for group in 0..<10 {
+            for leaf in 0..<30 {
+                let dir = fixture
+                    .appendingPathComponent("group\(group)", isDirectory: true)
+                    .appendingPathComponent("leaf\(leaf)", isDirectory: true)
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                try write(size: 64, at: dir.appendingPathComponent("file.bin"))
+            }
+        }
+        let (history, domain) = Self.historySuite()
+        defer { UserDefaults.standard.removePersistentDomain(forName: domain) }
+
+        let model = DiskAnalysisModel(rootPath: fixture.path, maxDepth: 1, history: history)
+        model.startScan()
+        // Wait for the measurement only: `waitUntilSettled` would also wait for
+        // the count, which is the thing under test.
+        while model.root == nil {
+            try? await Task.sleep(for: .milliseconds(1))
+        }
+
+        // The history now remembers this tree, so this scan starts no count of
+        // its own — and the handle the cancelled one left must go with it.
+        model.startScan()
+        #expect(!model.hasPendingCount, "a scan that starts no count left the previous handle behind")
+
+        let settled = await settlesWithin(.seconds(10)) { await model.waitUntilSettled() }
+        #expect(settled, "waitUntilSettled never returned — a count handle was left behind")
+    }
+
+    /// The first scan of a tree the history already knows starts no count at
+    /// all, so nothing may be left in flight for the poll to wait on.
+    @Test func aRememberedTreeStartsNoCountAndLeavesNothingPending() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        // Canonical spelling, so the home folders the skip set names resolve to
+        // themselves — the signature below has to be the one the model computes,
+        // and it names both spellings when they differ (/var → /private/var).
+        let root = URL(fileURLWithPath: FileSystem.canonical(fixture.path))
+        let (history, domain) = Self.historySuite()
+        defer { UserDefaults.standard.removePersistentDomain(forName: domain) }
+        // A remembered count for exactly this tree and skip set, written the
+        // way a finished scan would have written it.
+        let signature = "1\u{1F}" + [
+            "\(root.path)/Documents",
+            "\(root.path)/Desktop",
+            "\(root.path)/Downloads",
+        ].sorted().joined(separator: "\u{1F}")
+        history.record(root: root.path, signature: signature, directories: 4)
+
+        let model = DiskAnalysisModel(rootPath: root.path, homePath: root.path, maxDepth: 1, history: history)
+        model.startScan()
+        #expect(model.scanEstimatedTotal == 4, "the remembered count is the denominator")
+        #expect(!model.hasPendingCount, "a remembered tree must not start a count")
+
+        let settled = await settlesWithin(.seconds(10)) { await model.waitUntilSettled() }
+        #expect(settled, "waitUntilSettled never returned with nothing in flight")
+    }
+
+    /// Reports whether `body` returned within `budget`, returning as soon as it
+    /// does rather than waiting the budget out.
+    ///
+    /// A body that loses the race is left running rather than cancelled:
+    /// cancelling the model's poll would turn a hang into a busy loop, and by
+    /// then the failure has already been recorded by the caller.
+    private func settlesWithin(
+        _ budget: Duration,
+        _ body: @escaping @Sendable () async -> Void
+    ) async -> Bool {
+        let flag = SettledFlag()
+        let running = Task {
+            await body()
+            await flag.mark()
+        }
+        let deadline = ContinuousClock.now + budget
+        while !(await flag.settled) {
+            if ContinuousClock.now >= deadline { return false }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        _ = await running.value
+        return true
+    }
+
+    /// Whether the awaited body finished; an actor so the two tasks that touch
+    /// it do not race.
+    private actor SettledFlag {
+        private(set) var settled = false
+
+        func mark() {
+            settled = true
+        }
+    }
+
     /// An isolated UserDefaults domain, so a remembered count never leaks
     /// between tests — or into the app's real history.
     private static func historySuite() -> (ScanProgressHistory, String) {

@@ -119,8 +119,14 @@ enum GeneralSubRowMode: Sendable {
 /// rule appears in exactly one row, and no row references a missing rule.
 enum GeneralCleanLayout {
     /// A 1:1 row: title and note come from the catalog rule itself.
-    private static func ruleRow(_ ruleID: String) -> GeneralRuleRow {
-        let rule = RulesCatalog.scanRules.first { $0.id == ruleID }!
+    ///
+    /// Optional because the id is a literal and the catalog is the source of
+    /// truth: a row whose rule was renamed or removed must drop out of the
+    /// page rather than trap the first time the general page renders. The
+    /// layout test keeps every id in sync with the catalog, so a nil here is a
+    /// developer error the test catches — never a crash in the field.
+    private static func ruleRow(_ ruleID: String) -> GeneralRuleRow? {
+        guard let rule = RulesCatalog.scanRules.first(where: { $0.id == ruleID }) else { return nil }
         return GeneralRuleRow(
             id: ruleID,
             title: rule.title,
@@ -131,6 +137,8 @@ enum GeneralCleanLayout {
         )
     }
 
+    // Optional elements are dropped, so a row whose rule id no longer exists
+    // in the catalog simply disappears from the page (see `ruleRow`).
     static let rows: [GeneralRuleRow] = [
         // system junk
         ruleRow("system.logs"),
@@ -231,7 +239,7 @@ enum GeneralCleanLayout {
             risk: .safe
         ),
         ruleRow("browser.firefox-cache"),
-    ]
+    ].compactMap { $0 }
 
     /// The rows of one group, in display order.
     static func rows(of group: GeneralCleanGroup) -> [GeneralRuleRow] {

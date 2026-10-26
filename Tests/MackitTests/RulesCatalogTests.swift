@@ -124,6 +124,73 @@ struct RulesCatalogTests {
         #expect(found.isEmpty)
     }
 
+    /// A self-referential symlink inside a project must not be walked once per
+    /// depth level: a symlinked directory is not the project's own directory,
+    /// and a loop otherwise gets a fresh path spelling at every level, so a
+    /// path-keyed dedup cannot recognize it and the same subtree is measured
+    /// (and reported) repeatedly.
+    ///
+    /// The local filesystems make `contentsOfDirectory` refuse to open a
+    /// symlink, so this pins the intent rather than guarding a live hole — the
+    /// exclusion is now explicit in the walk instead of incidental.
+    @Test func projectJunkScanDoesNotFollowSymlinkLoops() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-symlink-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let project = root.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: project.appendingPathComponent("node_modules", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        // The loop: the project contains a link back to itself.
+        try FileManager.default.createSymbolicLink(
+            at: project.appendingPathComponent("loop"),
+            withDestinationURL: project
+        )
+
+        let found = ScanEngine.scanProjectJunk(
+            root: root.path,
+            names: ProjectJunkNames.defaults,
+            maxDepth: 8
+        )
+
+        #expect(found.count == 1, "the loop produced \(found.count) entries: \(found.map(\.path))")
+        #expect(found.first?.title == "node_modules")
+    }
+
+    /// The same directory reached through two paths is one subtree: a second
+    /// link into a directory that is also on the regular path must not have its
+    /// contents measured twice, which would double-count the bytes and report
+    /// the same target as two separate items. The walk deduplicates by vnode,
+    /// so the alias cannot produce a second pass over the same tree.
+    @Test func projectJunkScanCountsADirectoryReachedTwiceOnce() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-alias-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let shared = root.appendingPathComponent("shared", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: shared.appendingPathComponent("build", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        // A second path to the same directory.
+        try FileManager.default.createSymbolicLink(
+            at: root.appendingPathComponent("alias"),
+            withDestinationURL: shared
+        )
+
+        let found = ScanEngine.scanProjectJunk(
+            root: root.path,
+            names: ProjectJunkNames.defaults,
+            maxDepth: 4
+        )
+
+        #expect(found.count == 1, "the aliased directory produced \(found.count) entries: \(found.map(\.path))")
+        #expect(found.first?.title == "build")
+    }
+
     @Test func everyRuleTargetResolvesOrIsEmpty() {
         // Paths in rules must expand; returning empty for nonexistent directories is expected
         for rule in RulesCatalog.scanRules {

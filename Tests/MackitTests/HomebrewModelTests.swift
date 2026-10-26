@@ -534,6 +534,50 @@ struct HomebrewModelTests {
         #expect(none.searchResults?.isEmpty == true)
     }
 
+    /// A superseded search must not overwrite the newer one's results.
+    ///
+    /// Cancellation is what usually stops a stale search, but that is
+    /// incidental to the search's own implementation: an injected search that
+    /// ignores task cancellation — a test double, or a brew that only notices
+    /// the cancel once it already has its answer — would otherwise let an older
+    /// query's rows land while the field shows the newer one.
+    @Test func aSupersededSearchCannotOverwriteTheNewerResults() async {
+        // The search seam answers "slow" after a long pause and pays no
+        // attention to cancellation, which is the worst case the generation
+        // counter has to cover.
+        let model = HomebrewModel(
+            inspect: { nil },
+            loadServices: { [] },
+            loadDiagnostics: { "" },
+            loadConfig: { [] },
+            perform: { action, _ in HomebrewOutcome(action: action, measure: 0, failure: nil) },
+            runSearch: { query in
+                if query == "slow" {
+                    try? await Task.sleep(for: .milliseconds(400))
+                }
+                return [HomebrewSearchResult(
+                    name: query, kind: .formula, description: nil,
+                    latestVersion: "1.0", homepage: nil, license: nil, tap: nil, dependencies: []
+                )]
+            },
+            pillDwell: .seconds(30)
+        )
+
+        model.updateSearchQuery("slow")
+        // Supersede it while the slow answer is still in flight.
+        try? await Task.sleep(for: .milliseconds(350))
+        model.updateSearchQuery("fast")
+        await model.waitUntilSettled()
+        // Give the superseded search every chance to land its answer before
+        // asserting it did not: the newer one has already settled, so anything
+        // that writes now is a stale result.
+        try? await Task.sleep(for: .milliseconds(300))
+
+        #expect(model.searchQuery == "fast")
+        #expect(model.searchResults?.map(\.name) == ["fast"], "the stale query's rows landed: \(model.searchResults?.map(\.name) ?? [])")
+        #expect(!model.searchFailed)
+    }
+
     @Test func installedHitsAreMarked() async {
         let model = makeModel(snapshot: makeSnapshot(formulae: [makePackage("wget")]))
         model.activate()

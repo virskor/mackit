@@ -39,6 +39,27 @@ struct GeneralCleanLayoutTests {
         }
     }
 
+    /// The rows built 1:1 from the catalog must all survive the lookup. The
+    /// lookup is optional by design — a row whose rule id was renamed drops out
+    /// of the page instead of trapping the first render — so the test pins that
+    /// every id it names is still there.
+    @Test func everyCatalogDerivedRowSurvivesTheLookup() {
+        let catalogDerived = [
+            "system.logs", "system.crashreporter", "system.saved-state",
+            "system.autosave", "system.itunes-ipsw", "system.ios-backups",
+            "trash.home", "browser.firefox-cache",
+        ]
+        let rowIDs = Set(GeneralCleanLayout.rows.map(\.id))
+        for id in catalogDerived {
+            #expect(rowIDs.contains(id), "\(id) lost its row — its rule id may have been renamed")
+        }
+        // No row may appear twice, and no row id may be empty: both would make
+        // the page's ForEach identity ambiguous.
+        let allIDs = GeneralCleanLayout.rows.map(\.id)
+        #expect(Set(allIDs).count == allIDs.count, "duplicate row ids: \(allIDs)")
+        #expect(allIDs.allSatisfy { !$0.isEmpty })
+    }
+
     /// App junk is the general module's own group: every app's regenerable
     /// residue rolls up into it, so a user can sweep caches without
     /// uninstalling anything. It is `.safe`, so it arrives pre-checked like

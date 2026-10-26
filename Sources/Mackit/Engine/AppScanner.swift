@@ -189,6 +189,27 @@ enum AppScanner {
         let kind: ResidueKind
     }
 
+    /// Whether a bundle-supplied string can be spliced into a probe path as a
+    /// single component.
+    ///
+    /// The bundle id and the app name are read from the bundle's own
+    /// Info.plist, which makes them untrusted input: a bundle directory named
+    /// `..app` resolves to the app name "..", and a crafted
+    /// `CFBundleIdentifier` can spell `../../Documents`. Spliced into a probe
+    /// such as `Library/Application Support/\(id)` those resolve *above* the
+    /// probed directory, and the resolved path is what the residue list hands
+    /// the uninstall tool as a deletable item — an entire `~/Library` or
+    /// `~/Documents` offered as one app's leftovers. Refusing anything that is
+    /// not a plain file name keeps every probe inside its own parent.
+    static func isSafeComponent(_ value: String) -> Bool {
+        guard !value.isEmpty, value != ".", value != ".." else { return false }
+        // A separator would address a different directory; a control character
+        // (NUL included) would truncate the path at the C boundary, so the path
+        // deleted would not be the path that was shown.
+        if value.contains("/") { return false }
+        return value.rangeOfCharacter(from: .controlCharacters) == nil
+    }
+
     /// Probe residue paths across `~/Library` by both bundle ID and app name.
     ///
     /// `home` and `index` are injectable for testing. A nil `index` means
@@ -203,6 +224,14 @@ enum AppScanner {
         var found: [ResidueEntry] = []
         var seen = Set<String>()
 
+        // `home` may itself be a symlink (/var → /private/var), so containment
+        // is judged against its canonical form.
+        let homeRoot = FileSystem.canonical(home)
+        // The prefix a contained path must carry. Joined the way
+        // `FileSystem.joined` joins a root: for "/" the naive `homeRoot + "/"`
+        // would be "//" and match nothing, silently dropping every probe.
+        let homePrefix = homeRoot == "/" ? "/" : homeRoot + "/"
+
         func add(_ relative: String, _ kind: ResidueKind) {
             addAbsolute((home as NSString).appendingPathComponent(relative), kind)
         }
@@ -215,60 +244,79 @@ enum AppScanner {
             let path = FileSystem.canonical(rawPath)
             guard seen.insert(path).inserted else { return }
             guard FileSystem.exists(path) else { return }
+            // Backstop for the invariant every probe above depends on: residue
+            // lives *under* the home directory, never the home directory
+            // itself. Anything that resolved elsewhere — a component that
+            // escaped, a symlinked Application Support pointing outside the
+            // home tree — is dropped rather than handed to the uninstall tool
+            // as a deletable path.
+            guard path != homeRoot, path.hasPrefix(homePrefix) else { return }
             found.append(ResidueEntry(path: path, kind: kind))
         }
 
-        let id = app.bundleID
-        let name = app.name
+        // The two probe keys. Both are untrusted (see `isSafeComponent`), so a
+        // key that is not a plain file name becomes nil and every probe that
+        // uses it is skipped.
+        let id: String? = isSafeComponent(app.bundleID) ? app.bundleID : nil
+        let name: String? = isSafeComponent(app.name) ? app.name : nil
 
-        add("Library/Application Support/\(id)", .applicationSupport)
-        add("Library/Application Support/\(name)", .applicationSupport)
+        if let id { add("Library/Application Support/\(id)", .applicationSupport) }
+        if let name { add("Library/Application Support/\(name)", .applicationSupport) }
         // Caches are probed by both bundle ID and app name: bundle authors
         // pick either spelling for `~/Library/Caches` (Chrome uses
         // `Caches/Google/Chrome`, most others `Caches/<bundleID>` or
         // `Caches/<app name>`). Name-based matching is exact-match only —
         // an app called "Chrome" must not claim `Caches/Google` — and safe
         // to be loose about because everything probed here is regenerable.
-        add("Library/Caches/\(id)", .caches)
-        add("Library/Caches/\(name)", .caches)
-        add("Library/Containers/\(id)", .containers)
-        add("Library/Preferences/\(id).plist", .preferences)
-        add("Library/Saved Application State/\(id).savedState", .savedState)
-        add("Library/HTTPStorages/\(id)", .httpStorages)
-        add("Library/HTTPStorages/\(name)", .httpStorages)
-        add("Library/WebKit/\(id)", .webKit)
-        add("Library/WebKit/\(name)", .webKit)
-        add("Library/Cookies/\(id).binarycookies", .cookies)
-        add("Library/Application Scripts/\(id)", .applicationScripts)
-        add("Library/LaunchAgents/\(id).plist", .launchAgents)
-        add("Library/Logs/\(id)", .logs)
-        add("Library/Logs/\(name)", .logs)
+        if let id { add("Library/Caches/\(id)", .caches) }
+        if let name { add("Library/Caches/\(name)", .caches) }
+        if let id { add("Library/Containers/\(id)", .containers) }
+        if let id { add("Library/Preferences/\(id).plist", .preferences) }
+        if let id { add("Library/Saved Application State/\(id).savedState", .savedState) }
+        if let id { add("Library/HTTPStorages/\(id)", .httpStorages) }
+        if let name { add("Library/HTTPStorages/\(name)", .httpStorages) }
+        if let id { add("Library/WebKit/\(id)", .webKit) }
+        if let name { add("Library/WebKit/\(name)", .webKit) }
+        if let id { add("Library/Cookies/\(id).binarycookies", .cookies) }
+        if let id { add("Library/Application Scripts/\(id)", .applicationScripts) }
+        if let id { add("Library/LaunchAgents/\(id).plist", .launchAgents) }
+        if let id { add("Library/Logs/\(id)", .logs) }
+        if let name { add("Library/Logs/\(name)", .logs) }
 
         // ByHost preferences: ~/Library/Preferences/ByHost/<bundleID>.<UUID>.plist
-        let byHost = (home as NSString).appendingPathComponent("Library/Preferences/ByHost")
-        for child in FileSystem.children(of: byHost) where child.lastPathComponent.hasPrefix("\(id).") {
-            addAbsolute(child.path, .preferences)
+        if let id {
+            let byHost = (home as NSString).appendingPathComponent("Library/Preferences/ByHost")
+            for child in FileSystem.children(of: byHost) where child.lastPathComponent.hasPrefix("\(id).") {
+                addAbsolute(child.path, .preferences)
+            }
         }
 
         // Crash reports and diagnostic reports are matched by app name prefix.
         // The match must fall on a separator boundary: "X" should not claim
-        // "Xcode-….ips" as its own report.
+        // "Xcode-….ips" as its own report. An unsafe name matches nothing —
+        // `isSafeComponent` has already refused the empty one, which would
+        // otherwise match every dotted entry.
         func isReportOf(_ component: String) -> Bool {
-            component == name
+            guard let name else { return false }
+            return component == name
                 || component.hasPrefix(name + "-")
                 || component.hasPrefix(name + ".")
         }
-        let crashReporter = (home as NSString).appendingPathComponent("Library/Application Support/CrashReporter")
-        for child in FileSystem.children(of: crashReporter) where isReportOf(child.lastPathComponent) {
-            addAbsolute(child.path, .crashReports)
-        }
-        let diagnosticReports = (home as NSString).appendingPathComponent("Library/Logs/DiagnosticReports")
-        for child in FileSystem.children(of: diagnosticReports) where isReportOf(child.lastPathComponent) {
-            addAbsolute(child.path, .diagnosticReports)
+        // Skipped entirely without a usable name: two directory listings are
+        // not worth running to match nothing.
+        if name != nil {
+            let crashReporter = (home as NSString).appendingPathComponent("Library/Application Support/CrashReporter")
+            for child in FileSystem.children(of: crashReporter) where isReportOf(child.lastPathComponent) {
+                addAbsolute(child.path, .crashReports)
+            }
+            let diagnosticReports = (home as NSString).appendingPathComponent("Library/Logs/DiagnosticReports")
+            for child in FileSystem.children(of: diagnosticReports) where isReportOf(child.lastPathComponent) {
+                addAbsolute(child.path, .diagnosticReports)
+            }
         }
 
         // Vendor subdirectories (e.g. Application Support/Google/Chrome) are matched via the index
-        if let index {
+        if let index, let name {
             for path in index.paths(matching: name) { add(path, .applicationSupport) }
         }
 

@@ -381,6 +381,38 @@ enum FileSystem {
         (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
     }
 
+    /// Whether `url` is itself a symbolic link, without following it.
+    ///
+    /// `isDirectory(_:)` answers for the link's *target*, so a symlinked
+    /// directory reads as a directory — which is what a traversal must not
+    /// descend into: it is not the project's own directory, and a
+    /// self-referential link would be walked once per depth level under a
+    /// fresh spelling each time.
+    static func isSymbolicLink(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]))?.isSymbolicLink == true
+    }
+
+    /// The identity of a directory entry: the device and inode pair that names
+    /// the same vnode however many paths reach it.
+    ///
+    /// Deduplicating a traversal by path spelling is not enough — the same
+    /// directory reached through a symlink, a bind mount, or a second hard
+    /// link has a different spelling at every level but is still one subtree,
+    /// and walking it once per spelling measures the same bytes repeatedly and
+    /// reports the same target as several separate items.
+    struct NodeIdentity: Hashable, Sendable {
+        let device: UInt64
+        let node: UInt64
+    }
+
+    /// The identity of `path`, read with lstat so a symlink is identified as
+    /// itself rather than as its target. Nil when the entry cannot be stat'ed.
+    static func identity(ofPath path: String) -> NodeIdentity? {
+        var info = stat()
+        guard lstat(path, &info) == 0 else { return nil }
+        return NodeIdentity(device: UInt64(info.st_dev), node: UInt64(info.st_ino))
+    }
+
     /// Recursively total the allocated size, not following symlinks.
     static func allocatedSize(of url: URL) -> Int64 {
         // A symlink counts as only the link itself: removeItem also removes only

@@ -47,14 +47,27 @@ struct AppQuitter {
     /// `terminate` and `forceTerminate` are injectable so tests can drive the
     /// graceful-first ordering without signalling real processes;
     /// `quitMackit` runs when the row turns out to be Mackit's own main app.
+    ///
+    /// `expectedPath` is the .app path the row was sampled from. The pid is
+    /// re-resolved at click time, and a pid is not a promise: the app that
+    /// owned it may have exited and the system may have handed the number to
+    /// an unrelated process. Signalling that process — forceTerminate is
+    /// SIGKILL — would kill an app the user never pointed at, so the row is
+    /// acted on only while the resolved app is still the one that was
+    /// rendered. An empty path (a row whose bundle could not be read) carries
+    /// no identity to check and is acted on as before.
     @discardableResult
     func quit(
         pid: Int,
+        expectedPath: String = "",
         terminate: @MainActor (NSRunningApplication) -> Bool = { $0.terminate() },
         forceTerminate: @MainActor (NSRunningApplication) -> Bool = { $0.forceTerminate() },
         quitMackit: @escaping @MainActor () -> Void
     ) -> Outcome {
-        guard let raw = Int32(exactly: pid), let app = resolve(raw), !app.isTerminated else {
+        guard let raw = Int32(exactly: pid),
+              let app = resolve(raw),
+              !app.isTerminated,
+              Self.isSameApp(app, asPath: expectedPath) else {
             return .alreadyGone
         }
 
@@ -68,6 +81,16 @@ struct AppQuitter {
             // signal from being sent to a pid the app has just released.
             return terminate(app) || forceTerminate(app) ? .quitRequested : .alreadyGone
         }
+    }
+
+    /// Whether the resolved app is still the one the row was rendered from.
+    ///
+    /// The sampled path comes from the same `bundleURL` this compares against,
+    /// so a plain equality is the check — a canonicalization would only add a
+    /// filesystem round trip for a value both sides spell identically.
+    private static func isSameApp(_ app: NSRunningApplication, asPath expectedPath: String) -> Bool {
+        guard !expectedPath.isEmpty else { return true }
+        return app.bundleURL?.path == expectedPath
     }
 
     /// What a quit request for the given bundle id means.

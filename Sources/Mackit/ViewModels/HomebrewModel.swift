@@ -177,7 +177,8 @@ final class HomebrewModel {
     func reload() {
         loadTask?.cancel()
         isLoading = true
-        loadTask = Task { [inspect] in
+        loadTask = Task { [inspect, weak self] in
+            guard let self else { return }
             let snapshot = await inspect()
             guard !Task.isCancelled else { return }
             self.isLoading = false
@@ -210,7 +211,8 @@ final class HomebrewModel {
         servicesTask?.cancel()
         isLoadingServices = true
         servicesFailed = false
-        servicesTask = Task { [loadServices] in
+        servicesTask = Task { [loadServices, weak self] in
+            guard let self else { return }
             let services = await loadServices()
             guard !Task.isCancelled else { return }
             self.isLoadingServices = false
@@ -222,7 +224,8 @@ final class HomebrewModel {
     func refreshDiagnostics() {
         diagnosticsTask?.cancel()
         isLoadingDiagnostics = true
-        diagnosticsTask = Task { [loadDiagnostics] in
+        diagnosticsTask = Task { [loadDiagnostics, weak self] in
+            guard let self else { return }
             let diagnostics = await loadDiagnostics()
             guard !Task.isCancelled else { return }
             self.isLoadingDiagnostics = false
@@ -233,7 +236,8 @@ final class HomebrewModel {
     func refreshConfig() {
         configTask?.cancel()
         isLoadingConfig = true
-        configTask = Task { [loadConfig] in
+        configTask = Task { [loadConfig, weak self] in
+            guard let self else { return }
             let config = await loadConfig()
             guard !Task.isCancelled else { return }
             self.isLoadingConfig = false
@@ -269,7 +273,8 @@ final class HomebrewModel {
         pillDismissTask?.cancel()
         pillDismissTask = nil
         showsStatusPill = true
-        Task { [perform, self] in
+        Task { [perform, weak self] in
+            guard let self else { return }
             let outcome = await perform(action) { line in
                 self.consumeLine(line)
             }
@@ -319,13 +324,13 @@ final class HomebrewModel {
         pillDismissTask?.cancel()
         pillDismissTask = nil
         guard !showsActionLog else { return }
-        pillDismissTask = Task {
+        pillDismissTask = Task { [weak self, pillDwell] in
             try? await Task.sleep(for: pillDwell)
             // `try?` swallows the cancellation error that pinning the pill
             // (an opening log, a new action) raises; without this guard the
             // fall-through dismisses the pill the cancel meant to keep.
             guard !Task.isCancelled else { return }
-            self.showsStatusPill = false
+            self?.showsStatusPill = false
         }
     }
 
@@ -375,11 +380,12 @@ final class HomebrewModel {
         searchGeneration += 1
         searchFailed = false
         let generation = searchGeneration
-        searchTask = Task { [runSearch] in
+        searchTask = Task { [runSearch, weak self] in
             // A keystroke a second apart would otherwise start a brew search
             // per character; brew takes a few hundred milliseconds to boot.
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
+            guard let self else { return }
             self.isSearching = true
             let results = await runSearch(trimmed)
             guard !Task.isCancelled else { return }

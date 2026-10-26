@@ -17,32 +17,71 @@ enum ScanEvent: Sendable {
 /// `~/Library/Caches` rule alone has hundreds of entries, and traversing all
 /// of them at once would exhaust file descriptors, inflate memory, and be
 /// slower due to IO contention.
+///
+/// Waiting is cancellation-aware. `withCheckedContinuation` has no
+/// cancellation support of its own, so a task parked here used to stay in the
+/// queue until the semaphore happened to drain — and every one of those tasks
+/// then ran its full directory walk once resumed, which is why pressing Stop
+/// kept the scan walking the disk until each queued unit had been measured.
 actor AsyncSemaphore {
     private var running = 0
     private let max: Int
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    /// Parked waiters, keyed by an id the cancelling task can name. The id is
+    /// also the FIFO order: ids increase monotonically.
+    private var waiters: [Int: CheckedContinuation<Bool, Never>] = [:]
+    private var nextWaiterID = 0
 
     init(max: Int) {
         precondition(max > 0, "semaphore limit must be positive")
         self.max = max
     }
 
-    func withPermit<T: Sendable>(_ body: @escaping @Sendable () async -> T) async -> T {
-        if running < max {
-            running += 1
-        } else {
-            await withCheckedContinuation { continuation in
-                waiters.append(continuation)
-            }
-        }
+    /// Runs `body` while holding a permit. Returns nil when the calling task
+    /// was cancelled before it got one — the caller must then skip its work
+    /// rather than hold a permit it did not use.
+    func withPermit<T: Sendable>(_ body: @escaping @Sendable () async -> T) async -> T? {
+        guard await acquire() else { return nil }
         defer { release() }
         return await body()
     }
 
+    private func acquire() async -> Bool {
+        if running < max {
+            running += 1
+            return true
+        }
+        let id = nextWaiterID
+        nextWaiterID += 1
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                waiters[id] = continuation
+                // The cancellation handler may already have run — it fires
+                // immediately for a task that is cancelled before it parks, and
+                // it runs outside the actor, so its hop back in can lose the
+                // race with this append. The park therefore checks for itself:
+                // without this, a task cancelled on its way into the queue
+                // would wait for a permit that nobody will hand it.
+                if Task.isCancelled, let parked = waiters.removeValue(forKey: id) {
+                    parked.resume(returning: false)
+                }
+            }
+        } onCancel: {
+            // Outside the actor, so the removal is a hop back in. The waiter
+            // may already be gone — resumed by release() with a permit, or by
+            // the check above — in which case there is nothing to undo.
+            Task { await self.dequeue(id) }
+        }
+    }
+
+    private func dequeue(_ id: Int) {
+        waiters.removeValue(forKey: id)?.resume(returning: false)
+    }
+
     private func release() {
-        if !waiters.isEmpty {
-            // Hand the permit directly to a waiter; the running count stays unchanged
-            waiters.removeFirst().resume()
+        // Hand the permit directly to the oldest waiter; the running count
+        // stays unchanged, because that waiter takes this permit over.
+        if let id = waiters.keys.min() {
+            waiters.removeValue(forKey: id)?.resume(returning: true)
         } else {
             running -= 1
         }
@@ -196,13 +235,20 @@ enum ScanEngine {
 
     /// Compute the size and report it back. Size computation is throttled by the semaphore to avoid opening too many directories at once.
     private static func scanUnit(_ unit: ScanUnit, semaphore: AsyncSemaphore) async -> (label: String, items: [JunkItem]) {
-        let measured = await semaphore.withPermit { await measure(unit.item) }
-        guard let measured else { return (unit.label, []) }
-        return (unit.label, [measured])
+        // A nil here is either a cancelled wait for a permit or a path that
+        // vanished mid-scan; both mean this unit contributes no item.
+        guard let measured = await semaphore.withPermit({ await measure(unit.item) }) else {
+            return (unit.label, [])
+        }
+        return (unit.label, [measured].compactMap { $0 })
     }
 
     private static func measure(_ item: JunkItem) async -> JunkItem? {
         guard !item.path.isEmpty else { return item }
+        // A scan told to stop must not keep walking directories it has already
+        // abandoned: the unit may have been queued behind hundreds of others
+        // and only reached its permit long after the cancel.
+        if Task.isCancelled { return nil }
         let url = URL(fileURLWithPath: item.path)
         guard FileSystem.manager.fileExists(atPath: url.path) else { return nil }
         let result = FileSystem.allocatedSizeAndDate(of: url)
@@ -224,7 +270,12 @@ enum ScanEngine {
         let semaphore = AsyncSemaphore(max: maxConcurrentMeasurements)
         return await withTaskGroup(of: JunkItem?.self) { group in
             for item in items {
-                group.addTask { await semaphore.withPermit { await measure(item) } }
+                group.addTask {
+                    // Flattened here: the outer nil is the cancelled permit, the
+                    // inner one is a path that no longer exists.
+                    guard let measured = await semaphore.withPermit({ await measure(item) }) else { return nil }
+                    return measured
+                }
             }
             var measured: [JunkItem] = []
             measured.reserveCapacity(items.count)
@@ -250,7 +301,13 @@ enum ScanEngine {
 
         let wanted = Set(names)
         var found: [JunkItem] = []
-        var visited: Set<String> = [rootURL.path]
+        // Keyed by vnode, not by path spelling: the same directory reached
+        // through a symlink or a second path is still one subtree, and walking
+        // it once per spelling measures the same bytes repeatedly.
+        var visited: Set<FileSystem.NodeIdentity> = []
+        if let rootIdentity = FileSystem.identity(ofPath: rootURL.path) {
+            visited.insert(rootIdentity)
+        }
 
         // Breadth-first with limited depth, to avoid traversing the whole disk.
         // The queue uses a cursor rather than removeFirst(): with many directories,
@@ -285,9 +342,22 @@ enum ScanEngine {
                     // Do not descend further after finding a target; node_modules can contain tens of thousands of directories.
                     continue
                 }
-                guard FileSystem.isDirectory(child) else { continue }
+                // A symlinked directory is not descended into: it is not the
+                // project's own directory, and a self-referential link would
+                // otherwise be walked once per depth level, each under a fresh
+                // spelling. On the local filesystems `contentsOfDirectory`
+                // refuses to open a symlink at all (ENOTDIR, verified), so this
+                // is explicit intent rather than a live fix — but that refusal
+                // is a filesystem behavior, not a documented guarantee, and a
+                // network mount may well follow the link.
+                guard !FileSystem.isSymbolicLink(child), FileSystem.isDirectory(child) else { continue }
                 if name.hasPrefix(".") { continue } // Skip hidden directories
-                if !visited.insert(child.path).inserted { continue }
+                // Deduplicated by vnode, not by path spelling: the same
+                // directory reached through a second path — a bind mount, a
+                // firmlink alias — is still one subtree, and walking it once per
+                // spelling measures the same bytes repeatedly.
+                guard let identity = FileSystem.identity(ofPath: child.path),
+                      visited.insert(identity).inserted else { continue }
                 queue.append((child, depth + 1))
             }
         }

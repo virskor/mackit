@@ -138,7 +138,15 @@ final class AppUninstallModel {
 
     /// The app-icon cache. Excluded from Observation: filling it during a
     /// render would add a pointless extra round of body recomputation.
+    ///
+    /// Capped, with FIFO eviction: the uninstall list has no upper bound on how
+    /// many apps a machine has installed, and every cached NSImage carries its
+    /// full representation set. The disk-analysis page's cache is capped for
+    /// exactly this reason; eviction is cheap because an icon is a couple of
+    /// syscalls to rebuild.
     @ObservationIgnored private var iconCache: [String: NSImage] = [:]
+    @ObservationIgnored private var iconCacheOrder: [String] = []
+    private let iconCacheCapacity = 128
 
     /// Bumped whenever the scanned list or the selection changes; the key the
     /// derived-data caches below are invalidated by. Writing it is
@@ -363,7 +371,16 @@ final class AppUninstallModel {
     func icon(forPath path: String) -> NSImage? {
         guard !path.isEmpty else { return nil }
         if let cached = iconCache[path] { return cached }
-        let icon = iconForPath(path)
+        // A path with no icon is not cached — `iconCache[path] = nil` removes the
+        // key rather than storing a nil — so it must not take a cache slot
+        // either. Appending it to the order anyway would evict a real icon on
+        // every render and re-run the lookup for a path that will never have
+        // one.
+        guard let icon = iconForPath(path) else { return nil }
+        if iconCacheOrder.count >= iconCacheCapacity {
+            iconCache.removeValue(forKey: iconCacheOrder.removeFirst())
+        }
+        iconCacheOrder.append(path)
         iconCache[path] = icon
         return icon
     }

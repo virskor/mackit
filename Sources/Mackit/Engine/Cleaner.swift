@@ -203,6 +203,17 @@ enum CleanEngine {
         moveToTrash: Bool,
         trashDirectory: URL? = nil
     ) async -> RemovalResult {
+        // The protected-path check runs again here, at the one point every
+        // removal funnels through, rather than only where the item was first
+        // vetted. Between that check and this call the engine re-measures the
+        // entry — a recursive walk that can take seconds on a multi-gigabyte
+        // cache — and anything with write permission on the parent can swap
+        // the entry in that window. `FileManager.removeItem` then deletes
+        // whatever now sits at the path, so the last check before the mutation
+        // has to be this one.
+        if FileSystem.isProtected(url.path) {
+            return .failed(L10n.tr("clean.error.protected"))
+        }
         if moveToTrash && !FileSystem.isInTrash(url, trashDirectory: trashDirectory) {
             return await moveToTrashVerified(url)
                 ? .trashed
@@ -285,13 +296,12 @@ enum CleanEngine {
 
         // Command-line cleaning can run for a long time (brew cleanup starts at
         // several minutes), but it must never hang forever: the user clicking "Stop"
-        // has to be able to stop it, and a runaway child process needs a backstop.
+        // has to be able to stop it, and a runaway child needs a backstop.
         // terminationHandler + withTaskCancellationHandler are the double safety
-        // net, with the timeout delivering the final blow from another task.
-        let timeoutTask = Task {
-            try? await Task.sleep(for: .seconds(Self.commandTimeoutSeconds))
-            if process.isRunning { process.terminate() }
-        }
+        // net, with the timeout delivering the final blow from another task —
+        // SIGTERM first, then SIGKILL, so a child that ignores the term cannot
+        // hold the pipes (and this call) open forever.
+        let timeoutTask = ProcessTimeout.enforce(.seconds(Self.commandTimeoutSeconds), on: process)
 
         let exitStatus = await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Int32, Never>) in

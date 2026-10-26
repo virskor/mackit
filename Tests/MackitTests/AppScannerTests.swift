@@ -185,6 +185,106 @@ struct AppScannerTests {
         #expect(AppScanner.residuePaths(for: app, home: home.path).isEmpty)
     }
 
+    // MARK: - Probe keys are untrusted input
+
+    /// The bundle id and the app name come from the bundle's own Info.plist, so
+    /// they are attacker-controlled data that gets spliced into probe paths.
+    /// A component that is not a plain file name is refused outright.
+    @Test func onlyPlainFileNamesAreSafeProbeComponents() {
+        #expect(AppScanner.isSafeComponent("com.example.foo"))
+        #expect(AppScanner.isSafeComponent("Foo"))
+        #expect(AppScanner.isSafeComponent("Google Chrome"))
+        #expect(AppScanner.isSafeComponent("dot.ted"))
+
+        #expect(!AppScanner.isSafeComponent(""), "an empty component addresses the parent directory")
+        #expect(!AppScanner.isSafeComponent("."), "the current directory is not a residue location")
+        #expect(!AppScanner.isSafeComponent(".."), "the parent directory is how a probe escapes its own folder")
+        #expect(!AppScanner.isSafeComponent("a/b"), "a separator addresses a different directory")
+        #expect(!AppScanner.isSafeComponent("/etc"), "an absolute component ignores the home prefix")
+        #expect(!AppScanner.isSafeComponent("a\0b"), "a NUL truncates the path at the C boundary")
+        #expect(!AppScanner.isSafeComponent("bell\u{7}"), "a control character has no place in a file name")
+    }
+
+    /// A bundle directory called `..app` resolves to the app name "..", which
+    /// spliced into `Library/Application Support/..` resolves to `~/Library`
+    /// itself. The residue list would then offer the whole Library folder as
+    /// one app's leftovers — the most destructive thing this app can do.
+    @Test func anAppNamedLikeAParentDirectoryClaimsNothing() {
+        let home = tempDirectory("traversal-home")
+        defer { cleanup(home) }
+        // What such a bundle's probe would resolve to if it were accepted: the
+        // probed directory itself has to exist for the ".." to resolve.
+        makeDirectory("Library/Application Support", under: home)
+        makeFile("Library/sentinel.txt", under: home)
+
+        let app = InstalledApp(name: "..", bundleID: "com.example.dots", version: "1.0", path: "/Applications/..app")
+        let found = AppScanner.residuePaths(for: app, home: home.path)
+
+        #expect(found.isEmpty, "an app named \"..\" claimed \(found.map(\.path))")
+        #expect(FileManager.default.fileExists(atPath: home.appendingPathComponent("Library/sentinel.txt").path))
+    }
+
+    /// A crafted `CFBundleIdentifier` is the other way in: `../../Documents`
+    /// resolves out of the probed directory and into the user's own files.
+    @Test func aCraftedBundleIDCannotEscapeTheHomeTree() {
+        let home = tempDirectory("escape-home")
+        defer { cleanup(home) }
+        makeDirectory("Library/Application Support", under: home)
+        makeDirectory("Documents", under: home)
+        makeFile("Documents/private.txt", under: home)
+
+        let app = InstalledApp(name: "Normal", bundleID: "../../Documents", version: "1.0", path: "/Applications/Evil.app")
+        let found = AppScanner.residuePaths(for: app, home: home.path)
+
+        #expect(found.isEmpty, "a crafted bundle id claimed \(found.map(\.path))")
+        #expect(FileManager.default.fileExists(atPath: home.appendingPathComponent("Documents/private.txt").path))
+    }
+
+    /// The backstop behind the component check: a residue directory that is a
+    /// symlink pointing outside the home tree resolves there, and the resolved
+    /// path is what would be deleted. Residue lives under the home directory,
+    /// so it is dropped rather than offered.
+    @Test func residueThatResolvesOutsideTheHomeTreeIsDropped() throws {
+        let home = tempDirectory("symlink-home")
+        defer { cleanup(home) }
+        let outside = tempDirectory("outside-home")
+        defer { cleanup(outside) }
+        makeDirectory("Library/Application Support/com.example.foo", under: outside)
+        makeFile("outside.txt", under: outside)
+        // The link has to sit inside a real Application Support directory for
+        // the probe to reach it at all.
+        makeDirectory("Library/Application Support", under: home)
+
+        // The residue spelling a well-behaved app would produce, pointing at a
+        // directory that lives somewhere else entirely.
+        try FileManager.default.createSymbolicLink(
+            at: home.appendingPathComponent("Library/Application Support/com.example.foo"),
+            withDestinationURL: outside.appendingPathComponent("Library/Application Support/com.example.foo")
+        )
+
+        let app = InstalledApp(name: "Foo", bundleID: "com.example.foo", version: "1.0", path: "/Applications/Foo.app")
+        let found = AppScanner.residuePaths(for: app, home: home.path)
+
+        #expect(found.isEmpty, "residue resolved outside the home tree: \(found.map(\.path))")
+        #expect(FileManager.default.fileExists(atPath: outside.appendingPathComponent("outside.txt").path))
+    }
+
+    /// The checks must not cost the ordinary case anything: a well-behaved app
+    /// still has every one of its leftovers found.
+    @Test func aWellBehavedAppStillFindsItsResidue() {
+        let home = tempDirectory("normal-home")
+        defer { cleanup(home) }
+        makeDirectory("Library/Application Support/com.example.foo", under: home)
+        makeDirectory("Library/Caches/com.example.foo", under: home)
+        makeDirectory("Library/Logs/Foo", under: home)
+
+        let app = InstalledApp(name: "Foo", bundleID: "com.example.foo", version: "1.0", path: "/Applications/Foo.app")
+        let found = AppScanner.residuePaths(for: app, home: home.path)
+
+        #expect(found.count == 3, "the containment checks cost the ordinary case: \(found.map(\.path))")
+        #expect(found.allSatisfy { $0.path.hasPrefix(home.path + "/") })
+    }
+
     @Test func residueKindsMapToExpectedRisks() {
         let safe: [ResidueKind] = [.caches, .httpStorages, .webKit, .cookies, .logs, .crashReports, .diagnosticReports]
         let review: [ResidueKind] = [.applicationSupport, .containers, .preferences, .savedState, .applicationScripts, .launchAgents]

@@ -117,10 +117,7 @@ enum HomebrewRunner {
         // Cleanup can run for minutes, but never unbounded: the timeout is a
         // parameter so the read queries stay snappy and the actions get the
         // same 600-second ceiling CleanEngine's cleaning uses.
-        let timeoutTask = Task {
-            try? await Task.sleep(for: timeout)
-            if process.isRunning { process.terminate() }
-        }
+        let timeoutTask = ProcessTimeout.enforce(timeout, on: process)
 
         let exitStatus = await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Int32, Never>) in

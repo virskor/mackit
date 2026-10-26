@@ -523,7 +523,7 @@ final class AppViewModel {
     /// the point of the button, and the ranking refreshes right away so the
     /// row disappears under the pointer.
     func quitApp(_ entry: AppMemoryEntry) {
-        let outcome = AppQuitter().quit(pid: entry.pid) { [weak self] in
+        let outcome = AppQuitter().quit(pid: entry.pid, expectedPath: entry.path) { [weak self] in
             self?.quitFromTray()
         }
         switch outcome {
@@ -1861,7 +1861,13 @@ final class AppViewModel {
         } else {
             generalSelectedRows = nil
         }
-        projectRoots = values["projectRoots"] as? [String] ?? []
+        // Deduplicated and emptied of blank entries on load: the array is
+        // persisted as-is, and a settings file that repeats a path (a hand
+        // edit, or an older writer) would put duplicate ids into the settings
+        // list's ForEach — undefined territory for row identity.
+        var roots = Set<String>()
+        projectRoots = (values["projectRoots"] as? [String] ?? [])
+            .filter { !$0.isEmpty && roots.insert($0).inserted }
         // The three monitoring toggles default to all on: the monitoring
         // section is a feature the user actively asks for, and defaulting
         // to collapsed would turn "added a display" into "added nothing".

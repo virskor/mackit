@@ -593,6 +593,63 @@ struct AppUninstallModelTests {
         #expect(model.icon(forPath: "") == nil, "an empty path has no icon")
     }
 
+    /// The cache is capped. The uninstall list has no upper bound on how many
+    /// apps a machine has installed, and every cached NSImage carries its full
+    /// representation set — an unbounded cache is one NSImage per installed app
+    /// held for the whole session, for the life of the process.
+    @Test func theIconCacheEvictsSoItCannotGrowWithoutBound() {
+        var calls = 0
+        let model = AppUninstallModel(
+            scan: { AppUninstallModel.AppScanResult(items: []) },
+            iconForPath: { _ in
+                calls += 1
+                return NSImage()
+            }
+        )
+
+        // Far past any sane cache: the rows a user scrolls through.
+        for index in 0..<400 {
+            _ = model.icon(forPath: "/Applications/App\(index).app")
+        }
+        let afterFilling = calls
+        #expect(afterFilling == 400, "each distinct path is looked up once")
+
+        // The first paths were evicted, so asking for them again costs a lookup
+        // — the cache cannot have kept all 400.
+        _ = model.icon(forPath: "/Applications/App0.app")
+        _ = model.icon(forPath: "/Applications/App1.app")
+        #expect(calls > afterFilling, "an evicted icon was served from the cache")
+    }
+
+    /// A path with no icon must not take a cache slot. `iconCache[path] = nil`
+    /// removes the key rather than storing a nil, so such a path is never
+    /// cached — appending it to the eviction order anyway would evict a real
+    /// icon on every render and re-run the lookup for a path that will never
+    /// have one.
+    @Test func aPathWithNoIconDoesNotTakeACacheSlot() {
+        var calls = 0
+        let model = AppUninstallModel(
+            scan: { AppUninstallModel.AppScanResult(items: []) },
+            iconForPath: { path in
+                calls += 1
+                return path == "/Applications/NoIcon.app" ? nil : NSImage()
+            }
+        )
+
+        // Fill well past the cache, so the oldest entries have already been
+        // evicted, then ask for one path that has no icon at all.
+        for index in 0..<200 {
+            _ = model.icon(forPath: "/Applications/App\(index).app")
+        }
+        _ = model.icon(forPath: "/Applications/NoIcon.app")
+
+        // The oldest surviving entry must still be cached: a path with no icon
+        // cannot have pushed it out.
+        let before = calls
+        _ = model.icon(forPath: "/Applications/App72.app")
+        #expect(calls == before, "a path with no icon evicted a real icon from the cache")
+    }
+
     // MARK: - End to end against real files
 
     /// Creates a fake .app plus a cache and a preferences file, mirroring the

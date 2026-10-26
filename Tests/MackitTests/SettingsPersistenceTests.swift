@@ -45,6 +45,25 @@ struct SettingsPersistenceTests {
         #expect(reread.showMenuBarLogo == false)
     }
 
+    /// The persisted project-root list is deduplicated on load. The array is
+    /// written as-is, and a settings file that repeats a path — a hand edit, or
+    /// an older writer — would put duplicate ids into the settings list's
+    /// ForEach, which is undefined territory for row identity.
+    @Test func duplicateProjectRootsAreDeduplicatedOnLoad() {
+        var saved: [String: Any] = [:]
+        let vm = AppViewModel(statsPolling: false)
+        vm.settingsSink = { saved = $0 }
+        vm.projectRoots = ["/Users/me/work", "/Users/me/play"]
+        vm.saveSettings()
+
+        let reread = AppViewModel(statsPolling: false)
+        reread.loadSettings(from: [
+            "projectRoots": ["/Users/me/work", "/Users/me/work", "/Users/me/play", "", "/Users/me/play"]
+        ])
+
+        #expect(reread.projectRoots == ["/Users/me/work", "/Users/me/play"], "duplicates and blanks survived the load: \(reread.projectRoots)")
+    }
+
     /// The launch-at-login choice has to reach the shared file. The system
     /// registration can go stale on its own — a rebuild replaces the binary its
     /// launch constraint pins — and the persisted choice is what lets the app

@@ -82,6 +82,44 @@ struct CleanEngineTests {
         #expect(!FileManager.default.fileExists(atPath: target))
     }
 
+    /// The protected-path check has to hold at the moment of the mutation, not
+    /// only where the item was first vetted. Between the two the engine
+    /// re-measures the entry — a recursive walk that takes seconds on a large
+    /// cache — and anything with write permission on the parent can swap the
+    /// entry in that window; `removeItem` would then delete whatever now sits
+    /// at the path. `removeFromDisk` is the one place every removal funnels
+    /// through, so the check lives there too.
+    @Test func theProtectedCheckRunsAgainAtTheRemovalItself() async throws {
+        // A nonexistent path keeps this off the real filesystem entirely: the
+        // check compares spellings, so it never needs the entry to exist.
+        let protected = "/Library/Apple/mackit-should-never-exist-\(UUID().uuidString)"
+        let result = await CleanEngine.removeFromDisk(URL(fileURLWithPath: protected), moveToTrash: false)
+
+        guard case .failed = result else {
+            Issue.record("the removal seam accepted a protected path")
+            return
+        }
+        #expect(!FileManager.default.fileExists(atPath: protected))
+
+        // A link whose target is protected is refused as well: the delete acts
+        // on the resolved path, so the check has to resolve it too. The link
+        // itself is the only thing at stake, and it survives.
+        let base = tempDirectory("recheck")
+        defer { try? FileManager.default.removeItem(at: base) }
+        let link = base.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(
+            at: link,
+            withDestinationURL: URL(fileURLWithPath: "/Library/Apple")
+        )
+        let linkResult = await CleanEngine.removeFromDisk(link, moveToTrash: false)
+
+        guard case .failed = linkResult else {
+            Issue.record("the removal seam accepted a link into a protected directory")
+            return
+        }
+        #expect(FileManager.default.fileExists(atPath: link.path), "the link itself survived")
+    }
+
     // MARK: - Non-existent paths
 
     @Test func missingPathReportsSuccessWithZeroReclaimed() async {

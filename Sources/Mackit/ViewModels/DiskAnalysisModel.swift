@@ -510,6 +510,12 @@ final class DiskAnalysisModel {
                 self.scanEstimatedTotal = count > 0 ? count : nil
                 self.countTask = nil
             }
+        } else {
+            // The previous scan's count was cancelled above, and this scan
+            // starts none of its own, so the handle it left behind must go: it
+            // is finished, and `waitUntilSettled` polls that handle — a stale
+            // one would spin the poll forever.
+            countTask = nil
         }
     }
 
@@ -525,7 +531,13 @@ final class DiskAnalysisModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(500))
                 guard !Task.isCancelled else { return }
-                self?.tickElapsed()
+                // A model dropped mid-scan has nobody left to cancel this task:
+                // the only canceller is the model's own `stopElapsedTimer`. The
+                // weak capture keeps it from retaining the model, but without
+                // this guard the loop would wake every 500 ms forever with
+                // nothing left to update.
+                guard let self else { return }
+                self.tickElapsed()
             }
         }
     }
@@ -664,6 +676,16 @@ final class DiskAnalysisModel {
     /// (which a fast fixture makes indistinguishable from a restart).
     /// Observation is ignored: it is bookkeeping, not page state.
     @ObservationIgnored private(set) var scanStartCount = 0
+
+    /// Test seam: whether the concurrent directory count is still in flight.
+    ///
+    /// `waitUntilSettled` polls this handle, and the one way to leave it
+    /// pointing at a task that already finished is a scan that starts no count
+    /// of its own while a cancelled one is still unwinding — so "no handle
+    /// without a count" is an invariant worth asserting directly, rather than
+    /// waiting for a hung poll to prove it. Derived, never stored, so it cannot
+    /// drift from the handle it reports on.
+    var hasPendingCount: Bool { countTask != nil }
 
     /// Waits until the current scan goes quiet — the measurement and, when one
     /// is running, the concurrent directory count that supplies the

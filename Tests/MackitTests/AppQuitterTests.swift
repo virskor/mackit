@@ -107,6 +107,66 @@ struct AppQuitterTests {
         #expect(signalled == 0)
     }
 
+    // MARK: Identity of the process behind the pid
+
+    /// A pid is not a promise. The row was sampled from one app; by the time
+    /// the button is clicked that app may have exited and the system may have
+    /// handed the number to an unrelated process, which `forceTerminate` would
+    /// SIGKILL. The row is only acted on while the resolved app is still the
+    /// one that was rendered.
+    @Test func aReusedPidIsNotSignalled() throws {
+        let app = try #require(liveApp)
+        let pid = Int(app.processIdentifier)
+        var signalled = 0
+
+        let outcome = AppQuitter(resolve: { _ in app }).quit(
+            pid: pid,
+            expectedPath: "/Applications/SomeEntirelyDifferent.app",
+            terminate: { _ in signalled += 1; return true },
+            forceTerminate: { _ in signalled += 1; return true }
+        ) {}
+
+        #expect(outcome == .alreadyGone, "a pid that now belongs to another app was acted on")
+        #expect(signalled == 0, "a signal was sent to a process the user never pointed at")
+    }
+
+    /// The row's own path is what gates the signal: the same process resolved
+    /// through the path it was rendered from is quit as before.
+    @Test func theSampledPathIsWhatGatesTheSignal() throws {
+        let app = try #require(liveApp)
+        let pid = Int(app.processIdentifier)
+        let path = try #require(app.bundleURL?.path)
+        var terminated = 0
+
+        let outcome = AppQuitter(resolve: { _ in app }).quit(
+            pid: pid,
+            expectedPath: path,
+            terminate: { _ in terminated += 1; return true },
+            forceTerminate: { _ in return false }
+        ) {}
+
+        #expect(outcome == .quitRequested)
+        #expect(terminated == 1)
+    }
+
+    /// A row whose bundle could not be read carries no identity to check, and
+    /// refusing it would leave the user with a dead button.
+    @Test func aRowWithoutAPathIsStillQuit() throws {
+        let app = try #require(liveApp)
+        let pid = Int(app.processIdentifier)
+        var terminated = 0
+
+        let outcome = AppQuitter(resolve: { _ in app }).quit(
+            pid: pid,
+            expectedPath: "",
+            terminate: { _ in terminated += 1; return true },
+            forceTerminate: { _ in return false }
+        ) {}
+
+        #expect(outcome == .quitRequested)
+        #expect(terminated == 1)
+    }
+
     // MARK: ViewModel wiring
 
     /// The panel action survives a row whose process is already gone, and the

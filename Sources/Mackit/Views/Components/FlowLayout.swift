@@ -5,7 +5,13 @@ struct FlowLayout: Layout {
     var spacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxWidth = proposal.width ?? .infinity
+        // A nil width proposal — a horizontal scroll view, a fixedSize parent,
+        // a re-measure with .unspecified — must not become an infinite size:
+        // an infinite size escaping a custom Layout is a layout-loop assertion
+        // waiting to happen. "No width constraint" means one row instead.
+        let maxWidth = proposal.width ?? subviews.reduce(CGFloat(0)) { total, subview in
+            total + subview.sizeThatFits(.unspecified).width + spacing
+        }
         var x: CGFloat = 0
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
