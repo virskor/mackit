@@ -4534,6 +4534,50 @@
         }
       }
     },
+    "permission.openSettings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开系统设置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟系統設定"
+          }
+        }
+      }
+    },
+    "permission.openSettings.help": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在「隐私与安全性 › 完全磁盘访问权限」中允许 Mackit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Mackit under Privacy & Security › Full Disk Access"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在「隱私與安全性 › 完全磁碟存取權限」中允許 Mackit"
+          }
+        }
+      }
+    },
     "count.items.one": {
       "localizations": {
         "zh-Hans": {
@@ -8125,19 +8169,19 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "读取该时间需要完全磁盘访问权限：在「系统设置 › 隐私与安全性 › 完全磁盘访问权限」中为 Mackit 授权，然后重新扫描"
+            "value": "读取该时间需要完全磁盘访问权限，为 Mackit 授权后重新扫描即可显示"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reading them requires Full Disk Access: grant Mackit access under System Settings › Privacy & Security › Full Disk Access, then scan again"
+            "value": "Reading them requires Full Disk Access: grant Mackit access, then scan again"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "讀取該時間需要完全磁碟存取權限：在「系統設定 › 隱私與安全性 › 完全磁碟存取權限」中為 Mackit 授權，然後重新掃描"
+            "value": "讀取該時間需要完全磁碟存取權限，為 Mackit 授權後重新掃描即可顯示"
           }
         }
       }
@@ -12780,50 +12824,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "掃描此檔案夾"
-          }
-        }
-      }
-    },
-    "diskAnalysis.openSettings": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开系统设置"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open System Settings"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "開啟系統設定"
-          }
-        }
-      }
-    },
-    "diskAnalysis.openSettings.help": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在“隐私与安全性 › 完全磁盘访问权限”中允许 Mackit 后，可完整扫描所有文件夹"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Allow Mackit under Privacy & Security › Full Disk Access to scan every folder"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在「隱私與安全性 › 完全磁碟存取權限」中允許 Mackit 後，可完整掃描所有檔案夾"
           }
         }
       }

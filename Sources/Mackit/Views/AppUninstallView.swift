@@ -93,6 +93,20 @@ struct AppUninstallView: View {
 
             Spacer(minLength: 12)
 
+            // The search field belongs in the control row, the same place the
+            // developer list's toolbar puts it — the page's controls then read
+            // as one row on every page. Flexible rather than a fixed width:
+            // when the window narrows, this field gives the space back and the
+            // title truncates, the trade the toolbar row makes too.
+            SearchField(
+                text: Binding(
+                    get: { model.searchText },
+                    set: { model.searchText = $0 }
+                ),
+                placeholder: L10n.tr("apps.tool.search")
+            )
+            .frame(minWidth: 120, maxWidth: 216)
+
             // While the re-scan runs the button swaps its label for a
             // spinner and a "refreshing" title: a disabled button alone
             // reads as "not now" rather than "working on it".
@@ -226,9 +240,7 @@ struct AppUninstallView: View {
             // honest-degradation shape the disk analysis tool uses for its
             // unreadable folders.
             if model.lastOpenedUnreadable {
-                NoticeRow(
-                    systemImage: "exclamationmark.triangle.fill",
-                    tint: .orange,
+                FullDiskAccessAlert(
                     title: L10n.tr("apps.tool.lastOpenedUnavailable"),
                     message: L10n.tr("apps.tool.lastOpenedUnavailableHint")
                 )
@@ -236,20 +248,6 @@ struct AppUninstallView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 4)
             }
-
-            // The search field sits above the list, in the content area —
-            // the Homebrew panes' pattern. Keeping it out of the header
-            // leaves the header room for the actions, so nothing squeezes
-            // the title when the window narrows.
-            SearchField(
-                text: Binding(
-                    get: { model.searchText },
-                    set: { model.searchText = $0 }
-                ),
-                placeholder: L10n.tr("apps.tool.search")
-            )
-            .padding(.horizontal, 28)
-            .padding(.bottom, 8)
 
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -274,16 +272,30 @@ struct AppUninstallView: View {
 
     private func appRow(_ entry: AppUninstallModel.AppEntry) -> some View {
         let state = model.selectionState(of: entry)
-        // Two sibling buttons, never nested gestures: the row used to be one
+        // Three sibling buttons, never nested gestures: the row used to be one
         // onTapGesture with the checkbox and the chevron inside it, so a tap
         // on the chevron fired the expand *and* the select — the two actions
         // fought over every click. One button per action is the pattern the
         // disk analysis rows and the general module's row switches use.
-        return HStack(spacing: 0) {
-            // Expand: the disclosure sits at the row's leading edge, Finder
-            // style, so the "open this app's leftovers" target is next to the
-            // app it belongs to. A row with no leftovers keeps the column so
-            // every row's content shares one left edge.
+        //
+        // The order matches the general module's rows — checkbox first — so
+        // the two lists' checkboxes share one column when the user flips
+        // between them; the disclosure sits between the checkbox and the app
+        // it opens.
+        return HStack(spacing: 10) {
+            // Select: the checkbox, the same leading-edge position the general
+            // module's row switch occupies.
+            Button {
+                model.setAppSelected(entry, selected: state != .all)
+            } label: {
+                checkbox(state)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Expand. A row with no leftovers keeps the column so every row's
+            // app icons share one left edge. The glyph is 14pt; the padding
+            // gives it a 24pt hit target.
             if !entry.residues.isEmpty {
                 Button {
                     toggleExpanded(entry)
@@ -292,23 +304,22 @@ struct AppUninstallView: View {
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(expandedIDs.contains(entry.id) ? 90 : 0))
-                        .frame(width: 24, height: 24)
+                        .frame(width: 14, height: 14)
+                        .padding(5)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             } else {
-                Color.clear.frame(width: 24)
+                Color.clear.frame(width: 14).padding(5)
             }
 
-            // Select: the checkbox is the state's indicator and everything
-            // around it is the same action's click target — the general
-            // module's row switch works the same way.
+            // Select: the app's icon, name and size — the same action's click
+            // target as the checkbox, the way the general module's row switch
+            // makes the whole row the toggle.
             Button {
                 model.setAppSelected(entry, selected: state != .all)
             } label: {
                 HStack(spacing: 10) {
-                    checkbox(state)
-
                     // The app's real icon, drawn at 24: this page is where
                     // the user picks an app to remove, and a 16pt thumbnail
                     // next to a 13pt name reads as a list of paths rather
@@ -340,12 +351,12 @@ struct AppUninstallView: View {
                         .font(.system(size: 11, weight: .medium))
                         .monospacedDigit()
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
         .contextMenu { contextMenu(for: entry) }
     }
 

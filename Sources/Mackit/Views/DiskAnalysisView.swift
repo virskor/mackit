@@ -478,7 +478,7 @@ struct DiskAnalysisView: View {
                         explain: L10n.tr("diskAnalysis.skipped.explain"),
                         actionTitle: L10n.tr("diskAnalysis.skipped.action"),
                         action: { model.scanFolder(entry) },
-                        settingsURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+                        offersFullDiskAccess: true
                     )
                 } else if entry.isUnreadable {
                     unreadableOrEmptyPlaceholder(unreadable: true)
@@ -529,7 +529,7 @@ struct DiskAnalysisView: View {
         explain: String,
         actionTitle: String,
         action: @escaping () -> Void,
-        settingsURL: URL? = nil
+        offersFullDiskAccess: Bool = false
     ) -> some View {
         HeroPromptView(
             systemImage: icon,
@@ -547,17 +547,17 @@ struct DiskAnalysisView: View {
             rises: false,
             action: action,
             actionAccessory: {
-                if let settingsURL {
+                if offersFullDiskAccess {
                     Button {
-                        // The Full Disk Access pane: granting it removes the
-                        // prompt entirely for every future scan.
-                        NSWorkspace.shared.open(settingsURL)
+                        // Granting it removes the prompt entirely for every
+                        // future scan.
+                        SystemSettings.openFullDiskAccess()
                     } label: {
-                        Text(verbatim: L10n.tr("diskAnalysis.openSettings"))
+                        Text(verbatim: L10n.tr("permission.openSettings"))
                     }
                     .buttonStyle(.link)
                     .font(.system(size: 12))
-                    .help(L10n.tr("diskAnalysis.openSettings.help"))
+                    .help(L10n.tr("permission.openSettings.help"))
                 }
             }
         )

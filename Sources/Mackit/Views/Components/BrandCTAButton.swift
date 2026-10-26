@@ -72,8 +72,13 @@ struct BrandCTAButton: View {
                     }
                     // The header variant's title embeds a size ("Clean 1.2 GB");
                     // monospaced digits keep it from reflowing as the number changes.
+                    // One line, always: a button label that wraps when the
+                    // row narrows grows the button's height and drags the
+                    // header it sits in out of alignment with the other
+                    // pages. Truncating the tail is the lesser evil.
                     Text(verbatim: title)
                         .monospacedDigit()
+                        .lineLimit(1)
                 }
                 .font(.system(size: compact ? 12 : 15, weight: .semibold))
                 .frame(minWidth: compact ? 0 : 208)
