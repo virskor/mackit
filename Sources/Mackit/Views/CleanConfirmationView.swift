@@ -35,16 +35,6 @@ struct CleanConfirmationView: View {
     /// notice: "caches … slower first build" says nothing true about them.
     private var languagePackCount: Int { items.count { $0.category == .language } }
 
-    /// One row of the confirmation list.
-    private func row(for item: JunkItem) -> some View {
-        let subtitle = subtitle(for: item)
-        return JunkItemRow(
-            item: item,
-            subtitle: subtitle.text,
-            subtitleTruncation: subtitle.truncation
-        )
-    }
-
     /// The subtitle of one list row, and how it may be truncated. A language
     /// pack is titled by its own code ("ja.lproj"), so the app it belongs to
     /// goes in the subtitle: the path would be truncated at the head, cutting
@@ -58,138 +48,88 @@ struct CleanConfirmationView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Title area
-            VStack(spacing: 12) {
-                IconBadge(
-                    systemImage: hasCaution ? "exclamationmark.triangle.fill" : "trash.fill",
-                    tint: hasCaution ? .red : .accentColor,
-                    diameter: 56,
-                    symbolSize: 24
-                )
-
-                VStack(spacing: 5) {
-                    Text(L10n.tr("clean.confirm.title"))
-                        .font(.system(size: 17, weight: .bold))
-                    Text(verbatim: L10n.fmt(
-                        items.count == 1
-                            ? "clean.confirm.summary.one"
-                            : "clean.confirm.summary.other",
-                        items.count,
-                        Formatters.bytes(vm.selectedSize)
-                    ))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.top, 24)
-            .padding(.bottom, 18)
-
-            // Item list: shows all checked items in full, no truncation
-            VStack(alignment: .leading, spacing: 6) {
-                SectionHeader(
-                    title: L10n.tr("clean.confirm.list"),
-                    trailing: L10n.fmt(
-                        items.count == 1
-                            ? "clean.confirm.listCount.one"
-                            : "clean.confirm.listCount.other",
-                        items.count
+        ConfirmSheetShell(
+            systemImage: hasCaution ? "exclamationmark.triangle.fill" : "trash.fill",
+            tint: hasCaution ? .red : .accentColor,
+            title: L10n.tr("clean.confirm.title"),
+            summary: L10n.fmt(
+                items.count == 1
+                    ? "clean.confirm.summary.one"
+                    : "clean.confirm.summary.other",
+                items.count,
+                Formatters.bytes(vm.selectedSize)
+            ),
+            items: items,
+            subtitleFor: { subtitle(for: $0) },
+            notices: {
+                // Risk notice
+                if hasCaution {
+                    NoticeRow(
+                        systemImage: "exclamationmark.octagon.fill",
+                        tint: .red,
+                        title: L10n.tr("clean.confirm.cautionTitle"),
+                        message: L10n.tr("clean.confirm.cautionMessage")
                     )
-                )
-
-                List(items) { item in
-                    row(for: item)
+                    .padding(.top, 14)
+                } else if hasOtherReview {
+                    NoticeRow(
+                        systemImage: "exclamationmark.circle.fill",
+                        tint: .orange,
+                        title: L10n.tr("clean.confirm.reviewTitle"),
+                        message: L10n.tr("clean.confirm.reviewMessage")
+                    )
+                    .padding(.top, 14)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-            }
-            .padding(.horizontal, 20)
 
-            // Risk notice
-            if hasCaution {
-                NoticeRow(
-                    systemImage: "exclamationmark.octagon.fill",
-                    tint: .red,
-                    title: L10n.tr("clean.confirm.cautionTitle"),
-                    message: L10n.tr("clean.confirm.cautionMessage")
-                )
-                .padding(.horizontal, 20)
-                .padding(.top, 14)
-            } else if hasOtherReview {
-                NoticeRow(
-                    systemImage: "exclamationmark.circle.fill",
-                    tint: .orange,
-                    title: L10n.tr("clean.confirm.reviewTitle"),
-                    message: L10n.tr("clean.confirm.reviewMessage")
-                )
-                .padding(.horizontal, 20)
-                .padding(.top, 14)
-            }
-
-            // Language packs say what they actually do. The review wording
-            // above describes caches ("first build will be slower"), which is
-            // not what happens here: the affected apps' interfaces fall back to
-            // English or another language until they are reinstalled or
-            // updated. That is what the user has to agree to.
-            if languagePackCount > 0 {
-                NoticeRow(
-                    systemImage: "character.book.closed.fill",
-                    tint: .orange,
-                    title: L10n.tr("clean.confirm.languageTitle"),
-                    message: L10n.fmt("clean.confirm.languageMessage", languagePackCount)
-                )
-                .padding(.horizontal, 20)
-                .padding(.top, 14)
-            }
-
-            // Clean method
-            NoticeRow(
-                systemImage: vm.moveToTrash ? "trash" : "bolt.fill",
-                message: vm.moveToTrash
-                    ? L10n.tr("clean.confirm.toTrash")
-                    : L10n.tr("clean.confirm.permanent")
-            )
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-
-            // The user curated the general module's rows differently from
-            // what the next scan would pre-check: offer to remember that
-            // curation. Off by default, so a selection made for one clean is
-            // never saved behind the user's back.
-            if vm.showsRememberGeneralPrompt {
-                rememberRow
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-            }
-
-            Spacer(minLength: 16)
-
-            // Buttons
-            HStack(spacing: 10) {
-                Button(L10n.tr("common.cancel")) { vm.cancelConfirmation() }
-                    .keyboardShortcut(.cancelAction)
-                    .controlSize(.large)
-
-                ProminentActionButton(
-                    title: hasCaution
-                        ? L10n.tr("clean.confirm.cleanAnyway")
-                        : L10n.tr("clean.confirm.cleanNow"),
-                    tint: hasCaution ? .red : .accentColor
-                ) {
-                    // Only when the prompt is actually showing: the toggle
-                    // is off by default and only ever set on the general
-                    // module's sheet, so without the guard a clean launched
-                    // from elsewhere could still save a selection.
-                    if rememberSelection && vm.showsRememberGeneralPrompt {
-                        vm.rememberGeneralSelection()
-                    }
-                    vm.beginClean()
+                // Language packs say what they actually do. The review wording
+                // above describes caches ("first build will be slower"), which is
+                // not what happens here: the affected apps' interfaces fall back to
+                // English or another language until they are reinstalled or
+                // updated. That is what the user has to agree to.
+                if languagePackCount > 0 {
+                    NoticeRow(
+                        systemImage: "character.book.closed.fill",
+                        tint: .orange,
+                        title: L10n.tr("clean.confirm.languageTitle"),
+                        message: L10n.fmt("clean.confirm.languageMessage", languagePackCount)
+                    )
+                    .padding(.top, 14)
                 }
-            }
-            .padding(.bottom, 20)
-        }
-        .frame(width: 560, height: 600)
-        .background(Color(nsColor: .windowBackgroundColor))
+
+                // Clean method
+                NoticeRow(
+                    systemImage: vm.moveToTrash ? "trash" : "bolt.fill",
+                    message: vm.moveToTrash
+                        ? L10n.tr("clean.confirm.toTrash")
+                        : L10n.tr("clean.confirm.permanent")
+                )
+                .padding(.top, 12)
+
+                // The user curated the general module's rows differently from
+                // what the next scan would pre-check: offer to remember that
+                // curation. Off by default, so a selection made for one clean is
+                // never saved behind the user's back.
+                if vm.showsRememberGeneralPrompt {
+                    rememberRow
+                        .padding(.top, 12)
+                }
+            },
+            confirmTitle: hasCaution
+                ? L10n.tr("clean.confirm.cleanAnyway")
+                : L10n.tr("clean.confirm.cleanNow"),
+            confirmTint: hasCaution ? .red : .accentColor,
+            onConfirm: {
+                // Only when the prompt is actually showing: the toggle
+                // is off by default and only ever set on the general
+                // module's sheet, so without the guard a clean launched
+                // from elsewhere could still save a selection.
+                if rememberSelection && vm.showsRememberGeneralPrompt {
+                    vm.rememberGeneralSelection()
+                }
+                vm.beginClean()
+            },
+            onCancel: { vm.cancelConfirmation() }
+        )
     }
 
     /// The remember-this-selection row: an inline toggle rather than a
