@@ -8406,7 +8406,29 @@
         }
       }
     },
-    "apps.confirm.leftoverMore": {
+    "apps.confirm.leftoverMore.one": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等 %lld 个应用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "and %lld more app"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等 %lld 個應用程式"
+          }
+        }
+      }
+    },
+    "apps.confirm.leftoverMore.other": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {

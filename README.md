@@ -31,7 +31,7 @@ What Mackit does:
 
 ## Features
 
-- **One-click scan**: 60+ path rules + 12 command-line clean rules, streamed into the list while the scan is still running
+- **One-click scan**: 77 path rules + 13 command-line clean rules, streamed into the list while the scan is still running
 - **Three risk levels**: `Safe` (pure cache, recreated by the tool) / `Careful` (needs re-download or rebuild) / `Caution` (Trash, iOS backups, etc. — extra confirmation required)
 - **App uninstall**: a tool page (sidebar "Tools" section) listing installed apps in `/Applications` and `~/Applications` together with their leftovers in `~/Library` (app support, caches, containers, preferences, login items…), uninstalling an app with its leftovers or sweeping the leftovers alone; running apps are refused
 - **App junk sweep**: the cleanup scan covers the regenerable part of an app's leftovers (caches, HTTP storages, WebKit data, logs, crash reports) in the general module's "App Junk" row — per app, so you can keep one app's caches while sweeping the rest
@@ -207,7 +207,7 @@ Sources/Mackit/
 ├── AgentApp.swift                # tray agent entry (MenuBarExtra + labels)
 ├── Models/                       # data models: items, categories, risk levels, scan rules, comparators
 ├── Engine/
-│   ├── RulesCatalog.swift        # 60+ scan rules and 12 CLI clean commands
+│   ├── RulesCatalog.swift        # 77 scan rules and 13 CLI clean commands
 │   ├── AppScanner.swift          # installed-app discovery and leftover detection (feeds the uninstall tool and the app-junk row)
 │   ├── FileSystem.swift          # size computation, globbing, tool lookup, volume capacity
 │   ├── Scanner.swift             # concurrent scanning + project directory traversal

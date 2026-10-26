@@ -49,12 +49,14 @@ struct AppUninstallView: View {
         // The confirmation sheet hangs off the page, driven directly by the
         // model's phase rather than @State + onChange — the latter doesn't
         // trigger on "open again after cancel" because the value didn't
-        // change.
+        // change. Its content is a view of its own so it re-renders when the
+        // selection moves under it (see AppUninstallConfirmSheet).
         .sheet(isPresented: Binding(
             get: { model.phase == .confirming },
             set: { if !$0 { model.cancelConfirmation() } }
         )) {
-            confirmSheet
+            AppUninstallConfirmSheet()
+                .environment(vm)
         }
         // The progress overlay covers the page while the clean runs, so the
         // list behind stays visible — the same composition the cleanup scan
@@ -63,11 +65,17 @@ struct AppUninstallView: View {
             if model.phase == .cleaning {
                 CleanProgressOverlay(
                     progress: model.progress,
-                    cleanedCount: model.outcomes.filter(\.succeeded).count,
+                    cleanedCount: model.cleanedCount,
                     currentTitle: model.currentTitle,
                     onStop: { model.cancelClean() }
                 )
             }
+        }
+        .onChange(of: model.phase) { _, phase in
+            // A finished uninstall freed real space, and the sidebar footer's
+            // available-space figure would otherwise stay stale until the
+            // next main scan or clean.
+            if phase == .done { vm.volumeUsage = .home() }
         }
     }
 
@@ -126,8 +134,19 @@ struct AppUninstallView: View {
 
     /// "12 apps · 34.2 GB total" — the count answers "is anything installed
     /// here", the total what uninstalling everything listed would remove.
+    ///
+    /// The total deduplicates by item id: an app installed in both
+    /// `/Applications` and `~/Applications` claims the same residue files on
+    /// both of its rows, and those bytes exist once.
     private var headerLine: String {
-        let total = model.apps.reduce(0) { $0 + $1.totalSize }
+        var seen = Set<String>()
+        var total: Int64 = 0
+        for entry in model.apps {
+            total += entry.bundle.size
+            for residue in entry.residues where seen.insert(residue.id).inserted {
+                total += residue.size
+            }
+        }
         return L10n.fmt("apps.tool.header", model.apps.count, Formatters.bytes(total))
     }
 
@@ -382,39 +401,84 @@ struct AppUninstallView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Confirmation sheet
+    // MARK: - Expansion
 
-    private var confirmSheet: some View {
-        // Sorted by size from large to small, largest first for easy
-        // verification — the cleanup scan's confirmation lists the same way.
-        let items = model.selectedItems.sorted { $0.size > $1.size }
-        let runningApps = model.runningAppNames
-        let leftovers = model.unselectedResidues
-        let leftoverCount = leftovers.reduce(0) { $0 + $1.count }
-        let leftoverSize = leftovers.reduce(0) { $0 + $1.size }
-        let useTrash = vm.moveToTrash
+    private func toggleExpanded(_ entry: AppUninstallModel.AppEntry) {
+        if expandedIDs.contains(entry.id) {
+            expandedIDs.remove(entry.id)
+        } else {
+            expandedIDs.insert(entry.id)
+        }
+    }
+}
 
-        return VStack(spacing: 0) {
+/// The uninstall confirmation sheet.
+///
+/// A view of its own, like the cleanup scan's `CleanConfirmationView`: every
+/// figure below is a computed property read inside the body, so the sheet is
+/// live — the leftover catch-up's "Select all" adds files to the selection,
+/// and the list, the summary and the warnings all follow. Freezing them into
+/// locals captured when the sheet opened would leave the sheet promising one
+/// list while the clean deletes another.
+///
+/// The sheet holds no state of its own; show and dismiss are both driven by
+/// the model's phase, avoiding the problem of "after cancel, the phase gets
+/// stuck at .confirming, so clicking again doesn't pop up the sheet".
+struct AppUninstallConfirmSheet: View {
+    @Environment(AppViewModel.self) private var vm
+
+    private var model: AppUninstallModel { vm.appUninstall }
+
+    /// Sorted by size from large to small, largest first for easy verification.
+    private var items: [JunkItem] { model.selectedItems.sorted { $0.size > $1.size } }
+    private var hasCaution: Bool { items.contains { $0.risk == .caution } }
+    /// Review-level entries: app support, preferences, containers and other
+    /// places that may hold user data. The notice is the generic "re-
+    /// downloaded or rebuilt" wording, which is what deleting them means.
+    private var hasOtherReview: Bool { items.contains { $0.risk == .review } }
+    private var runningApps: [String] { model.runningAppNames }
+    /// Apps whose bundle is checked but whose leftover files aren't all
+    /// checked yet.
+    private var leftovers: [AppResidueSummary] { model.unselectedResidues }
+    private var leftoverCount: Int { leftovers.reduce(0) { $0 + $1.count } }
+    private var leftoverSize: Int64 { leftovers.reduce(0) { $0 + $1.size } }
+    /// Whether the selection includes app bundles. Uninstalling apps and only
+    /// sweeping leftover files are different promises, and the copy has to
+    /// say which one is about to happen: "Clean leftover files only" checks
+    /// no bundle at all.
+    private var isUninstall: Bool { model.selectedAppCount > 0 }
+    /// The shared move-to-Trash setting, read live so a change in Settings
+    /// shows up the next time the sheet opens.
+    private var useTrash: Bool { vm.moveToTrash }
+
+    var body: some View {
+        VStack(spacing: 0) {
             // Title area
             VStack(spacing: 12) {
                 IconBadge(
-                    systemImage: "trash.fill",
-                    tint: .red,
+                    systemImage: hasCaution ? "exclamationmark.triangle.fill" : "trash.fill",
+                    tint: hasCaution ? .red : .accentColor,
                     diameter: 56,
                     symbolSize: 24
                 )
 
                 VStack(spacing: 5) {
-                    Text(verbatim: L10n.tr("apps.confirm.title"))
+                    Text(verbatim: isUninstall
+                        ? L10n.tr("apps.confirm.title")
+                        : L10n.tr("clean.confirm.title"))
                         .font(.system(size: 17, weight: .bold))
-                    // The copy counts by how many apps are being uninstalled;
-                    // residue file rows don't count — otherwise "About to
-                    // uninstall 1 app" would show 13.
+                    // The uninstall copy counts by how many apps are being
+                    // uninstalled; residue file rows don't count — otherwise
+                    // "About to uninstall 1 app" would show 13.
                     Text(verbatim: L10n.fmt(
-                        model.selectedAppCount == 1
-                            ? "apps.confirm.summary.one"
-                            : "apps.confirm.summary.other",
-                        model.selectedAppCount,
+                        isUninstall
+                            ? (model.selectedAppCount == 1
+                                ? "apps.confirm.summary.one"
+                                : "apps.confirm.summary.other")
+                            : (items.count == 1
+                                ? "clean.confirm.summary.one"
+                                : "clean.confirm.summary.other"),
+                        isUninstall ? model.selectedAppCount : items.count,
                         Formatters.bytes(model.selectedSize)
                     ))
                     .font(.system(size: 12))
@@ -488,14 +552,37 @@ struct AppUninstallView: View {
                 .padding(.top, 12)
             }
 
+            // Risk notice
+            if hasCaution {
+                NoticeRow(
+                    systemImage: "exclamationmark.octagon.fill",
+                    tint: .red,
+                    title: L10n.tr("clean.confirm.cautionTitle"),
+                    message: L10n.tr("clean.confirm.cautionMessage")
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+            } else if hasOtherReview {
+                NoticeRow(
+                    systemImage: "exclamationmark.circle.fill",
+                    tint: .orange,
+                    title: L10n.tr("clean.confirm.reviewTitle"),
+                    message: L10n.tr("clean.confirm.reviewMessage")
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+            }
+
             // Uninstall behavior note
-            NoticeRow(
-                systemImage: "info.circle.fill",
-                tint: .accentColor,
-                message: L10n.tr("apps.confirm.note")
-            )
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
+            if isUninstall {
+                NoticeRow(
+                    systemImage: "info.circle.fill",
+                    tint: .accentColor,
+                    message: L10n.tr("apps.confirm.note")
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+            }
 
             // Clean method
             NoticeRow(
@@ -515,7 +602,14 @@ struct AppUninstallView: View {
                     .keyboardShortcut(.cancelAction)
                     .controlSize(.large)
 
-                ProminentActionButton(title: L10n.tr("clean.confirm.uninstall"), tint: .red) {
+                ProminentActionButton(
+                    title: isUninstall
+                        ? L10n.tr("clean.confirm.uninstall")
+                        : (hasCaution
+                            ? L10n.tr("clean.confirm.cleanAnyway")
+                            : L10n.tr("clean.confirm.cleanNow")),
+                    tint: isUninstall || hasCaution ? .red : .accentColor
+                ) {
                     model.beginClean(moveToTrash: useTrash)
                 }
             }
@@ -536,18 +630,12 @@ struct AppUninstallView: View {
     /// fold into "and N more apps".
     private func leftoverNames(_ names: [String]) -> String {
         let shown = ListFormatter.localizedString(byJoining: Array(names.prefix(3)))
-        guard names.count > 3 else { return shown }
         // The fold indicates the number not yet listed, not the total
-        return shown + " " + L10n.fmt("apps.confirm.leftoverMore", names.count - 3)
-    }
-
-    // MARK: - Expansion
-
-    private func toggleExpanded(_ entry: AppUninstallModel.AppEntry) {
-        if expandedIDs.contains(entry.id) {
-            expandedIDs.remove(entry.id)
-        } else {
-            expandedIDs.insert(entry.id)
-        }
+        let more = names.count - 3
+        guard more > 0 else { return shown }
+        return shown + " " + L10n.fmt(
+            more == 1 ? "apps.confirm.leftoverMore.one" : "apps.confirm.leftoverMore.other",
+            more
+        )
     }
 }

@@ -42,15 +42,25 @@ struct AppUninstallModelTests {
         return [app, cache, prefs, bar]
     }
 
+    /// Records what the clean closure was called with, so a test can prove
+    /// the tool forwards the shared setting rather than assuming it.
+    private final class CleanCall: @unchecked Sendable {
+        var moveToTrash: Bool?
+        var itemCount = 0
+    }
+
     /// A clean stand-in: reports every item as succeeded (or the ones in
     /// `failing` as failed), so the state machine can be driven without
-    /// touching the disk.
+    /// touching the disk. The call's arguments land in `call` when given.
     private func fakeClean(
         failing: Set<String> = [],
-        movedToTrash: Bool = false
+        movedToTrash: Bool = false,
+        call: CleanCall? = nil
     ) -> (@MainActor @Sendable ([JunkItem], Bool) -> AsyncStream<CleanEvent>) {
-        { items, _ in
-            AsyncStream(CleanEvent.self) { continuation in
+        { items, useTrash in
+            call?.moveToTrash = useTrash
+            call?.itemCount = items.count
+            return AsyncStream(CleanEvent.self) { continuation in
                 continuation.yield(.started(total: items.count))
                 var reclaimed: Int64 = 0
                 var failures = 0
@@ -139,6 +149,26 @@ struct AppUninstallModelTests {
         let grouped = AppUninstallModel.group(sampleItems() + [orphan])
         #expect(!grouped.contains { $0.name == "Gone" })
         #expect(grouped.count == 2)
+    }
+
+    /// The same app installed in both `/Applications` and `~/Applications`
+    /// is two rows the user can uninstall one at a time; both claim the same
+    /// residue files, and because the selection is a set of item ids each
+    /// path is still deleted once.
+    @Test func groupingKeepsBothCopiesOfTheSameBundleID() {
+        let secondCopy = JunkItem(
+            ruleID: "app.bundle", title: "Foo", detail: "Version 2.0",
+            path: "/Users/x/Applications/Foo.app", category: .apps, risk: .caution, size: 500,
+            bundleID: "com.example.foo", appKind: .bundle, holdsLiveAppData: true
+        )
+        let grouped = AppUninstallModel.group(sampleItems() + [secondCopy])
+
+        #expect(grouped.count == 3, "both copies stay listed, got \(grouped.map(\.bundle.path))")
+        let copies = grouped.filter { $0.name == "Foo" }
+        #expect(copies.count == 2)
+        #expect(copies[0].residues.count == 2 && copies[1].residues.count == 2)
+        #expect(Set(copies[0].residues.map(\.id)) == Set(copies[1].residues.map(\.id)),
+                "both copies claim the same leftover files")
     }
 
     // MARK: - Selection
@@ -250,6 +280,20 @@ struct AppUninstallModelTests {
         #expect(model.phase == .idle)
     }
 
+    @Test func beginCleanForwardsTheMoveToTrashSetting() async {
+        let call = CleanCall()
+        let model = AppUninstallModel(scan: { sampleItems() }, clean: fakeClean(call: call))
+        model.activate()
+        await model.waitUntilSettled()
+        model.setAppSelected(entry("Bar", in: model), selected: true)
+        model.requestUninstall()
+        model.beginClean(moveToTrash: true)
+        await model.waitUntilSettled()
+
+        #expect(call.moveToTrash == true, "the shared setting is forwarded, not re-decided inside the tool")
+        #expect(call.itemCount == 1)
+    }
+
     @Test func aFailedCleanKeepsTheAppAndItsCheck() async {
         let sample = sampleItems()
         // The bundle is refused (a running app); the junk residue goes.
@@ -282,6 +326,35 @@ struct AppUninstallModelTests {
         #expect(!model.selectedIDs.contains(cacheID))
     }
 
+    @Test func bundleRemovedButResidueFailedLeavesNoDanglingCheck() async {
+        let sample = sampleItems()
+        let prefsID = "app.residue::/Users/x/Library/Preferences/com.example.foo.plist"
+        // The bundle and the cache go; only the preferences file is refused.
+        let model = AppUninstallModel(
+            scan: { sample },
+            clean: fakeClean(failing: [prefsID])
+        )
+        model.activate()
+        await model.waitUntilSettled()
+        model.setAppSelected(entry("Foo", in: model), selected: true)
+        model.requestUninstall()
+        model.beginClean(moveToTrash: false)
+        await model.waitUntilSettled()
+
+        // The app is uninstalled, so its entry leaves the list entirely —
+        // listing it would claim it is still installed.
+        #expect(model.apps.map(\.name) == ["Bar"])
+        // The refused file's check cannot survive as a ghost: nothing in the
+        // list matches it any more.
+        #expect(!model.selectedIDs.contains(prefsID))
+        #expect(model.selectedIDs.isEmpty)
+        // The failure is still reported, with its reason, so the user learns
+        // the file is still on disk.
+        #expect(model.failures == 1)
+        #expect(model.outcomes.first { !$0.succeeded }?.itemID == prefsID)
+        #expect(model.reclaimed == 600, "bundle 500 + cache 100")
+    }
+
     @Test func beginCleanOutsideConfirmationIsIgnored() async {
         let model = makeModel()
         model.activate()
@@ -309,6 +382,72 @@ struct AppUninstallModelTests {
         #expect(model.phase == .done)
         model.cancelClean()
         #expect(model.phase == .done)
+    }
+
+    /// A clean stopped half-way keeps what it already removed: the engine
+    /// reports completed outcomes before the cancellation lands, and those
+    /// entries must leave the list rather than pad it as ghosts.
+    @Test func cancelCleanMidRunKeepsWhatAlreadyLeftTheDisk() async {
+        let gate = Gate()
+        let model = AppUninstallModel(
+            scan: { sampleItems() },
+            clean: { items, _ in
+                AsyncStream(CleanEvent.self) { continuation in
+                    // The blocking wait lives in a detached task: the build
+                    // closure itself runs on the caller's thread — the main
+                    // actor — so waiting here would deadlock the test.
+                    Task.detached {
+                        continuation.yield(.started(total: items.count))
+                        for item in items {
+                            continuation.yield(.outcome(CleanOutcome(
+                                id: item.id, itemID: item.id, title: item.title, path: item.path,
+                                reclaimed: item.size, succeeded: true, message: "done"
+                            )))
+                        }
+                        // Hold the finish back: the cancel lands with every
+                        // outcome already reported but the clean not yet
+                        // wrapped up, which is the state a long-running clean
+                        // is in when the user presses Stop.
+                        gate.wait()
+                        continuation.yield(.finished(reclaimed: 0, failures: 0))
+                        continuation.finish()
+                    }
+                }
+            }
+        )
+        model.activate()
+        await model.waitUntilSettled()
+        model.setAppSelected(entry("Foo", in: model), selected: true)
+        model.requestUninstall()
+        model.beginClean(moveToTrash: false)
+        await waitUntilOutcomes(3, in: model)
+
+        model.cancelClean()
+
+        #expect(model.phase == .idle)
+        #expect(model.apps.map(\.name) == ["Bar"], "the uninstalled app left the list even though the clean was stopped")
+        #expect(model.selectedIDs.isEmpty, "the removed items' checks went with them")
+        #expect(model.outcomes.isEmpty, "a cancelled clean reports no result")
+
+        // Let the held-back stream finish so no thread is left blocked.
+        gate.open()
+    }
+
+    /// Polls until the clean has reported the given number of outcomes. The
+    /// model's `waitUntilSettled` cannot be used here: the stream is held
+    /// open on purpose, so the clean never settles on its own.
+    private func waitUntilOutcomes(_ count: Int, in model: AppUninstallModel) async {
+        for _ in 0..<500 {
+            if model.outcomes.count >= count { return }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
+    /// A gate a stream can block on until the test opens it.
+    private final class Gate: @unchecked Sendable {
+        private let semaphore = DispatchSemaphore(value: 0)
+        func wait() { semaphore.wait() }
+        func open() { semaphore.signal() }
     }
 
     // MARK: - Confirmation sheet data
@@ -344,6 +483,23 @@ struct AppUninstallModelTests {
         model.selectResiduesForSelectedApps()
         #expect(model.unselectedResidues.isEmpty)
         #expect(model.selectionState(of: foo) == .all)
+    }
+
+    @Test func selectResiduesForSelectedAppsKeepsUnrelatedSelections() async {
+        let model = makeModel()
+        model.activate()
+        await model.waitUntilSettled()
+        let foo = entry("Foo", in: model)
+        let bar = entry("Bar", in: model)
+        model.setAppSelected(bar, selected: true)
+        model.setAppSelected(foo, selected: true)
+        model.setResidueSelected(foo.residues[0], selected: false)
+
+        model.selectResiduesForSelectedApps()
+
+        #expect(model.selectedIDs.contains(bar.bundle.id), "an unrelated app's check is not disturbed")
+        #expect(model.selectionState(of: foo) == .all)
+        #expect(model.unselectedResidues.isEmpty)
     }
 
     // MARK: - Rescan
@@ -396,7 +552,9 @@ struct AppUninstallModelTests {
     // MARK: - End to end against real files
 
     /// Creates a fake .app plus a cache and a preferences file, mirroring the
-    /// app scanner tests' fixture helpers.
+    /// app scanner tests' fixture helpers. Cleans up after itself even when a
+    /// write halfway through throws, so a failed setup leaves nothing behind;
+    /// the caller owns the directories once this returns.
     private func makeFixture(label: String) throws -> (apps: URL, home: URL, appPath: String, prefsPath: String, cachePath: String) {
         func canonicalDirectory(_ suffix: String) throws -> URL {
             let raw = FileManager.default.temporaryDirectory
@@ -406,25 +564,32 @@ struct AppUninstallModelTests {
         }
         let apps = try canonicalDirectory("apps")
         let home = try canonicalDirectory("home")
+        do {
+            let contents = apps.appendingPathComponent("Foo.app/Contents")
+            try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
+            let plist: [String: Any] = [
+                "CFBundleIdentifier": "com.example.foo",
+                "CFBundleName": "Foo",
+                "CFBundleShortVersionString": "3.1"
+            ]
+            let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            try data.write(to: contents.appendingPathComponent("Info.plist"))
 
-        let contents = apps.appendingPathComponent("Foo.app/Contents")
-        try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
-        let plist: [String: Any] = [
-            "CFBundleIdentifier": "com.example.foo",
-            "CFBundleName": "Foo",
-            "CFBundleShortVersionString": "3.1"
-        ]
-        let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
-        try data.write(to: contents.appendingPathComponent("Info.plist"))
+            let prefs = home.appendingPathComponent("Library/Preferences/com.example.foo.plist")
+            try FileManager.default.createDirectory(at: prefs.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("prefs".utf8).write(to: prefs)
+            let cache = home.appendingPathComponent("Library/Caches/com.example.foo")
+            try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
+            try Data("cache-bytes".utf8).write(to: cache.appendingPathComponent("cache.bin"))
 
-        let prefs = home.appendingPathComponent("Library/Preferences/com.example.foo.plist")
-        try FileManager.default.createDirectory(at: prefs.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data("prefs".utf8).write(to: prefs)
-        let cache = home.appendingPathComponent("Library/Caches/com.example.foo")
-        try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
-        try Data("cache-bytes".utf8).write(to: cache.appendingPathComponent("cache.bin"))
-
-        return (apps, home, contents.deletingLastPathComponent().path, prefs.path, cache.path)
+            return (apps, home, contents.deletingLastPathComponent().path, prefs.path, cache.path)
+        } catch {
+            // A throw halfway through would otherwise leak both directories
+            // for the life of the test process.
+            try? FileManager.default.removeItem(at: apps)
+            try? FileManager.default.removeItem(at: home)
+            throw error
+        }
     }
 
     @Test func uninstallRemovesTheAppAndItsFilesFromDisk() async throws {

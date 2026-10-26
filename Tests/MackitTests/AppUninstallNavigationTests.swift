@@ -68,10 +68,10 @@ struct AppUninstallNavigationTests {
         await model.waitUntilSettled()
         #expect(counters.scans == 1)
 
-        // The hardware page samples GPU, battery and display state on entry,
-        // so the general module stands in for "another module" — a
-        // page-switch contract has no business depending on the machine
-        // having that hardware.
+        // Every sibling route clears the tool's flag. The hardware page is
+        // in the list on purpose: it samples the machine on entry, which is
+        // exactly the kind of side effect a page-switch contract should not
+        // depend on.
         vm.showGeneralCleanup()
         #expect(!vm.showsAppUninstall)
 

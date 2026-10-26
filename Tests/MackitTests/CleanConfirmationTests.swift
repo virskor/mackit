@@ -94,6 +94,26 @@ struct CleanConfirmationTests {
         #expect(vm.selectedCategory == .node)
     }
 
+    /// The hardware page must clear the general cleanup flag, like every
+    /// other route out of it. A stale flag makes the sidebar's general row
+    /// read as selected while the detail area shows hardware, and its
+    /// `guard !showsGeneralCleanup` then swallows the next click on that row
+    /// — the page appears stuck on hardware.
+    @Test func hardwarePageClearsTheGeneralCleanupFlag() {
+        let vm = makeVM()
+
+        vm.showGeneralCleanup()
+        vm.showHardware()
+
+        #expect(vm.showsHardware)
+        #expect(!vm.showsGeneralCleanup)
+
+        // Coming back to the general row must work after that detour.
+        vm.showGeneralCleanup()
+        #expect(vm.showsGeneralCleanup)
+        #expect(!vm.showsHardware)
+    }
+
     /// The summary's "freed" claim is only true when the bytes really left the
     /// volume: a clean that recycled anything says "moved" instead, because
     /// those bytes come back only once the Trash is emptied. Both the result

@@ -62,15 +62,22 @@ enum AppScanner {
     static func scanAppJunk(roots: [String] = defaultRoots, home: String = NSHomeDirectory()) -> [JunkItem] {
         let apps = discoverApps(roots: roots)
         guard !apps.isEmpty else { return [] }
-        let index = supportIndex(home: home)
-        return apps.flatMap { items(for: $0, home: home, index: index) }
+        // No Application Support index: the only residue kind it can add is
+        // application support, which is app data the junk scan filters out
+        // anyway — building the index here would charge every cleanup scan a
+        // shallow ~/Library/Application Support traversal for nothing.
+        return apps.flatMap { items(for: $0, home: home, index: nil) }
             .filter { $0.category == .appJunk }
     }
 
     /// All entries for a single app: the bundle first, with junk residue
     /// following and data residue last, in probing order.
+    ///
+    /// A nil `index` means no Application Support index at all — vendor
+    /// subdirectories are then not matched. Callers that want them build the
+    /// index once and pass it in (`scanApps`); building it here would charge
+    /// every caller for a traversal only some of them use.
     static func items(for app: InstalledApp, home: String, index: SupportIndex? = nil) -> [JunkItem] {
-        let index = index ?? supportIndex(home: home)
         let residues = residuePaths(for: app, home: home, index: index)
         let junk = residues
             .filter { $0.kind.isRegenerableJunk }
@@ -184,9 +191,10 @@ enum AppScanner {
 
     /// Probe residue paths across `~/Library` by both bundle ID and app name.
     ///
-    /// `home` and `index` are injectable for testing; when the caller passes nil,
-    /// the index is built on demand. Only paths that actually exist are
-    /// returned; missing locations produce no entries.
+    /// `home` and `index` are injectable for testing. A nil `index` means
+    /// vendor subdirectories are not matched at all — callers that want them
+    /// build the index once and pass it in. Only paths that actually exist
+    /// are returned; missing locations produce no entries.
     static func residuePaths(
         for app: InstalledApp,
         home: String,

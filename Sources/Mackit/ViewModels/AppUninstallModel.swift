@@ -47,7 +47,9 @@ final class AppUninstallModel {
 
     // MARK: Scanned data
 
-    private(set) var apps: [AppEntry] = []
+    private(set) var apps: [AppEntry] = [] {
+        didSet { stateRevision += 1 }
+    }
     private(set) var isLoading = false
     /// Whether a scan has landed at least once. `activate` uses it to scan
     /// only on the session's first visit.
@@ -59,7 +61,13 @@ final class AppUninstallModel {
     /// files alike. The tool's own selection: the cleanup scan's
     /// `CleanupSelection` belongs to the scan, and an uninstall gesture must
     /// never move what a scan pre-checked.
-    var selectedIDs: Set<String> = []
+    ///
+    /// The observer bumps `stateRevision`, the key the derived-data caches
+    /// below are invalidated by — every mutation goes through this property
+    /// or through `apps`, so neither cache can go stale.
+    var selectedIDs: Set<String> = [] {
+        didSet { stateRevision += 1 }
+    }
 
     /// The apps matching the search field, name and bundle ID.
     var searchText: String = ""
@@ -70,6 +78,11 @@ final class AppUninstallModel {
     private(set) var progress: Double = 0
     private(set) var currentTitle: String = ""
     private(set) var outcomes: [CleanOutcome] = []
+    /// How many of the reported outcomes succeeded. Failed items also went
+    /// into `outcomes`; counting all of them would describe failures as
+    /// "cleaned". Maintained per event so the overlay does not re-filter the
+    /// whole list on every step.
+    private(set) var cleanedCount = 0
     private(set) var reclaimed: Int64 = 0
     private(set) var failures = 0
     /// Whether the finished clean moved anything to the Trash: those bytes
@@ -99,9 +112,26 @@ final class AppUninstallModel {
     /// by one is O(n) per item.
     private var pendingRemoval: Set<String> = []
 
+    /// When the running clean started; its duration is logged on finish.
+    private var cleanStartedAt: ContinuousClock.Instant?
+
     /// The app-icon cache. Excluded from Observation: filling it during a
     /// render would add a pointless extra round of body recomputation.
     @ObservationIgnored private var iconCache: [String: NSImage] = [:]
+
+    /// Bumped whenever the scanned list or the selection changes; the key the
+    /// derived-data caches below are invalidated by. Writing it is
+    /// deliberately excluded from Observation: it is a cache key, not state a
+    /// view reads.
+    @ObservationIgnored private var stateRevision = 0
+    /// `NSWorkspace.runningApplications` is one workspace XPC query, and the
+    /// confirmation sheet's body reads this on every evaluation; cached by
+    /// revision so one confirmation costs one query, the same protection the
+    /// cleanup scan's confirmation panel had.
+    @ObservationIgnored private var runningAppsCache: (key: Int, value: [String])?
+    /// O(apps × residue) per computation; likewise cached by revision so the
+    /// sheet's several reads per body evaluation share one pass.
+    @ObservationIgnored private var unselectedResiduesCache: (key: Int, value: [AppResidueSummary])?
 
     init(
         scan: @escaping @MainActor () async -> [JunkItem] = {
@@ -142,11 +172,23 @@ final class AppUninstallModel {
     /// would make them redo the curation. Ids that no longer exist are
     /// dropped, so a removed app cannot stay checked as a ghost.
     func rescan() {
+        // A rescan must never strand a running clean: the phase is the
+        // overlay's and the footer's switch, and a clean left running under
+        // an idle page would delete files the user can no longer see or stop.
+        guard phase != .cleaning else { return }
         scanTask?.cancel()
         isLoading = true
         // A rescan while the confirmation sheet is up would empty the list
         // under it; the sheet is dismissed instead.
         phase = .idle
+        // The previous clean's numbers are not this scan's: the result card
+        // reads them, and a stale total would describe work that a cancel
+        // threw away.
+        reclaimed = 0
+        failures = 0
+        cleanedCount = 0
+        movedToTrash = false
+        outcomes = []
         let startedAt = ContinuousClock.now
         scanTask = Task { [scan] in
             let items = await scan()
@@ -159,30 +201,30 @@ final class AppUninstallModel {
         }
     }
 
-    /// Groups a flat item list into per-app entries: one bundle entry per
-    /// app with its residue files attached. Residue without its bundle cannot
-    /// be uninstalled through the page and is left out — the scanner always
-    /// emits the two together, so this only guards against a hand-built list.
+    /// Groups a flat item list into per-app entries. Residue without its
+    /// bundle cannot be uninstalled through the page and is left out — the
+    /// scanner always emits the two together, so this only guards against a
+    /// hand-built list.
+    ///
+    /// Bundles are keyed by item id, not bundle ID: the same app installed in
+    /// both `/Applications` and `~/Applications` is two rows the user can
+    /// uninstall one at a time, and both legitimately claim the same residue
+    /// files. Checking both is still safe — the selection is a set of item
+    /// ids, so each path is deleted once.
     static func group(_ items: [JunkItem]) -> [AppEntry] {
-        var bundles: [String: JunkItem] = [:]
-        var residues: [String: [JunkItem]] = [:]
-        for item in items {
-            switch item.appKind {
-            case .bundle:
-                bundles[item.bundleID ?? ""] = item
-            case .residue:
-                residues[item.bundleID ?? "", default: []].append(item)
-            case nil:
-                break
+        var residuesByID: [String: [JunkItem]] = [:]
+        for item in items where item.appKind?.isResidue == true {
+            residuesByID[item.bundleID ?? "", default: []].append(item)
+        }
+        return items
+            .filter { $0.appKind == .bundle }
+            .map { bundle in
+                AppEntry(
+                    bundle: bundle,
+                    residues: (residuesByID[bundle.bundleID ?? ""] ?? []).sorted { $0.size > $1.size }
+                )
             }
-        }
-        return bundles.map { id, bundle in
-            AppEntry(
-                bundle: bundle,
-                residues: (residues[id] ?? []).sorted { $0.size > $1.size }
-            )
-        }
-        .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     // MARK: Derived data
@@ -231,14 +273,17 @@ final class AppUninstallModel {
     /// them is refused by the clean engine, so the confirmation sheet lists
     /// them in advance, sparing the user a wasted trip.
     var runningAppNames: [String] {
+        if let cached = runningAppsCache, cached.key == stateRevision { return cached.value }
         var seen: Set<String> = []
-        return apps
+        let value = apps
             .filter { selectedIDs.contains($0.bundle.id) }
             .filter { entry in
                 guard seen.insert(entry.bundleID).inserted else { return false }
                 return isAppRunning(entry.bundleID)
             }
             .map(\.name)
+        runningAppsCache = (stateRevision, value)
+        return value
     }
 
     /// Apps whose bundle is checked but whose leftover files aren't all
@@ -246,7 +291,8 @@ final class AppUninstallModel {
     /// those files on disk, and the confirmation sheet warns and offers the
     /// one-click catch-up.
     var unselectedResidues: [AppResidueSummary] {
-        apps.compactMap { entry -> AppResidueSummary? in
+        if let cached = unselectedResiduesCache, cached.key == stateRevision { return cached.value }
+        let value = apps.compactMap { entry -> AppResidueSummary? in
             guard selectedIDs.contains(entry.bundle.id) else { return nil }
             let pending = entry.residues.filter { !selectedIDs.contains($0.id) }
             guard !pending.isEmpty else { return nil }
@@ -256,6 +302,8 @@ final class AppUninstallModel {
                 size: pending.reduce(0) { $0 + $1.size }
             )
         }
+        unselectedResiduesCache = (stateRevision, value)
+        return value
     }
 
     /// Adds every leftover file of the checked apps to the selection (the
@@ -332,12 +380,18 @@ final class AppUninstallModel {
     /// second copy of it.
     func beginClean(moveToTrash: Bool) {
         guard phase == .confirming, !selectedItems.isEmpty else { return }
+        // A second clean replaces the first rather than racing it: two
+        // engines deleting overlapping paths would report each other's
+        // outcomes.
+        cleanTask?.cancel()
         let targets = selectedItems
         phase = .cleaning
         progress = 0
         outcomes = []
+        cleanedCount = 0
         currentTitle = ""
         pendingRemoval = []
+        cleanStartedAt = .now
         MackitLog.apps.info("uninstall started: \(targets.count, privacy: .public) entries, move to Trash \(moveToTrash, privacy: .public)")
 
         cleanTask = Task { [clean] in
@@ -354,6 +408,7 @@ final class AppUninstallModel {
         case .started(let total):
             progress = total > 0 ? 0 : 1
             pendingRemoval = []
+            currentTitle = L10n.tr("clean.preparing")
 
         case .progress(let completed, let total, let current):
             progress = total > 0 ? Double(completed) / Double(total) : 0
@@ -362,6 +417,7 @@ final class AppUninstallModel {
         case .outcome(let outcome):
             outcomes.append(outcome)
             if outcome.succeeded {
+                cleanedCount += 1
                 pendingRemoval.insert(outcome.itemID)
             }
 
@@ -374,7 +430,10 @@ final class AppUninstallModel {
             for outcome in outcomes where !outcome.succeeded {
                 MackitLog.apps.error("uninstall failed \"\(outcome.title, privacy: .public)\": \(outcome.message, privacy: .public)")
             }
-            MackitLog.apps.info("uninstall finished: freed \(reclaimed, privacy: .public) bytes, \(failures, privacy: .public) failures")
+            if let startedAt = cleanStartedAt {
+                MackitLog.apps.info("uninstall finished: freed \(reclaimed, privacy: .public) bytes, \(failures, privacy: .public) failures, took \(MackitLog.duration(.now - startedAt), privacy: .public)")
+                cleanStartedAt = nil
+            }
             // Removed in one batch: the uninstalled apps leave the list and
             // the result card takes the page's place.
             removeCleanedItems(pendingRemoval)
@@ -382,17 +441,28 @@ final class AppUninstallModel {
         }
     }
 
-    /// Drops the cleaned items from the list in one batch. An app whose
-    /// bundle was removed is gone entirely; one that only lost some of its
-    /// residue files stays with what is left. Items whose clean failed stay
-    /// checked, so they can be retried.
+    /// Drops the cleaned items from the list in one batch.
+    ///
+    /// An app whose bundle was removed is gone entirely — it is no longer
+    /// installed, so listing it would be a lie — and the residue files of
+    /// its that failed to delete leave the list with it: they are still on
+    /// disk, orphaned, and the result card's failure list names them with
+    /// the reason. Their checks are dropped too, since nothing in the list
+    /// matches them any more.
+    ///
+    /// An app whose bundle clean failed stays listed with its remaining
+    /// residue files, and the failed items stay checked so they can be
+    /// retried; only items that actually left the disk lose their check.
     private func removeCleanedItems(_ ids: Set<String>) {
         guard !ids.isEmpty else { return }
-        selectedIDs.subtract(ids)
         apps = apps.compactMap { entry in
-            guard !ids.contains(entry.bundle.id) else { return nil }
+            guard !ids.contains(entry.bundle.id) else {
+                selectedIDs.subtract(entry.residues.map(\.id))
+                return nil
+            }
             return AppEntry(bundle: entry.bundle, residues: entry.residues.filter { !ids.contains($0.id) })
         }
+        selectedIDs.subtract(ids)
     }
 
     /// Stops the clean, keeping whatever it already removed in the list —
@@ -414,7 +484,9 @@ final class AppUninstallModel {
         }
         outcomes = []
         progress = 0
+        cleanedCount = 0
         currentTitle = ""
+        cleanStartedAt = nil
         phase = .idle
     }
 

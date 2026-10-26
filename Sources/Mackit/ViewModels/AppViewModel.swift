@@ -648,6 +648,7 @@ final class AppViewModel {
     func showHardware() {
         showsSettings = false
         showsHardware = true
+        showsGeneralCleanup = false
         dismissDiskAnalysis()
         dismissHomebrew()
         dismissAppUninstall()
@@ -1983,7 +1984,7 @@ final class AppViewModel {
             // Discovery and measurement complete in the same detached
             // task: if measurement stayed on the main thread, the
             // synchronous traversal of each artifact directory would block
-            // the UI (same reason as scanApps).
+            // the UI (same reason as scanAppJunk).
             let measured = await Task.detached(priority: .utility) {
                 let discovered = ScanEngine.scanProjectJunk(root: root, names: names, maxDepth: 8)
                 return await ScanEngine.measure(discovered)
@@ -2044,7 +2045,7 @@ final class AppViewModel {
     /// Enumerates useless localization directories inside installed apps,
     /// merging the results into the list.
     ///
-    /// Same detached-task shape as `scanApps`: discovery walks every app
+    /// Same detached-task shape as `scanAppJunk`: discovery walks every app
     /// bundle's Resources directory, which must not run on the main thread.
     func scanLanguageFiles() async {
         progressLabel = L10n.tr("scan.languageFiles")

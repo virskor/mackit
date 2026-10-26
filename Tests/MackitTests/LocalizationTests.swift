@@ -76,7 +76,7 @@ struct LocalizationTests {
             "category.language.title", "category.downloads.title",
             "scan.languageFiles", "scan.downloads",
             "apps.confirm.leftoverTitle", "apps.confirm.leftoverDetail",
-            "apps.confirm.leftoverMore", "apps.confirm.leftoverAction",
+            "apps.confirm.leftoverMore.one", "apps.confirm.leftoverMore.other", "apps.confirm.leftoverAction",
             "apps.ctx.uninstallWithResidue", "apps.ctx.residueOnly",
             "settings.includeApps", "settings.includeAppsHint",
             "sidebar.appUninstall", "sidebar.appUninstall.help",
@@ -258,9 +258,14 @@ struct LocalizationTests {
         #expect(!leftover.contains("%2$lld"))
         #expect(!leftover.contains("%3$@"))
 
-        let more = L10n.fmt("apps.confirm.leftoverMore", 5)
+        let more = L10n.fmt("apps.confirm.leftoverMore.other", 5)
         #expect(more.contains("5"))
         #expect(!more.contains("%lld"))
+        // The singular form carries the same placeholder layout, or the
+        // %lld integer would land in the %@ slot and crash the render.
+        let moreOne = L10n.fmt("apps.confirm.leftoverMore.one", 1)
+        #expect(moreOne.contains("1"))
+        #expect(!moreOne.contains("%lld"))
 
         // The disk analysis page's size/share lines and accessibility labels.
         // The tile line is width-critical: it must keep the unspaced
@@ -383,7 +388,8 @@ struct LocalizationTests {
             ("apps.confirm.summary.other", 2),
             ("apps.confirm.running.other", 1),
             ("apps.confirm.leftoverDetail", 3),
-            ("apps.confirm.leftoverMore", 1),
+            ("apps.confirm.leftoverMore.one", 1),
+            ("apps.confirm.leftoverMore.other", 1),
             ("apps.tool.header", 2),
             ("apps.tool.selected", 2),
             ("clean.error.appRunning", 1),
@@ -468,6 +474,7 @@ struct LocalizationTests {
             "apps.residueSummary",
             "apps.confirm.summary",
             "apps.confirm.running",
+            "apps.confirm.leftoverMore",
             "diskAnalysis.header.folders",
             "diskAnalysis.header.files",
             "diskAnalysis.scan.count",
