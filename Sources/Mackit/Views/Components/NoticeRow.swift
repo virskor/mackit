@@ -45,26 +45,3 @@ struct NoticeRow: View {
         }
     }
 }
-
-private extension View {
-    /// `.help(_:)` with an empty string still pops an empty tooltip, so the
-    /// modifier is attached only when there is text to show.
-    func optionalHelp(_ text: String?) -> some View {
-        modifier(OptionalHelp(text: text))
-    }
-}
-
-/// The conditional half of `optionalHelp`: a modifier's opaque body may
-/// branch between the helped and unhelped view, an extension returning
-/// `some View` may not.
-private struct OptionalHelp: ViewModifier {
-    let text: String?
-
-    func body(content: Content) -> some View {
-        if let text, !text.isEmpty {
-            content.help(text)
-        } else {
-            content
-        }
-    }
-}
