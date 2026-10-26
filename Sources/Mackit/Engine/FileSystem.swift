@@ -486,6 +486,43 @@ enum FileSystem {
         return (total, latest)
     }
 
+    /// The Trash directory a given path would be moved into — the user's own
+    /// `~/.Trash`, or the per-volume one a file on another disk lands in.
+    ///
+    /// Resolved from the *parent* directory on purpose: `appropriateFor`
+    /// answers nil for a path that does not exist (verified — `/tmp/missing`
+    /// gives nil while `/tmp` gives `~/.Trash`), and an entry being checked may
+    /// be gone by the time the clean runs. The parent decides the volume
+    /// anyway. `create: false` keeps a read-only query from creating a
+    /// missing Trash.
+    static func trashDirectory(for url: URL) -> URL? {
+        let anchor = url.deletingLastPathComponent()
+        return try? manager.url(
+            for: .trashDirectory,
+            in: .userDomainMask,
+            appropriateFor: anchor,
+            create: false
+        )
+    }
+
+    /// Whether `url` already sits inside a Trash directory.
+    ///
+    /// The cleaning engine needs this because `NSWorkspace.recycle` on an item
+    /// that is already in the Trash reports success without moving anything:
+    /// it hands back the path mapped to itself and leaves the bytes on disk
+    /// (verified). Treating that as "trashed" both hid the fact that the Trash
+    /// was never emptied and counted space that was never freed.
+    ///
+    /// `trashDirectory` is injectable so the check can be tested without
+    /// touching the real Trash.
+    static func isInTrash(_ url: URL, trashDirectory: URL? = nil) -> Bool {
+        guard let trash = (trashDirectory ?? self.trashDirectory(for: url)) else { return false }
+        var root = trash.standardizedFileURL.path
+        while root.count > 1, root.hasSuffix("/") { root.removeLast() }
+        let path = url.standardizedFileURL.path
+        return path == root || path.hasPrefix(root + "/")
+    }
+
     /// Protected paths; the cleaning engine rejects them outright.
     ///
     /// Both the as-is and realpath spellings are compared: on deletion the
@@ -527,8 +564,23 @@ enum FileSystem {
         ]
         for prefix in protectedPrefixes where resolved.hasPrefix(prefix) { return true }
 
-        // The keychain and the root directory of the system volume
+        // The keychain, the Trash container itself, and the root directory of
+        // the system volume. The Trash is protected as a *container*: emptying
+        // it means removing its children, and an entry pointing at the folder
+        // itself would take everything in it — and the folder — in one go.
+        // Only the home Trash is reachable here — `trash.home` lists its
+        // children and nothing lists a volume's `.Trashes` — so that is the
+        // one shape worth resolving.
+        //
+        // The name is checked before the resolution because this runs once per
+        // removed item and resolving a Trash directory costs a volume lookup;
+        // only a path that could *be* a Trash pays for it.
         if resolved == "\(home)/Library/Keychains" { return true }
+        if resolved.hasSuffix("/.Trash"),
+           let trash = trashDirectory(for: URL(fileURLWithPath: resolved)),
+           trash.standardizedFileURL.path == resolved {
+            return true
+        }
         return false
     }
 }

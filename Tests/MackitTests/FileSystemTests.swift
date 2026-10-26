@@ -262,6 +262,46 @@ struct FileSystemTests {
         #expect(FileSystem.isProtected("/private/var/db/some-daemon-state"))
     }
 
+    /// Everything the cleaning engine routes through "move to Trash" needs to
+    /// know which entries already sit in one: recycling those is a no-op the
+    /// API reports as success (verified — the source stays where it is), so
+    /// they have to be deleted instead of "trashed".
+    @Test func isInTrashRecognizesTheTrashAndItsContents() {
+        let trash = URL(fileURLWithPath: "/tmp/mackit-trash-fixture", isDirectory: true)
+        #expect(FileSystem.isInTrash(URL(fileURLWithPath: "/tmp/mackit-trash-fixture/a.txt"), trashDirectory: trash))
+        #expect(FileSystem.isInTrash(trash, trashDirectory: trash), "the Trash directory itself counts as inside it")
+        // A trailing slash on the injected root changes nothing
+        #expect(FileSystem.isInTrash(
+            URL(fileURLWithPath: "/tmp/mackit-trash-fixture/a.txt"),
+            trashDirectory: URL(fileURLWithPath: "/tmp/mackit-trash-fixture/", isDirectory: true)
+        ))
+        // A sibling whose name merely starts with the same letters is not inside
+        #expect(!FileSystem.isInTrash(
+            URL(fileURLWithPath: "/tmp/mackit-trash-fixture2/a.txt"),
+            trashDirectory: trash
+        ))
+        #expect(!FileSystem.isInTrash(URL(fileURLWithPath: "/tmp/a.txt"), trashDirectory: trash))
+    }
+
+    /// The real resolution, with no fixture: a file in the user's own Trash is
+    /// recognized, one in the temporary directory is not.
+    @Test func isInTrashResolvesTheRealTrashDirectory() {
+        if let trash = FileSystem.trashDirectory(for: URL(fileURLWithPath: NSHomeDirectory())) {
+            #expect(FileSystem.isInTrash(trash.appendingPathComponent("any-file")))
+        }
+        #expect(!FileSystem.isInTrash(URL(fileURLWithPath: "/tmp/any-file")))
+    }
+
+    /// The Trash container itself is never an entry to clean: emptying the
+    /// Trash means removing its children, while an entry pointing at the
+    /// folder would take everything inside it — and the folder — in one go.
+    @Test func trashContainerItselfIsProtected() {
+        #expect(FileSystem.isProtected("~/.Trash"))
+        #expect(FileSystem.isProtected("~/.Trash/"))
+        // Its children are exactly what emptying the Trash removes
+        #expect(!FileSystem.isProtected("~/.Trash/some-old-file"))
+    }
+
     @Test func canonicalResolvesSymlinks() {
         // realpath semantics: /var resolves to /private/var, consistent with contentsOfDirectory
         #expect(FileSystem.canonical("/var") == "/private/var")

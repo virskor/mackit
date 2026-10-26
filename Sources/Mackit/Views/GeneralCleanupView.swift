@@ -11,8 +11,10 @@ import SwiftUI
 /// action; after it, one big "cleanable files" number with the scan and clean
 /// actions beside it, then groups of rule rows, each row showing its total and
 /// a safety level (very clean / recommended / caution). Rows arrive pre-checked
-/// up to "recommended"; caution rows stay unchecked until the user opts in, and
-/// cleaning still goes through the confirmation sheet. A row the scan found
+/// up to "recommended" except the ones that opted out — the unused language
+/// files, whose removal changes every app's interface language at once — while
+/// caution rows stay unchecked until the user opts in, and cleaning still goes
+/// through the confirmation sheet. A row the scan found
 /// nothing for stays interactive: its check is kept outside the item selection
 /// (see `AppViewModel.handCheckedGeneralRows`), so the user can opt a row like
 /// the Trash in before it has anything in it, and the remember prompt then
@@ -311,9 +313,21 @@ struct GeneralCleanupView: View {
                     .frame(width: 15)
                     .symbolEffect(.bounce, value: sub.isFullySelected)
 
-                Text(verbatim: sub.title)
-                    .font(.system(size: 12))
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: sub.title)
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                    // Which apps a language sub-row covers: the language name
+                    // alone does not say what is about to change.
+                    if let detail = sub.detail {
+                        Text(verbatim: detail)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                }
+                .help(sub.detail ?? sub.title)
 
                 Spacer(minLength: 8)
 

@@ -45,9 +45,11 @@ enum GeneralCleanGroup: String, CaseIterable, Identifiable, Sendable {
 ///
 /// Several catalog rules can roll up into a single row: Chrome's cache and
 /// code cache are one "Chrome" row to the user, and the Downloads installers
-/// and archives are one "Downloads" row. Everything is either safe or review
-/// here except the explicitly cautious rows (Trash, Downloads, iOS backups),
-/// which stay unchecked until the user opts in.
+/// and archives are one "Downloads" row. Rows are pre-checked by their safety
+/// level — safe and review — except the explicitly cautious ones (Trash,
+/// Downloads, iOS backups, autosaved drafts), which stay unchecked until the
+/// user opts in, and the unused language packs, which are review-level but
+/// opt-in for the reason `preChecked` records.
 struct GeneralRuleRow: Identifiable, Sendable {
     let id: String
     let title: String
@@ -60,6 +62,36 @@ struct GeneralRuleRow: Identifiable, Sendable {
     /// How the row's entries are grouped into sub-rows; `.flat` for a row
     /// that is a single toggle over all of its entries.
     var subRowMode: GeneralSubRowMode = .flat
+    /// Whether a fresh scan pre-checks this row.
+    ///
+    /// Defaults to the safety level's usual answer — safe and review rows
+    /// arrive checked, caution rows never do — and exists so a row can be
+    /// deliberately opt-in without being relabelled as dangerous. The unused
+    /// language packs are the one such row: deleting them is not destructive,
+    /// but it changes the interface language of every installed app at once
+    /// and only the user knows whether that is what they wanted, so it has to
+    /// be their own click rather than part of "clean everything".
+    let preChecked: Bool
+
+    init(
+        id: String,
+        title: String,
+        note: String,
+        category: JunkCategory,
+        ruleIDs: [String],
+        risk: RiskLevel,
+        subRowMode: GeneralSubRowMode = .flat,
+        preChecked: Bool? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.note = note
+        self.category = category
+        self.ruleIDs = ruleIDs
+        self.risk = risk
+        self.subRowMode = subRowMode
+        self.preChecked = preChecked ?? (risk <= .review)
+    }
 }
 
 /// How a row presents its entries below the row header.
@@ -113,7 +145,11 @@ enum GeneralCleanLayout {
             category: .language,
             ruleIDs: [LanguageFileScanner.ruleID],
             risk: .review,
-            subRowMode: .byLanguage
+            subRowMode: .byLanguage,
+            // Opt-in: see `preChecked`. Cleaning these changes the interface
+            // language of every app that ships them, so the page must not
+            // sweep them as part of a general "clean everything".
+            preChecked: false
         ),
         GeneralRuleRow(
             id: "downloads",

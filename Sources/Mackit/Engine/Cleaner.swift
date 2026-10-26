@@ -10,6 +10,11 @@ struct CleanOutcome: Sendable, Identifiable {
     let reclaimed: Int64
     let succeeded: Bool
     let message: String
+    /// The bytes went into a Trash instead of being freed: they come back to
+    /// the volume only once the Trash is emptied, so the summary must not
+    /// present them as released. Defaulted so every outcome that did not go
+    /// through a Trash reads as a real removal.
+    var movedToTrash: Bool = false
 }
 
 /// Events during the cleaning process.
@@ -136,25 +141,79 @@ enum CleanEngine {
         // total reclaimed is based on the bytes actually deleted.
         let freed = FileSystem.allocatedSize(of: url)
 
-        if moveToTrash {
-            let recycled = await recycle(urls: [url])
-            if recycled {
-                return CleanOutcome(
-                    id: item.id, itemID: item.id, title: item.title, path: item.path,
-                    reclaimed: freed, succeeded: true, message: L10n.tr("clean.error.trashed")
-                )
-            }
-            // When the trash is unavailable, fail explicitly rather than quietly
-            // falling back to permanent deletion: the user choosing "Move to Trash"
-            // wants recoverability, and quietly calling removeItem would silently
-            // turn that preference into an unrecoverable one.
+        switch await removeFromDisk(url, moveToTrash: moveToTrash) {
+        case .trashed:
             return CleanOutcome(
                 id: item.id, itemID: item.id, title: item.title, path: item.path,
-                reclaimed: 0, succeeded: false, message: L10n.tr("clean.error.trashFailed")
+                reclaimed: freed, succeeded: true, message: L10n.tr("clean.error.trashed"),
+                movedToTrash: true
+            )
+        case .deleted:
+            return CleanOutcome(
+                id: item.id, itemID: item.id, title: item.title, path: item.path,
+                reclaimed: freed, succeeded: true, message: L10n.tr("clean.error.deleted")
+            )
+        case .failed(let message):
+            return CleanOutcome(
+                id: item.id, itemID: item.id, title: item.title, path: item.path,
+                reclaimed: 0, succeeded: false, message: message
             )
         }
+    }
 
-        return await delete(item, url: url, reclaimed: freed)
+    // MARK: - Removal
+
+    /// How an entry left (or failed to leave) the disk.
+    enum RemovalResult: Sendable, Equatable {
+        case trashed
+        case deleted
+        /// Nothing was removed; the message is user-facing.
+        case failed(String)
+    }
+
+    /// Move one entry to the Trash and verify it actually left.
+    ///
+    /// `NSWorkspace.recycle` reports success for a recycle that moved nothing
+    /// — an entry already sitting in the Trash comes back with its path mapped
+    /// to itself and the bytes still on disk (verified). The source path is
+    /// therefore checked rather than the callback trusted, which is the one
+    /// guarantee every caller of a move needs.
+    static func moveToTrashVerified(_ url: URL) async -> Bool {
+        let recycled = await recycle(urls: [url])
+        return recycled && !FileManager.default.fileExists(atPath: url.path)
+    }
+
+    /// Remove one entry, honoring the user's "move to Trash" preference —
+    /// except for an entry that already sits in a Trash.
+    ///
+    /// Emptying the Trash is the one removal where recycling is a no-op that
+    /// still reports success, and trusting that made "empty the Trash" delete
+    /// nothing while reporting the space as freed. Those entries are therefore
+    /// deleted outright, which is what emptying the Trash means; the
+    /// confirmation sheet already warns that Trash contents cannot be restored.
+    ///
+    /// When the Trash is genuinely unavailable the removal fails explicitly
+    /// instead of quietly falling back to a permanent delete — the user asked
+    /// for recoverability, and silently dropping it is worse than the failure.
+    ///
+    /// `trashDirectory` is injectable so the "already in a Trash" branch can
+    /// be exercised on a fixture instead of the user's real Trash.
+    static func removeFromDisk(
+        _ url: URL,
+        moveToTrash: Bool,
+        trashDirectory: URL? = nil
+    ) async -> RemovalResult {
+        if moveToTrash && !FileSystem.isInTrash(url, trashDirectory: trashDirectory) {
+            return await moveToTrashVerified(url)
+                ? .trashed
+                : .failed(L10n.tr("clean.error.trashFailed"))
+        }
+        do {
+            try FileManager.default.removeItem(at: url)
+            return .deleted
+        } catch {
+            return .failed(error.localizedDescription)
+        }
     }
 
     /// NSWorkspace's recycle is callback-based; it is wrapped into async/await
@@ -172,21 +231,6 @@ enum CleanEngine {
                 let succeeded = error == nil && !newURLs.isEmpty
                 continuation.resume(returning: succeeded)
             }
-        }
-    }
-
-    private static func delete(_ item: JunkItem, url: URL, reclaimed: Int64) async -> CleanOutcome {
-        do {
-            try FileManager.default.removeItem(at: url)
-            return CleanOutcome(
-                id: item.id, itemID: item.id, title: item.title, path: item.path,
-                reclaimed: reclaimed, succeeded: true, message: L10n.tr("clean.error.deleted")
-            )
-        } catch {
-            return CleanOutcome(
-                id: item.id, itemID: item.id, title: item.title, path: item.path,
-                reclaimed: 0, succeeded: false, message: error.localizedDescription
-            )
         }
     }
 

@@ -21,7 +21,16 @@ struct CleanConfirmationView: View {
     /// Sorted by size from large to small, largest first for easy verification.
     private var items: [JunkItem] { vm.selectedItems.sorted { $0.size > $1.size } }
     private var hasCaution: Bool { items.contains { $0.risk == .caution } }
-    private var hasReview: Bool { items.contains { $0.risk == .review } }
+    /// Review-level entries other than language packs. The generic review
+    /// notice ("re-downloaded or rebuilt") is written for exactly these:
+    /// caches, toolchain stores, downloaded archives and firmware.
+    private var hasOtherReview: Bool {
+        items.contains { $0.risk == .review && $0.category != .language }
+    }
+    /// How many language packs are about to be removed. They get their own
+    /// notice: "caches … slower first build" says nothing true about them.
+    private var languagePackCount: Int { items.count { $0.category == .language } }
+
     /// When the selection includes app bundles, the whole panel switches to
     /// uninstall context.
     private var isUninstall: Bool { vm.hasSelectedApps }
@@ -47,6 +56,29 @@ struct CleanConfirmationView: View {
     /// count — otherwise "About to uninstall 1 app" would show 13.
     private var bundleCount: Int {
         items.filter { $0.appKind == .bundle }.count
+    }
+
+    /// One row of the confirmation list.
+    private func row(for item: JunkItem) -> some View {
+        let subtitle = subtitle(for: item)
+        return JunkItemRow(
+            item: item,
+            subtitle: subtitle.text,
+            icon: vm.icon(for: item),
+            subtitleTruncation: subtitle.truncation
+        )
+    }
+
+    /// The subtitle of one list row, and how it may be truncated. A language
+    /// pack is titled by its own code ("ja.lproj"), so the app it belongs to
+    /// goes in the subtitle: the path would be truncated at the head, cutting
+    /// off exactly that name. Every other row shows a path, which gives way at
+    /// the head because its tail names the entry.
+    private func subtitle(for item: JunkItem) -> (text: String, truncation: Text.TruncationMode) {
+        if item.category == .language, let appName = item.appName, !appName.isEmpty {
+            return (appName, .tail)
+        }
+        return (item.abbreviatedPath, .head)
     }
 
     var body: some View {
@@ -94,7 +126,7 @@ struct CleanConfirmationView: View {
                 )
 
                 List(items) { item in
-                    JunkItemRow(item: item, subtitle: item.abbreviatedPath, icon: vm.icon(for: item))
+                    row(for: item)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
@@ -141,16 +173,37 @@ struct CleanConfirmationView: View {
             }
 
             // Risk notice
-            if hasCaution || hasReview {
+            if hasCaution {
                 NoticeRow(
-                    systemImage: hasCaution ? "exclamationmark.octagon.fill" : "exclamationmark.circle.fill",
-                    tint: hasCaution ? .red : .orange,
-                    title: hasCaution
-                        ? L10n.tr("clean.confirm.cautionTitle")
-                        : L10n.tr("clean.confirm.reviewTitle"),
-                    message: hasCaution
-                        ? L10n.tr("clean.confirm.cautionMessage")
-                        : L10n.tr("clean.confirm.reviewMessage")
+                    systemImage: "exclamationmark.octagon.fill",
+                    tint: .red,
+                    title: L10n.tr("clean.confirm.cautionTitle"),
+                    message: L10n.tr("clean.confirm.cautionMessage")
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+            } else if hasOtherReview {
+                NoticeRow(
+                    systemImage: "exclamationmark.circle.fill",
+                    tint: .orange,
+                    title: L10n.tr("clean.confirm.reviewTitle"),
+                    message: L10n.tr("clean.confirm.reviewMessage")
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 14)
+            }
+
+            // Language packs say what they actually do. The review wording
+            // above describes caches ("first build will be slower"), which is
+            // not what happens here: the affected apps' interfaces fall back to
+            // English or another language until they are reinstalled or
+            // updated. That is what the user has to agree to.
+            if languagePackCount > 0 {
+                NoticeRow(
+                    systemImage: "character.book.closed.fill",
+                    tint: .orange,
+                    title: L10n.tr("clean.confirm.languageTitle"),
+                    message: L10n.fmt("clean.confirm.languageMessage", languagePackCount)
                 )
                 .padding(.horizontal, 20)
                 .padding(.top, 14)

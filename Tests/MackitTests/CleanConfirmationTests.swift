@@ -93,4 +93,24 @@ struct CleanConfirmationTests {
         #expect(vm.cleanPhase == .confirming)
         #expect(vm.selectedCategory == .node)
     }
+
+    /// The summary's "freed" claim is only true when the bytes really left the
+    /// volume: a clean that recycled anything says "moved" instead, because
+    /// those bytes come back only once the Trash is emptied. Both the result
+    /// card and the toast read this one flag, so they cannot disagree.
+    @Test func aRecycledEntryFlipsTheSummaryWording() {
+        func outcome(_ id: String, moved: Bool) -> CleanOutcome {
+            CleanOutcome(
+                id: id, itemID: id, title: id, path: "/tmp/\(id)",
+                reclaimed: 100, succeeded: true, message: "ok", movedToTrash: moved
+            )
+        }
+        let vm = makeVM(selected: [])
+
+        vm.cleanOutcomes = [outcome("a", moved: false)]
+        #expect(!vm.lastCleanMovedToTrash, "an all-deleted clean did free the bytes")
+
+        vm.cleanOutcomes = [outcome("a", moved: false), outcome("b", moved: true)]
+        #expect(vm.lastCleanMovedToTrash, "one recycled entry is enough: its bytes are still in the Trash")
+    }
 }

@@ -175,8 +175,9 @@ struct CleanupScopeTests {
 
     @Test func generalRowsArePreCheckedUpToReview() {
         // Lemon's safety model: the general module's safe and review rows
-        // arrive checked, caution rows never do — independent of the
-        // developer feature's auto-select setting (here "none").
+        // arrive checked — except the rows that opt out (unused language
+        // files) — and caution rows never do, independent of the developer
+        // feature's auto-select setting (here "none").
         let vm = makeVM()
         seed(vm)
 
@@ -204,7 +205,8 @@ struct CleanupScopeTests {
 
         #expect(language?.items.count == 2)
         #expect(language?.size == 30)
-        #expect(language?.isFullySelected == true, "review rows are checked by default")
+        #expect(language?.isFullySelected == false,
+                "unused language packs are opt-in, unlike every other review row")
         #expect(chrome?.items.count == 1)
         #expect(chrome?.size == 200)
         // Rows with nothing found still show up, for the checklist effect
@@ -542,14 +544,46 @@ struct CleanupScopeTests {
         // The sub-row title is the language's own name, not the raw code
         #expect(!row.subRows[0].title.isEmpty)
         #expect(row.subRows[0].title != "ja")
+        // …and its second line names the apps that ship it: the language
+        // alone does not say which apps change when it is checked.
+        #expect(row.subRows[0].detail?.contains("Foo") == true)
+        #expect(row.subRows[0].detail?.contains("Bar") == true)
 
+        // The row is opt-in, so it is checked by hand before the sub-row is
+        // curated; the sub-row toggle then moves only its own language.
         let languageRow = GeneralCleanLayout.rows.first { $0.id == "language" }!
+        vm.setRowSelected(languageRow, selected: true)
+        #expect(Set(vm.selection) == [
+            "language.lproj::/tmp/Foo/ja.lproj",
+            "language.lproj::/tmp/Bar/ja.lproj",
+            "language.lproj::/tmp/Foo/fr.lproj",
+        ])
         vm.setSubRowSelected(languageRow, key: "fr", selected: false)
         #expect(generalRow("language", in: vm).isPartiallySelected)
         #expect(Set(vm.selection) == [
             "language.lproj::/tmp/Foo/ja.lproj",
             "language.lproj::/tmp/Bar/ja.lproj",
         ])
+    }
+
+    /// The second line of a sub-row only exists where the title cannot name
+    /// the owner: per-app rows already do, and a language pack whose app could
+    /// not be named adds nothing (the row header still covers it).
+    @Test func subRowDetailOnlyNamesAppsForLanguageGroups() {
+        let vm = makeVM()
+        vm.apply(.discovered([
+            item("app.junk", "com.example.foo", category: .appJunk, risk: .safe, size: 40, appName: "Foo"),
+            JunkItem(ruleID: "language.lproj", title: "ja.lproj", detail: "Foo",
+                     path: "/tmp/anon/ja.lproj", category: .language, risk: .review, size: 10),
+        ]))
+
+        let appJunk = generalRow("app.junk", in: vm)
+        #expect(!appJunk.subRows.isEmpty)
+        #expect(appJunk.subRows.allSatisfy { $0.detail == nil })
+
+        let language = generalRow("language", in: vm)
+        #expect(language.subRows.count == 1)
+        #expect(language.subRows[0].detail == nil, "an item carrying no app name adds no second line")
     }
 
     /// A row with no sub-rows stays a flat toggle; an item whose app could
@@ -578,7 +612,11 @@ struct CleanupScopeTests {
         var written: [String: Any]?
         vm.settingsSink = { written = $0 }
 
-        // Curate differently from the default, then remember it
+        // Curate differently from the default, then remember it. The language
+        // row is opt-in, so the curation is "only the language packs, no
+        // browser cache" — checked by hand, then Chrome unchecked.
+        let languageRow = GeneralCleanLayout.rows.first { $0.id == "language" }!
+        vm.setRowSelected(languageRow, selected: true)
         vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "browser.chrome" }!, selected: false)
         #expect(vm.generalSelectionDiffersFromSaved())
         vm.rememberGeneralSelection()
@@ -593,10 +631,8 @@ struct CleanupScopeTests {
         #expect(!vm.hasRememberedGeneralSelection)
         #expect(vm.generalSelectedRows == nil)
         #expect(written?["generalSelectedRows"] as? [String] == [], "restoring defaults must clear the saved check")
-        #expect(Set(vm.selection) == [
-            "browser.chrome-cache::/tmp/chromecache",
-            "language.lproj::/tmp/ja.lproj",
-        ], "after restoring, checks follow the built-in defaults: safe + review")
+        #expect(Set(vm.selection) == ["browser.chrome-cache::/tmp/chromecache"],
+                "after restoring, checks follow the built-in defaults: pre-checked rows only, so the opt-in language row stays unchecked")
         #expect(vm.handCheckedGeneralRows.isEmpty)
         #expect(!vm.generalSelectionDiffersFromSaved(), "after restoring it matches the defaults, so no reminder is needed")
     }
@@ -628,6 +664,8 @@ struct CleanupScopeTests {
             item("language.lproj", "ja.lproj", category: .language, risk: .review, size: 20),
         ]))
         vm.settingsSink = { _ in }
+        let languageRow = GeneralCleanLayout.rows.first { $0.id == "language" }!
+        vm.setRowSelected(languageRow, selected: true)
         vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "browser.chrome" }!, selected: false)
         vm.rememberGeneralSelection()
 
@@ -730,18 +768,24 @@ struct CleanupScopeTests {
         #expect(vm.scopeSelectedSize == 200)
     }
 
-    /// The built-in default (safe + review pre-checked) reports "nothing to
-    /// remember"; a hand-curated selection reports a difference.
+    /// The built-in default reports "nothing to remember"; a hand-curated
+    /// selection reports a difference — whether a pre-checked row was
+    /// unchecked or the opt-in language row was checked.
     @Test func selectionDiffersFromDefaultIsDetected() {
         let vm = makeVM()
         seed(vm)
 
         #expect(!vm.generalSelectionDiffersFromSaved(), "the default check needs no reminder")
 
-        let language = GeneralCleanLayout.rows.first { $0.id == "language" }
-        vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "browser.chrome" }!, selected: false)
-        vm.setRowSelected(language!, selected: true)
+        let chrome = GeneralCleanLayout.rows.first { $0.id == "browser.chrome" }!
+        vm.setRowSelected(chrome, selected: false)
         #expect(vm.generalSelectionDiffersFromSaved())
+
+        vm.setRowSelected(chrome, selected: true)
+        #expect(!vm.generalSelectionDiffersFromSaved(), "back to the default")
+
+        vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "language" }!, selected: true)
+        #expect(vm.generalSelectionDiffersFromSaved(), "opting the language row in is a curation as well")
     }
 
     /// A row whose entries all measure 0 bytes is skipped by the default
@@ -780,6 +824,7 @@ struct CleanupScopeTests {
         let vm = makeVM()
         seed(vm)
         // A language-file item, so the curated selection below stays non-empty
+        // — the language row is opt-in and has to be checked by hand.
         vm.apply(.discovered([
             JunkItem(ruleID: "language.lproj", title: "ja.lproj", detail: "Foo",
                      path: "/tmp/ja.lproj", category: .language, risk: .review, size: 20),
@@ -792,6 +837,7 @@ struct CleanupScopeTests {
         // Curate differently, then clean the general module
         vm.showGeneralCleanup()
         vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "browser.chrome" }!, selected: false)
+        vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "language" }!, selected: true)
         vm.requestClean()
         #expect(vm.showsRememberGeneralPrompt)
 
@@ -817,6 +863,7 @@ struct CleanupScopeTests {
             item("browser.chrome-cache", "chromecache", category: .browser, risk: .safe, size: 200),
             item("language.lproj", "ja.lproj", category: .language, risk: .review, size: 20),
         ]))
+        vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "language" }!, selected: true)
         vm.setRowSelected(GeneralCleanLayout.rows.first { $0.id == "browser.chrome" }!, selected: false)
         vm.dismissToast()
 
@@ -825,6 +872,7 @@ struct CleanupScopeTests {
         #expect(vm.banner != nil, "there should be a notice after remembering the check")
         #expect(vm.banner?.style == .success)
         #expect(vm.hasRememberedGeneralSelection)
+        #expect(vm.generalSelectedRows == ["language"], "the opt-in row was the curation that got remembered")
         // Restoring defaults confirms too — the state change is otherwise silent
         vm.dismissToast()
         vm.restoreDefaultGeneralSelection()

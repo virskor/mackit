@@ -92,10 +92,30 @@ struct GeneralCleanLayoutTests {
     }
 
     @Test func cautiousRowsAreExactlyTheOnesThatNeedConfirmation() {
-        // Trash, Downloads and iOS backups hold user content: they must stay
-        // unchecked until the user opts in.
+        // Rows holding content the user may still need: Trash contents, iOS
+        // backups, Downloads installers, and the autosaved copies of documents
+        // that were never written to disk. They stay unchecked until the user
+        // opts in, and the sheet asks a second time.
         let cautious = Set(GeneralCleanLayout.rows.filter { $0.risk == .caution }.map(\.id))
-        #expect(cautious == ["downloads", "system.ios-backups", "trash.home"])
+        #expect(cautious == ["downloads", "system.ios-backups", "trash.home", "system.autosave"])
+    }
+
+    /// Every row is pre-checked by its safety level except the ones that opt
+    /// out. Unused language packs are the one such row: removing them is not
+    /// destructive, but it changes the interface language of every installed
+    /// app at once, so it must be the user's own click.
+    @Test func onlyTheLanguageRowOptsOutOfThePreCheck() {
+        for row in GeneralCleanLayout.rows {
+            if row.id == "language" {
+                #expect(!row.preChecked, "unused language files must not be swept by a default clean")
+                #expect(row.risk == .review, "…while staying a review-level row, not a dangerous one")
+            } else {
+                #expect(
+                    row.preChecked == (row.risk <= .review),
+                    "\(row.id) should follow its safety level"
+                )
+            }
+        }
     }
 
     /// The catch-all rules that made browser and IDE caches count twice are

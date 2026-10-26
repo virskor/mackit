@@ -19,10 +19,11 @@ import Foundation
 ///
 /// Beyond that, four languages are always kept per bundle: `Base` and `en`
 /// (the universal fallbacks), every Chinese variant (Mackit's own UI
-/// languages), the languages the system can select, and the bundle's
-/// development region. And a bundle is never stripped of its *last*
-/// localization — with nothing left to fall back to, an app that loads a
-/// resource by name crashes on launch instead of degrading to English.
+/// languages), the languages the system can select — including the one a
+/// single app was given — and the bundle's development region. And a bundle is
+/// never stripped of its *last* localization — with nothing left to fall back
+/// to, an app that loads a resource by name crashes on launch instead of
+/// degrading to English.
 enum LanguageFileScanner {
     /// Rule id shared by all language-file items.
     static let ruleID = "language.lproj"
@@ -30,14 +31,46 @@ enum LanguageFileScanner {
     /// Languages always kept: English, the unlocalized `Base` fallback every
     /// bundle carries, and Chinese in any variant (`zh-Hans`, `zh-Hant`,
     /// `zh-TW`, `zh-Hans-CN`, …) — the three UI languages Mackit itself ships.
-    /// Chinese is matched by prefix rather than exact spelling because bundle
-    /// authors pick different spellings, and dropping a Chinese variant would
-    /// push those users onto English. The comparison normalizes the separator
-    /// and case, since a directory named `zh_CN.lproj` is the same language
-    /// spelled the way Info.plist values are.
+    ///
+    /// English and Chinese are matched by primary subtag, not by exact
+    /// spelling: bundle authors ship `en-GB.lproj` and `en_US.lproj` just as
+    /// often as `en.lproj`, and dropping the only English pack of such a
+    /// bundle would break the "English is always kept" promise above while
+    /// leaving nothing else for the app to fall back to.
     static func isWhitelisted(_ language: String) -> Bool {
-        let normalized = language.replacingOccurrences(of: "_", with: "-").lowercased()
-        return normalized == "en" || normalized == "base" || normalized.hasPrefix("zh-")
+        switch primarySubtag(language) {
+        case "en", "zh", "base": return true
+        default: return false
+        }
+    }
+
+    /// The app's own language preference list, when it has one.
+    ///
+    /// `AppleLanguages` in an app's own preference domain pins that app to a
+    /// language regardless of the system list — written by an in-app language
+    /// picker, and by the per-app language setting in System Settings. Either
+    /// way it is *not* part of `Locale.preferredLanguages`, so a scanner that
+    /// only reads the system list treats the one localization that app is set
+    /// to use as unused and deletes it; the app then silently reverts to the
+    /// system language.
+    ///
+    /// Verified on this machine: `com.bot.pc.doubao` carries `zh_CN` and
+    /// `asc.onlyoffice.ONLYOFFICE` carries `zh-ZH`, while the system list is
+    /// `zh-Hans-HK / en-HK / ko-HK`. Both values come from the apps' own
+    /// pickers; the Settings pane writes the same key, which is what this
+    /// reads either way.
+    static func appLanguages(for bundleID: String) -> [String] {
+        // `CFPreferencesCopyAppValue` would be the obvious call, but it falls
+        // back to the global domain and would therefore hand back the system
+        // list again; copying the app's own value keeps this a real second
+        // signal instead of a repeat of the first.
+        let value = CFPreferencesCopyValue(
+            "AppleLanguages" as CFString,
+            bundleID as CFString,
+            kCFPreferencesCurrentUser,
+            kCFPreferencesAnyHost
+        )
+        return value as? [String] ?? []
     }
 
     /// The primary subtag of a language identifier: `zh-Hans-CN` → `zh`,
@@ -89,9 +122,13 @@ enum LanguageFileScanner {
     ///
     /// `preferredLanguages` is injectable so tests can pin the "system"
     /// languages; the default is the real user preference list.
+    /// `appLanguages` is injectable for the same reason: the per-app override
+    /// lives in another app's preference domain, which the default closure
+    /// reads and a test can stand in for.
     static func scanLanguageFiles(
         roots: [String] = ["/Applications", "~/Applications"],
-        preferredLanguages: [String] = Locale.preferredLanguages
+        preferredLanguages: [String] = Locale.preferredLanguages,
+        appLanguages: (String) -> [String] = LanguageFileScanner.appLanguages(for:)
     ) -> [JunkItem] {
         var found: [JunkItem] = []
         var seenPaths = Set<String>()
@@ -111,10 +148,14 @@ enum LanguageFileScanner {
                     .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
                 let developmentRegion = bundle.infoDictionary?["CFBundleDevelopmentRegion"] as? String
+                // The languages this app can be forced to load, on top of the
+                // ones the system itself can select.
+                let ownLanguages = appLanguages(bundleID)
                 func isKept(_ lproj: URL) -> Bool {
                     let language = lproj.deletingPathExtension().lastPathComponent
                     return isWhitelisted(language)
                         || isSystemLanguage(language, preferredLanguages: preferredLanguages)
+                        || isSystemLanguage(language, preferredLanguages: ownLanguages)
                         || isDevelopmentRegion(language, developmentRegion: developmentRegion)
                 }
 

@@ -2,6 +2,72 @@
   "sourceLanguage": "zh-Hans",
   "version": "1.1",
   "strings": {
+    "clean.confirm.languageMessage": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "受影响应用的界面会回退到英文或其他语言，重装或更新应用后才能恢复（共 %lld 个语言包）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The affected apps fall back to English or another language until they are reinstalled or updated (%lld language packs)."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "受影響 App 的介面會回退到英文或其他語言，重新安裝或更新 App 後才能恢復（共 %lld 個語言套件）。"
+          }
+        }
+      }
+    },
+    "clean.confirm.languageTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含无用语言包"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Includes Unused Language Files"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含無用語言套件"
+          }
+        }
+      }
+    },
+    "clean.result.movedToTrash": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次移出 %@（移入废纸篓的部分在清空后释放）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved %@ out (what went to the Trash is freed once it is emptied)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次移出 %@（移入垃圾桶的部分在清空後釋放）"
+          }
+        }
+      }
+    },
     "menu.checkForUpdates": {
       "localizations": {
         "zh-Hans": {
@@ -5300,6 +5366,94 @@
           "stringUnit": {
             "state": "translated",
             "value": "僅選安全項目"
+          }
+        }
+      }
+    },
+    "toast.alreadyInTrash": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在废纸篓中，请通过清理删除"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Already in the Trash — use Clean to delete it"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在垃圾桶中，請透過清理刪除"
+          }
+        }
+      }
+    },
+    "toast.moved": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@"
+          }
+        }
+      }
+    },
+    "toast.movedWithFailures.one": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@，%lld 项失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved %@, %lld item failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@，%lld 項失敗"
+          }
+        }
+      }
+    },
+    "toast.movedWithFailures.other": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@，%lld 项失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved %@, %lld items failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@，%lld 項失敗"
           }
         }
       }

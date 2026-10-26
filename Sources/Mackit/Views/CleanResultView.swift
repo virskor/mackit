@@ -35,7 +35,13 @@ struct CleanResultView: View {
                             failures.count
                         ))
                     .font(.system(size: 18, weight: .bold))
-                    Text(verbatim: L10n.fmt("clean.result.reclaimed", Formatters.bytes(vm.lastReclaimed)))
+                    // Recycling does not free space until the Trash is
+                    // emptied, so a clean that moved anything says "moved out"
+                    // instead of claiming the bytes are already back.
+                    Text(verbatim: L10n.fmt(
+                        vm.lastCleanMovedToTrash ? "clean.result.movedToTrash" : "clean.result.reclaimed",
+                        Formatters.bytes(vm.lastReclaimed)
+                    ))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()

@@ -66,12 +66,13 @@ final class CleanupSelection {
     /// Applies the pre-check policy to a batch of newly discovered items.
     /// Returns whether anything moved.
     ///
-    /// The general module follows Lemon's model: safe and review rows arrive
-    /// pre-checked — or exactly the remembered rows once the user has saved a
-    /// selection. The developer feature follows the user's auto-select
-    /// setting instead, including "none". Items of unknown size (an empty
-    /// cache directory) are never pre-checked: there is nothing to reclaim,
-    /// so a check on them would be noise.
+    /// The general module follows Lemon's model: the rows the layout marks as
+    /// pre-checked arrive checked — that is safe and review rows, except the
+    /// ones that opted out (unused language packs) — or exactly the remembered
+    /// rows once the user has saved a selection. The developer feature follows
+    /// the user's auto-select setting instead, including "none". Items of
+    /// unknown size (an empty cache directory) are never pre-checked: there is
+    /// nothing to reclaim, so a check on them would be noise.
     @discardableResult
     func applyDefaultPolicy(to batch: [JunkItem], autoSelect: AutoSelectLevel) -> Bool {
         var changed = false
@@ -81,7 +82,7 @@ final class CleanupSelection {
                 if let saved = rememberedRows {
                     eligible = saved.contains(rowID(of: item))
                 } else {
-                    eligible = item.risk <= .review
+                    eligible = isPreCheckedByDefault(item)
                 }
             } else if let cap = autoSelect.riskCap {
                 eligible = item.risk <= cap
@@ -201,7 +202,7 @@ final class CleanupSelection {
     }
 
     /// Drops the remembered selection and re-applies the built-in default
-    /// (safe + review rows pre-checked) to the items at hand, so the shortcut
+    /// (the rows the layout pre-checks) to the items at hand, so the shortcut
     /// works without forcing a rescan. Returns whether anything moved.
     @discardableResult
     func restoreDefaultSelection(items: [JunkItem]) -> Bool {
@@ -210,7 +211,7 @@ final class CleanupSelection {
         for item in items where item.category.scope == .general {
             // Same eligibility rule as a fresh scan's default pre-check
             // (see `applyDefaultPolicy`).
-            let shouldSelect = !item.isUnknownSize && item.risk <= .review
+            let shouldSelect = !item.isUnknownSize && isPreCheckedByDefault(item)
             if setItem(item.id, selected: shouldSelect) { changed = true }
         }
         if !handCheckedRows.isEmpty {
@@ -250,12 +251,12 @@ final class CleanupSelection {
 
     /// The rows the next scan would pre-check: the saved selection when set —
     /// every row in it, whether or not it currently has items, since a
-    /// remembered row shows checked either way — otherwise the built-in
-    /// default (safe + review) restricted to rows that currently have
-    /// selectable items.
+    /// remembered row shows checked either way — otherwise the layout's
+    /// pre-checked rows (safe + review, minus the opt-in ones) restricted to
+    /// rows that currently have selectable items.
     func defaultRows(items: [JunkItem]) -> Set<String> {
         if let saved = rememberedRows { return saved }
-        return Set(GeneralCleanLayout.rows.filter { $0.risk <= .review }.map(\.id))
+        return Set(GeneralCleanLayout.rows.filter(\.preChecked).map(\.id))
             .intersection(rowsWithSelectableItems(items: items))
     }
 
@@ -352,6 +353,19 @@ final class CleanupSelection {
     /// from happening.
     private func rowID(of item: JunkItem) -> String {
         GeneralCleanLayout.rowID(forRuleID: item.ruleID) ?? ""
+    }
+
+    /// Whether a fresh scan checks this general-scope item: its row's own
+    /// flag, resolved from the layout rather than inferred from the safety
+    /// level, so a row can opt out of the pre-check without being relabelled
+    /// as dangerous. A row the layout does not know falls back to the level
+    /// rule the page's promise is stated in.
+    private func isPreCheckedByDefault(_ item: JunkItem) -> Bool {
+        let id = rowID(of: item)
+        guard let row = GeneralCleanLayout.rows.first(where: { $0.id == id }) else {
+            return item.risk <= .review
+        }
+        return row.preChecked
     }
 
     private func itemIDs(of rows: [GeneralRuleRow], in items: [JunkItem]) -> Set<String> {

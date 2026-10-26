@@ -105,6 +105,13 @@ final class AppViewModel {
     var cleanCurrentTitle: String = ""
     var cleanProgress: Double = 0
 
+    /// Whether the clean that just finished put anything into a Trash. Those
+    /// bytes are not back on the volume yet — the summary says "moved out"
+    /// rather than claiming them as released.
+    var lastCleanMovedToTrash: Bool {
+        cleanOutcomes.contains { $0.movedToTrash }
+    }
+
     /// State snapshot consumed by the menu bar panel. See
     /// `publishMenuSnapshot`.
     private(set) var menuSnapshot = MenuBarSnapshot()
@@ -122,7 +129,8 @@ final class AppViewModel {
     var includeCLI: Bool = true
     /// The general cleanup rows the user asked to remember, checked
     /// automatically on every later scan. nil means "not set yet" and falls
-    /// back to the built-in default (safe + review rows pre-checked).
+    /// back to the built-in default (the rows the layout pre-checks:
+    /// safe and review, minus the opt-in language row).
     var generalSelectedRows: Set<String>? {
         get { selectionState.rememberedRows }
         set { selectionState.rememberedRows = newValue }
@@ -976,6 +984,9 @@ final class AppViewModel {
         /// The group key: the language code, or the owning app's display name.
         let id: String
         let title: String
+        /// Secondary line under the title: the apps a language pack came
+        /// from. nil when the title already names the owner (per-app rows).
+        let detail: String?
         let itemIDs: [String]
         let size: Int64
         let selectedCount: Int
@@ -1056,15 +1067,41 @@ final class AppViewModel {
     /// grouping itself belongs to the selection model; this only adds the
     /// display title and the selected count the page shows.
     private func buildSubRows(for row: GeneralRuleRow, items: [JunkItem]) -> [GeneralSubRowState] {
-        selectionState.subRowGroups(of: row, items: items).map { group in
+        // One pass for the apps behind each language: the page rebuilds these
+        // on every check, and a pass per sub-row would multiply that by the
+        // number of languages.
+        let languageApps = row.subRowMode == .byLanguage ? appsByLanguage(in: items) : [:]
+        return selectionState.subRowGroups(of: row, items: items).map { group in
             GeneralSubRowState(
                 id: group.key,
                 title: subRowTitle(key: group.key, mode: row.subRowMode),
+                detail: languageApps[group.key].map { ListFormatter.localizedString(byJoining: $0) },
                 itemIDs: Array(group.itemIDs),
                 size: group.size,
                 selectedCount: group.itemIDs.count { selectionState.ids.contains($0) }
             )
         }
+    }
+
+    /// The apps behind each language: language code → app names in scan order,
+    /// deduplicated.
+    ///
+    /// A language sub-row is one language across every app that ships it
+    /// ("Japanese · 3 apps"), so the language name alone does not say which
+    /// apps change when it is checked — and the page has nowhere else to say
+    /// it. The code comes from the same `subRowKey` the grouping uses, so the
+    /// two cannot drift.
+    private func appsByLanguage(in items: [JunkItem]) -> [String: [String]] {
+        var names: [String: [String]] = [:]
+        var seen: [String: Set<String>] = [:]
+        for item in items {
+            guard let name = item.appName, !name.isEmpty,
+                  let code = selectionState.subRowKey(for: item, mode: .byLanguage) else { continue }
+            if seen[code, default: []].insert(name).inserted {
+                names[code, default: []].append(name)
+            }
+        }
+        return names
     }
 
     /// The sub-row's display title. Language sub-rows show the language's own
@@ -1326,7 +1363,7 @@ final class AppViewModel {
     }
 
     /// Drops the remembered selection and re-applies the built-in default
-    /// (safe + review rows pre-checked) to the items the current scan already
+    /// (the rows the layout pre-checks) to the items the current scan already
     /// found, so the shortcut works without forcing a rescan.
     func restoreDefaultGeneralSelection() {
         if selectionState.restoreDefaultSelection(items: items) {
@@ -1513,11 +1550,21 @@ final class AppViewModel {
             // Cleanup results are reported via Toast; the failure count
             // must appear in the hint, so the user does not only see
             // "success" and miss the failures.
+            //
+            // A clean that recycled anything has not freed the bytes yet —
+            // they come back when the Trash is emptied — so the hint says
+            // "moved" there, the same rule the result summary follows.
+            let moved = lastCleanMovedToTrash
             if failures == 0 {
-                showToast(.success, L10n.fmt("toast.reclaimed", Formatters.bytes(reclaimed)))
+                showToast(.success, L10n.fmt(
+                    moved ? "toast.moved" : "toast.reclaimed",
+                    Formatters.bytes(reclaimed)
+                ))
             } else {
                 showToast(.error, L10n.fmt(
-                    failures == 1 ? "toast.reclaimedWithFailures.one" : "toast.reclaimedWithFailures.other",
+                    moved
+                        ? (failures == 1 ? "toast.movedWithFailures.one" : "toast.movedWithFailures.other")
+                        : (failures == 1 ? "toast.reclaimedWithFailures.one" : "toast.reclaimedWithFailures.other"),
                     Formatters.bytes(reclaimed), failures
                 ))
             }
@@ -1694,21 +1741,28 @@ final class AppViewModel {
             showToast(.error, L10n.tr("toast.protectedPath"))
             return
         }
+        // An entry already in the Trash cannot be "moved to the Trash": the
+        // only thing left to do with it is delete it permanently, and this
+        // action carries no confirmation. Finder asks before doing that
+        // ("This item is already in the Trash…"); so this refuses and points
+        // at the clean flow, whose sheet is where permanent deletion is agreed
+        // to. Silently deleting here would be the worst of both.
+        guard !FileSystem.isInTrash(url) else {
+            showToast(.info, L10n.tr("toast.alreadyInTrash"))
+            return
+        }
         Task { [weak self] in
             guard let self else { return }
-            let recycled = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-                NSWorkspace.shared.recycle([url]) { newURLs, error in
-                    let succeeded = error == nil && !newURLs.isEmpty
-                    continuation.resume(returning: succeeded)
-                }
-            }
-            if !recycled {
+            // A move that left the entry in place did not happen: the API
+            // reports success for a recycle it did not perform.
+            guard await CleanEngine.moveToTrashVerified(url) else {
+                MackitLog.clean.error("single item could not be moved to the Trash: \(item.title, privacy: .public)")
                 self.showToast(.error, L10n.tr("toast.trashFailed"))
-            } else {
-                self.removeItem(id: item.id)
-                self.volumeUsage = .home()
-                self.showToast(.success, L10n.fmt("toast.trashed", item.title))
+                return
             }
+            self.removeItem(id: item.id)
+            self.volumeUsage = .home()
+            self.showToast(.success, L10n.fmt("toast.trashed", item.title))
         }
     }
 

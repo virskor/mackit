@@ -263,4 +263,64 @@ struct CleanEngineTests {
         #expect(reclaimed == 0)
         #expect(failures == 1)
     }
+
+    // MARK: - Removal mode
+
+    /// An entry already inside a Trash cannot be recycled: `NSWorkspace`
+    /// reports success without moving it, which made "empty the Trash" delete
+    /// nothing while reporting the bytes as freed. Those entries are deleted
+    /// outright — that is what emptying the Trash means.
+    ///
+    /// The Trash root is injected, so the fixture is an ordinary temporary
+    /// directory and the user's real Trash is never touched.
+    @Test func entryAlreadyInTrashIsDeletedNotRecycled() async throws {
+        let trash = tempDirectory("trash")
+        defer { try? FileManager.default.removeItem(at: trash) }
+        let entry = trash.appendingPathComponent("old.log")
+        try Data(repeating: 0x41, count: 1024).write(to: entry)
+
+        let result = await CleanEngine.removeFromDisk(entry, moveToTrash: true, trashDirectory: trash)
+
+        #expect(result == .deleted)
+        #expect(!FileManager.default.fileExists(atPath: entry.path), "the entry must actually be gone")
+    }
+
+    /// The permanent path outside a Trash removes the entry as well — the
+    /// "move to Trash" setting is off here, which is every non-default clean.
+    @Test func permanentRemovalDeletesTheEntry() async throws {
+        let base = tempDirectory("permanent")
+        defer { try? FileManager.default.removeItem(at: base) }
+        let entry = base.appendingPathComponent("cache.bin")
+        try Data(repeating: 0x42, count: 512).write(to: entry)
+
+        let result = await CleanEngine.removeFromDisk(entry, moveToTrash: false)
+
+        #expect(result == .deleted)
+        #expect(!FileManager.default.fileExists(atPath: entry.path))
+    }
+
+    /// A path that cannot be removed reports a failure with a message instead
+    /// of claiming success: the caller must never count bytes it did not free.
+    @Test func unremovableEntryReportsFailureWithoutClaimingBytes() async throws {
+        let base = tempDirectory("unremovable")
+        defer { try? FileManager.default.removeItem(at: base) }
+        let entry = base.appendingPathComponent("locked")
+        try Data(repeating: 0x43, count: 16).write(to: entry)
+        // A file inside the directory keeps the directory itself from being
+        // removed only if the parent is made read-only; removing the parent's
+        // write permission makes the child undeletable.
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: base.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: base.path) }
+
+        let result = await CleanEngine.removeFromDisk(entry, moveToTrash: false)
+
+        if case .failed(let message) = result {
+            #expect(!message.isEmpty, "a failure must carry something to show the user")
+            #expect(FileManager.default.fileExists(atPath: entry.path), "the entry is still there, so nothing was freed")
+        } else {
+            // Root, or a filesystem that ignores the permission: the removal
+            // succeeded, and then there is nothing to assert about failure.
+            #expect(result == .deleted)
+        }
+    }
 }

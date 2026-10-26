@@ -179,11 +179,16 @@ enum RulesCatalog {
             target: .children("~/.yarn/berry/cache"),
             risk: .safe
         ),
+        // Review, not safe: pnpm's own maintenance command is `store prune`
+        // (the CLI rule below), which drops only unreferenced packages.
+        // Deleting the store wholesale makes every project re-download its
+        // whole dependency set on the next install, which is exactly what the
+        // review level means.
         ScanRule(
             id: "node.pnpm-store",
             category: .node,
             target: .directory("${npm_config_store_dir}"),
-            risk: .safe
+            risk: .review
         ),
         ScanRule(
             id: "node.pnpm-cache",
@@ -500,11 +505,18 @@ enum RulesCatalog {
             target: .children("~/Library/Saved Application State"),
             risk: .safe
         ),
+        // Caution, not safe: this is where macOS keeps the autosaved copy of
+        // documents that were never written to disk — the state a crashed app
+        // recovers from. It is not regenerable (the app cannot rebuild a draft
+        // the user never saved), so it must not be swept by a default clean.
+        // The directory is TCC-protected, so this cannot be inspected with a
+        // plain listing; the reasoning is Apple's documented autosave model,
+        // not a measurement.
         ScanRule(
             id: "system.autosave",
             category: .system,
             target: .children("~/Library/Autosave Information"),
-            risk: .safe
+            risk: .caution
         ),
         ScanRule(
             id: "system.ios-backups",

@@ -7,6 +7,9 @@ struct JunkItemRow: View {
     var subtitle: String?
     /// Real icon of the app itself; shows the category symbol icon when nil.
     var icon: NSImage?
+    /// Which end of the subtitle gives way when it does not fit. Paths lose
+    /// their head (the tail names the entry); a plain name loses its tail.
+    var subtitleTruncation: Text.TruncationMode = .head
 
     var body: some View {
         HStack(spacing: 10) {
@@ -21,7 +24,7 @@ struct JunkItemRow: View {
             ItemTitleBlock(
                 title: item.title,
                 subtitle: subtitle ?? item.detail,
-                truncation: .head
+                truncation: subtitleTruncation
             )
 
             Spacer(minLength: 8)

@@ -38,7 +38,14 @@ struct LanguageFileScannerTests {
         at root: URL,
         preferredLanguages: [String] = ["zh-Hans", "en"]
     ) -> [JunkItem] {
-        LanguageFileScanner.scanLanguageFiles(roots: [root.path], preferredLanguages: preferredLanguages)
+        // The app-specific language list is pinned empty: the default provider
+        // reads real preference domains, and a developer machine whose apps
+        // carry `AppleLanguages` would leak into these fixtures.
+        LanguageFileScanner.scanLanguageFiles(
+            roots: [root.path],
+            preferredLanguages: preferredLanguages,
+            appLanguages: { _ in [] }
+        )
     }
 
     @Test func whitelistKeepsChineseEnglishAndBase() {
@@ -126,6 +133,52 @@ struct LanguageFileScannerTests {
     }
 
     // MARK: - Safety
+
+    /// English must survive whatever spelling the bundle uses: `en-GB` and
+    /// `en_US` are as much English as `en` is, and an app whose only English
+    /// pack is `en-GB.lproj` on a machine set to Japanese would otherwise lose
+    /// its English interface entirely — the promise the scanner makes.
+    @Test func englishIsKeptInEverySpelling() {
+        #expect(LanguageFileScanner.isWhitelisted("en-GB"))
+        #expect(LanguageFileScanner.isWhitelisted("en_US"))
+        #expect(LanguageFileScanner.isWhitelisted("zh"))
+    }
+
+    @Test func englishSpellingVariantSurvivesOnANonEnglishSystem() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-lproj-enspell-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
+                    languages: ["en-GB", "ja"])
+
+        let found = scan(at: root, preferredLanguages: ["ja-JP"])
+        #expect(found.isEmpty, "the only English pack must be kept: \(found.map(\.title))")
+    }
+
+    /// A language set for one app in System Settings is not part of
+    /// `Locale.preferredLanguages`: it lives in that app's own preference
+    /// domain. Removing the pack it names would revert the app to the system
+    /// language, so the scanner has to consult it.
+    @Test func perAppLanguageOverrideIsKept() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-lproj-applang-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
+                    languages: ["en", "ja", "ko"])
+
+        let found = LanguageFileScanner.scanLanguageFiles(
+            roots: [root.path],
+            preferredLanguages: ["zh-Hans"],
+            appLanguages: { _ in ["ja-JP"] }
+        )
+        #expect(Set(found.map(\.title)) == ["ko.lproj"], "the app's own language is in use, not unused")
+    }
+
+    /// The real provider reads the app's preference domain; an app that never
+    /// set one answers with no languages at all rather than guessing.
+    @Test func appLanguageProviderReturnsNothingWhenUnset() {
+        #expect(LanguageFileScanner.appLanguages(for: "com.example.mackit.no-such-app").isEmpty)
+    }
 
     /// The crash the old whitelist caused: a Japanese-locale user's own
     /// interface language was proposed for deletion, so apps fell back to
