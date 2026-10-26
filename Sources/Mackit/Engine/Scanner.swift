@@ -292,7 +292,15 @@ enum ScanEngine {
         names: [String],
         maxDepth: Int
     ) -> [JunkItem] {
-        let rootURL = FileSystem.url(root)
+        // Resolved before the walk: Foundation's URL-based
+        // `contentsOfDirectory(at:)` refuses to open a symlink (ENOTDIR,
+        // verified), so a root that is itself a link — a project the user keeps
+        // on another volume and links back — made the whole scan return nothing
+        // at all, silently. Canonical (realpath) rather than a plain symlink
+        // resolution, so the reported paths name the directory the bytes
+        // actually live in; a nonexistent root comes back untouched for the
+        // existence check below.
+        let rootURL = URL(fileURLWithPath: FileSystem.canonicalExpanded(root))
         var isDirectory: ObjCBool = false
         guard FileSystem.manager.fileExists(atPath: rootURL.path, isDirectory: &isDirectory),
               isDirectory.boolValue else {

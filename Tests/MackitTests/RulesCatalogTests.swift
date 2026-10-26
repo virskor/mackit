@@ -124,6 +124,38 @@ struct RulesCatalogTests {
         #expect(found.isEmpty)
     }
 
+    /// A project root that is itself a symlink must still be scanned. The bulk
+    /// listing opens directories with O_DIRECTORY, which refuses to follow a
+    /// link (ENOTDIR, verified), and the `try?` around it turned that into a
+    /// silent empty result: the user points Mackit at a project kept on another
+    /// volume and linked back, and the scan reports no junk at all.
+    @Test func projectJunkScanFollowsASymlinkedRoot() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-symroot-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let real = base.appendingPathComponent("real", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: real.appendingPathComponent("node_modules", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createSymbolicLink(
+            at: base.appendingPathComponent("link"),
+            withDestinationURL: real
+        )
+
+        let found = ScanEngine.scanProjectJunk(
+            root: base.appendingPathComponent("link").path,
+            names: ProjectJunkNames.defaults,
+            maxDepth: 4
+        )
+
+        #expect(found.count == 1, "a symlinked root produced \(found.count) entries: \(found.map(\.path))")
+        #expect(found.first?.title == "node_modules")
+        // The reported path is the real one — the same directory either
+        // spelling addresses, and the one the bytes actually live in.
+        #expect(found.first?.path == FileSystem.canonical(real.appendingPathComponent("node_modules").path))
+    }
+
     /// A self-referential symlink inside a project must not be walked once per
     /// depth level: a symlinked directory is not the project's own directory,
     /// and a loop otherwise gets a fresh path spelling at every level, so a

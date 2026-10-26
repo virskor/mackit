@@ -76,6 +76,21 @@ enum FileSystem {
         manager.fileExists(atPath: expand(path))
     }
 
+    /// A path expanded (`~`, `${VAR}`) and then canonicalized (realpath).
+    ///
+    /// Used to resolve a root before enumerating it. `canonical` alone is not
+    /// enough: realpath does not expand `~`, so a root spelled `~/work` would be
+    /// looked up as a literal `~` directory.
+    ///
+    /// Note which enumerations need it. The bulk listing here opens directories
+    /// with `open(O_DIRECTORY)`, which follows a symlinked root and reports the
+    /// link's own spelling; Foundation's URL-based `contentsOfDirectory(at:)`
+    /// refuses one outright (ENOTDIR, verified), so a caller built on that API
+    /// has to resolve the root itself or silently find nothing.
+    static func canonicalExpanded(_ path: String) -> String {
+        canonical(url(path).path)
+    }
+
     /// Expand `~` into a URL.
     static func url(_ path: String) -> URL {
         URL(fileURLWithPath: expand(path))

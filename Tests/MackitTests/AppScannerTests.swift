@@ -106,6 +106,37 @@ struct AppScannerTests {
         #expect(AppScanner.discoverApps(roots: ["/definitely/not/a/real/path"]).isEmpty)
     }
 
+    /// A discovery root that is itself a symlink must still be listed. The bulk
+    /// enumeration opens with O_DIRECTORY, which refuses to follow a link
+    /// (ENOTDIR, verified), so a user who moved `~/Applications` to another
+    /// volume and linked it back used to get "no apps installed".
+    /// A discovery root that is itself a symlink must still be listed. The bulk
+    /// enumeration opens directories with `open(O_DIRECTORY)`, which follows a
+    /// link — unlike Foundation's URL-based `contentsOfDirectory(at:)`, which
+    /// refuses one — so the apps are found and reported under the spelling the
+    /// user configured. Pinned because swapping this listing for the URL-based
+    /// API would silently break it.
+    @Test func discoveryFollowsASymlinkedRoot() throws {
+        let base = tempDirectory("symlink-apps")
+        defer { cleanup(base) }
+        makeApp(at: base, name: "Real.app", bundleID: "com.example.real", version: "1.0")
+        try FileManager.default.createSymbolicLink(
+            at: base.appendingPathComponent("Link.app"),
+            withDestinationURL: base.appendingPathComponent("Real.app")
+        )
+        // The root itself is the link: a directory that only exists under that
+        // spelling.
+        let linked = base.appendingPathComponent("AppsLink")
+        try FileManager.default.createSymbolicLink(at: linked, withDestinationURL: base)
+
+        let apps = AppScanner.discoverApps(roots: [linked.path])
+
+        #expect(apps.count == 1, "a symlinked root listed \(apps.count) apps: \(apps.map(\.bundleID))")
+        #expect(apps.first?.bundleID == "com.example.real")
+        // Reported as the user spelled the root: the link is what they see.
+        #expect(apps.first?.path == linked.appendingPathComponent("Real.app").path)
+    }
+
     /// System apps with com.apple.* cannot be uninstalled, and their residue
     /// data is protected by TCC (probing triggers an authorization prompt), so
     /// they are skipped during discovery.
@@ -335,6 +366,35 @@ struct AppScannerTests {
     @Test func supportIndexReturnsEmptyForMissingHome() {
         let index = AppScanner.supportIndex(home: "/definitely/not/a/real/path")
         #expect(index.paths(matching: "Anything").isEmpty)
+    }
+
+    /// An Application Support relocated through a link must still be indexed.
+    /// The listing opens with `open(O_DIRECTORY)`, which follows the link, so
+    /// vendor subdirectory matching (Google/Chrome and friends) keeps working;
+    /// the paths come back in the spelling the home was given. Pinned because
+    /// swapping this listing for Foundation's URL-based
+    /// `contentsOfDirectory(at:)` would silently index nothing.
+    @Test func supportIndexFollowsASymlinkedApplicationSupport() throws {
+        let home = tempDirectory("symlink-support-home")
+        defer { cleanup(home) }
+        let real = tempDirectory("symlink-support-real")
+        defer { cleanup(real) }
+        makeDirectory("Library/Application Support/Google/Chrome", under: real)
+        try FileManager.default.createDirectory(
+            at: home.appendingPathComponent("Library"),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createSymbolicLink(
+            at: home.appendingPathComponent("Library/Application Support"),
+            withDestinationURL: real.appendingPathComponent("Library/Application Support")
+        )
+
+        let index = AppScanner.supportIndex(home: home.path)
+
+        #expect(
+            index.paths(matching: "Google Chrome") == [home.appendingPathComponent("Library/Application Support/Google/Chrome").path],
+            "a linked Application Support indexed nothing"
+        )
     }
 
     // MARK: - Item generation

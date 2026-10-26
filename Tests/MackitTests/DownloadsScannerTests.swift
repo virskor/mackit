@@ -82,4 +82,30 @@ struct DownloadsScannerTests {
         let found = DownloadsScanner.scanDownloads(home: "/definitely/not/a/real/home")
         #expect(found.isEmpty)
     }
+
+    /// A `~/Downloads` relocated to another volume through a link must still be
+    /// scanned. The listing opens with `open(O_DIRECTORY)`, which follows the
+    /// link — unlike Foundation's URL-based `contentsOfDirectory(at:)`, which
+    /// refuses one — so the installers are found under the spelling the user
+    /// configured. Pinned because swapping this listing would silently report a
+    /// clean folder for a folder it never looked inside.
+    @Test func followsASymlinkedDownloadsFolder() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-downloads-symlink-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: home) }
+        // The real folder lives elsewhere; the home's Downloads is a link to it.
+        let real = home.appendingPathComponent("Moved", isDirectory: true)
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        try "x".write(to: real.appendingPathComponent("Xcode.dmg"), atomically: true, encoding: .utf8)
+        try FileManager.default.createSymbolicLink(
+            at: home.appendingPathComponent("Downloads"),
+            withDestinationURL: real
+        )
+
+        let found = DownloadsScanner.scanDownloads(home: home.path)
+
+        #expect(found.map(\.title) == ["Xcode.dmg"], "a linked Downloads folder produced \(found.map(\.title))")
+        // Reported as the user spelled the folder: the link is what they see.
+        #expect(found.first?.path == home.appendingPathComponent("Downloads/Xcode.dmg").path)
+    }
 }

@@ -113,6 +113,30 @@ struct LanguageFileScannerTests {
         #expect(found.isEmpty)
     }
 
+    /// An Applications root that is itself a symlink must still be scanned. The
+    /// enumeration refuses to follow a symlink (open with O_DIRECTORY gives
+    /// ENOTDIR), so a `~/Applications` the user moved to another volume and
+    /// linked back listed nothing and read as "no unused language files".
+    @Test func followsASymlinkedApplicationsRoot() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-lproj-symlink-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let real = base.appendingPathComponent("Applications", isDirectory: true)
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        try makeApp(at: real, name: "Foo", bundleID: "com.example.foo",
+                    languages: ["en", "ja", "ko"])
+        try FileManager.default.createSymbolicLink(
+            at: base.appendingPathComponent("AppsLink"),
+            withDestinationURL: real
+        )
+
+        let found = scan(at: base.appendingPathComponent("AppsLink"))
+
+        #expect(found.count == 2, "a linked Applications root produced \(found.count) entries: \(found.map(\.title))")
+        #expect(Set(found.map(\.title)) == ["ja.lproj", "ko.lproj"], "English and the system language are kept")
+        #expect(found.allSatisfy { $0.detail.contains("Foo") })
+    }
+
     @Test func groupsOneAppsLanguagesTogether() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mackit-lproj-sort-\(UUID().uuidString)", isDirectory: true)
