@@ -28,6 +28,13 @@ struct BrandCTAButton: View {
 
     var style: Style = .primary
 
+    /// The destructive variant: the same shape and metrics as `.primary`, in
+    /// red. Uninstalling is the one primary action in the app that is not
+    /// "go ahead", and a brand-green button on it would understate what it
+    /// does. Defaulted off, so every existing call site keeps the brand
+    /// green.
+    var destructive = false
+
     /// Shrinks padding and type for use inside a page header, where the
     /// full-size button would overwhelm the row.
     var compact = false
@@ -90,13 +97,14 @@ struct BrandCTAButton: View {
     @ViewBuilder
     private func surface<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         GlassSurface(
-            style: style == .primary ? .tinted(BrandPalette.cta) : .regular,
+            style: style == .primary ? .tinted(destructive ? .red : BrandPalette.cta) : .regular,
             interactive: true,
             outline: .rounded(cornerRadius: compact ? 8 : 12),
             usesGlass: isEnabled,
             fallback: .fill(background),
             fallbackShadow: style == .primary && isEnabled
-                ? (color: BrandPalette.ctaShadow, radius: compact ? 4 : 8, y: compact ? 2 : 4)
+                ? (color: destructive ? Color.red.opacity(0.35) : BrandPalette.ctaShadow,
+                   radius: compact ? 4 : 8, y: compact ? 2 : 4)
                 : nil
         ) {
             content()
@@ -107,6 +115,12 @@ struct BrandCTAButton: View {
     /// reads as one control group on either light or dark backgrounds.
     private var background: AnyShapeStyle {
         if style == .primary, isEnabled {
+            // A flat red rather than a gradient: the platform's own
+            // destructive buttons are flat, and the glass path above tints
+            // the same red on macOS 26+.
+            if destructive {
+                return AnyShapeStyle(Color.red)
+            }
             return AnyShapeStyle(BrandPalette.ctaGradient)
         }
         return AnyShapeStyle(Color.primary.opacity(0.08))

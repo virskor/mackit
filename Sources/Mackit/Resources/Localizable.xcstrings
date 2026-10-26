@@ -8252,24 +8252,24 @@
         }
       }
     },
-    "apps.tool.uninstall": {
+    "apps.tool.uninstallSelected": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "卸载所选"
+            "value": "卸载所选（%1$lld）"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uninstall Selected"
+            "value": "Uninstall Selected (%1$lld)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "卸載所選"
+            "value": "卸載所選（%1$lld）"
           }
         }
       }

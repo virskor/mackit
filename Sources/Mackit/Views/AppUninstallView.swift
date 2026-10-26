@@ -36,14 +36,6 @@ struct AppUninstallView: View {
             // window — the same rule every other page follows.
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            // The uninstall action sits in a footer bar only while something
-            // is checked: a permanently disabled button reads as broken, and
-            // an enabled one with nothing selected is a trap.
-            if model.phase == .idle, !model.selectedItems.isEmpty {
-                Divider()
-                footerBar
-            }
         }
         .background(Color(nsColor: .windowBackgroundColor))
         // The confirmation sheet hangs off the page, driven directly by the
@@ -101,15 +93,6 @@ struct AppUninstallView: View {
 
             Spacer(minLength: 12)
 
-            SearchField(
-                text: Binding(
-                    get: { model.searchText },
-                    set: { model.searchText = $0 }
-                ),
-                placeholder: L10n.tr("apps.tool.search")
-            )
-            .frame(width: 200)
-
             // While the re-scan runs the button swaps its label for a
             // spinner and a "refreshing" title: a disabled button alone
             // reads as "not now" rather than "working on it".
@@ -126,6 +109,30 @@ struct AppUninstallView: View {
             }
             .disabled(model.isLoading || model.phase == .cleaning)
             .help(L10n.tr("apps.tool.rescan.help"))
+
+            // The uninstall action lives in the header, beside the rescan —
+            // the same place the general module puts its clean button. A
+            // footer bar instead would take its height out of the list the
+            // moment something is checked, shifting every row up under the
+            // user's cursor. Hidden while nothing is selected rather than
+            // shown disabled: a dimmed red button reads as broken, and an
+            // enabled one with nothing selected is a trap. The header's own
+            // height is set by the title block, so the button appearing
+            // never moves the list.
+            if model.phase == .idle, !model.selectedItems.isEmpty {
+                BrandCTAButton(
+                    title: L10n.fmt("apps.tool.uninstallSelected", model.selectedItems.count),
+                    systemImage: "trash",
+                    destructive: true,
+                    compact: true
+                ) {
+                    model.requestUninstall()
+                }                .help(L10n.fmt(
+                    "apps.tool.selected",
+                    model.selectedItems.count,
+                    Formatters.bytes(model.selectedSize)
+                ))
+            }
         }
         .padding(.horizontal, 28)
         .padding(.top, 22)
@@ -229,6 +236,20 @@ struct AppUninstallView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 4)
             }
+
+            // The search field sits above the list, in the content area —
+            // the Homebrew panes' pattern. Keeping it out of the header
+            // leaves the header room for the actions, so nothing squeezes
+            // the title when the window narrows.
+            SearchField(
+                text: Binding(
+                    get: { model.searchText },
+                    set: { model.searchText = $0 }
+                ),
+                placeholder: L10n.tr("apps.tool.search")
+            )
+            .padding(.horizontal, 28)
+            .padding(.bottom, 8)
 
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -421,28 +442,6 @@ struct AppUninstallView: View {
             }
             .disabled(entry.bundle.path.isEmpty)
         }
-    }
-
-    // MARK: - Footer bar
-
-    private var footerBar: some View {
-        HStack(spacing: 12) {
-            Text(verbatim: L10n.fmt(
-                "apps.tool.selected",
-                model.selectedItems.count,
-                Formatters.bytes(model.selectedSize)
-            ))
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
-
-            Spacer()
-
-            ProminentActionButton(title: L10n.tr("apps.tool.uninstall"), tint: .red) {
-                model.requestUninstall()
-            }
-        }
-        .padding(.horizontal, 28)
-        .padding(.vertical, 12)
     }
 
     // MARK: - Expansion
