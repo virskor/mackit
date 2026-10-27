@@ -165,10 +165,11 @@ struct MackitApp: App {
                 Toggle(L10n.tr("menu.safeOnly"), isOn: $vm.safeOnly)
             }
 
-            // Settings is now a sidebar row + an embedded display in the
-            // main window; there is no separate Settings scene. The App
-            // menu item and ⌘, are kept here, and clicking them focuses
-            // the main window and switches to the settings page.
+            // Settings is now an entry at the foot of the sidebar + an
+            // embedded display in the main window; there is no separate
+            // Settings scene. The App menu item and ⌘, are kept here, and
+            // clicking them focuses the main window and switches to the
+            // settings page.
             CommandGroup(replacing: .appSettings) {
                 Button(L10n.tr("menubar.settings")) {
                     openWindow(id: "main")

@@ -4,7 +4,7 @@ import SwiftUI
 ///
 /// The footer hangs off the bottom of the list as a safe-area inset, so rows
 /// scroll behind it. A footer with no backdrop of its own shows the bottom row
-/// straight through its own figures — the "Settings" row lands on top of the
+/// straight through its own figures — a category row lands on top of the
 /// "Startup Disk" block and neither reads. The frost blurs whatever scrolls
 /// under it out, leaving the footer's own figures crisp on top.
 ///

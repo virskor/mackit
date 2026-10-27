@@ -110,20 +110,6 @@ struct SidebarView: View {
                     }
                 }
             }
-
-            // Settings sits at the very bottom of the list, sharing the same
-            // row style as the category rows; clicking switches the right
-            // detail area entirely to the corresponding embedded page, not a
-            // separate window.
-            Section {
-                row(
-                    icon: .symbol("gear"),
-                    tint: .accentColor,
-                    title: L10n.tr("sidebar.settings"),
-                    isSelected: vm.showsSettings,
-                    action: { vm.showSettings() }
-                )
-            }
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -256,11 +242,14 @@ struct SidebarView: View {
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
 
-                // The brand chip closes the footer on the right, under the
-                // capacity line: the storage figures own the top of the block
-                // and the app's mark signs it off at the end. The share capsule
-                // sits beside it — the same pill, one action away.
+                // The settings capsule closes the footer on the left, the
+                // brand chip signs it off on the right: the storage figures own
+                // the top of the block, and the bottom edge carries the app's
+                // own entries — settings a destination among them, the brand
+                // mark and the share capsule one action away.
                 HStack(spacing: 6) {
+                    settingsCapsule
+
                     Spacer(minLength: 0)
                     BrandChip()
                     ShareButton()
@@ -277,6 +266,36 @@ struct SidebarView: View {
         .background {
             SidebarFooterBackdrop()
         }
+    }
+
+    /// The settings entry at the foot of the sidebar.
+    ///
+    /// Settings used to be the last row of the list, which made it one more
+    /// destination a scroll away. It belongs with the footer's own furniture
+    /// instead — the bottom-left corner of the sidebar — because settings
+    /// configures Mackit itself rather than anything about the Mac the list
+    /// describes.
+    ///
+    /// The label stays even though the entry is one capsule wide: a bare gear
+    /// reads as a display toggle, where the word says what the click opens. At
+    /// the sidebar's narrowest the Spacer collapses and the labels truncate,
+    /// so the capsules keep their shape instead of pushing each other off the
+    /// edge.
+    private var settingsCapsule: some View {
+        Button {
+            vm.showSettings()
+        } label: {
+            FooterCapsule(isActive: vm.showsSettings) {
+                HStack(spacing: 5) {
+                    Image(systemName: "gear")
+                        .accessibilityHidden(true)
+
+                    Text(verbatim: L10n.tr("sidebar.settings"))
+                        .lineLimit(1)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     /// The higher the usage ratio, the more alarming the color.

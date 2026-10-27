@@ -134,12 +134,13 @@ struct ContentView: View {
     /// The page the sidebar selects, ignoring any clean in flight.
     @ViewBuilder
     private var page: some View {
-        // When the sidebar's hardware detection / settings / general cleanup /
-        // disk analysis / homebrew / large-file analysis / app uninstall row is
-        // selected, the detail area switches entirely to the corresponding
-        // embedded page (within the same window, not a separate window);
-        // clicking back or any category row returns to the cleanable items
-        // content.
+        // When one of the module destinations is active — the hardware
+        // detection / general cleanup / disk analysis / homebrew / large-file
+        // analysis / app uninstall rows in the sidebar, or the settings
+        // capsule at its foot — the detail area switches entirely to the
+        // corresponding embedded page (within the same window, not a separate
+        // window); clicking back or any category row returns to the cleanable
+        // items content.
         if vm.showsHardware {
             HardwareView()
         } else if vm.showsSettings {

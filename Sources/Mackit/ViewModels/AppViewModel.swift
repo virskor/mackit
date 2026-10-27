@@ -58,10 +58,10 @@ final class AppViewModel {
     var sortComparator: JunkItemComparator = ItemSort.sizeDescending.comparator
     /// Whether to show only safe items.
     var safeOnly: Bool = false
-    /// The settings row is selected in the sidebar: the detail area
-    /// switches to an embedded settings page and no longer shows cleanup
-    /// item content. Settings does not open a separate window; this is
-    /// the standard Mac app (sidebar navigation + detail area) approach.
+    /// The settings entry at the foot of the sidebar is active: the detail
+    /// area switches to an embedded settings page and no longer shows cleanup
+    /// item content. Settings does not open a separate window; this is the
+    /// standard Mac app (sidebar navigation + detail area) approach.
     var showsSettings: Bool = false
     /// The hardware detection row is selected in the sidebar: the detail
     /// area switches to the hardware info page, using the same container
@@ -692,9 +692,9 @@ final class AppViewModel {
         showDiskAnalysis()
     }
 
-    /// Opens the settings page from the sidebar, the ⌘, menu item, or the
-    /// tray — all three used to set `showsSettings` by hand and each forgot a
-    /// different sibling flag.
+    /// Opens the settings page from the sidebar's footer, the ⌘, menu item,
+    /// or the tray — all three used to set `showsSettings` by hand and each
+    /// forgot a different sibling flag.
     func showSettings() {
         showsSettings = true
         showsHardware = false
