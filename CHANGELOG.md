@@ -11,6 +11,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Settings → General reports the app's own permissions** — Full Disk Access, the Finder and Terminal automation consents and administrator authorization each get a row with their live status, what the permission unlocks, and a button that opens the exact settings row, with the statuses re-probed whenever the app returns to the foreground so a grant made while it was in the background shows up without a relaunch
 - **Cache cleanup for fourteen more language ecosystems** — Ruby, PHP, .NET, Scala, Haskell, Clojure, Elixir/Erlang, Lua, Julia, OCaml, Zig, Nim, Crystal and Perl each join the scan as their own category with brand mark, and every path was verified against the installed tool or its official source rather than assumed.
 
+### Changed
+
+- The large-file analysis page's unreadable-folders notice now appears only while Full Disk Access is missing: with the grant in place the folders the walk still could not read are ignored, because a grant cannot unlock a system-protected or locked folder and the notice would only send the user to a permission they already have.
+
+### Removed
+
+- The app uninstall page no longer shows when an app was last opened. Those dates come from the Spotlight index's per-app usage record, which exists only while the index serves the volume the app lives on — Full Disk Access neither gates them for `/Applications` nor creates index records, so the 1.0.10 page read a machine whose data volume is not indexed as "never launched" for every third-party app and its notice pointed at a grant that cannot help. The dates, the "never launched" guess and the notice are all gone; every row keeps its icon, version, size and leftover-file count.
+
 ## [1.0.10] - 2026-10-26
 
 ### Added

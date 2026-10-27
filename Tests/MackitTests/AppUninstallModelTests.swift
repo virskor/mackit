@@ -171,50 +171,6 @@ struct AppUninstallModelTests {
                 "both copies claim the same leftover files")
     }
 
-    // MARK: - Last-opened dates
-
-    @Test func groupingCarriesLastOpenedPerApp() {
-        let opened = Date(timeIntervalSince1970: 0)
-        let grouped = AppUninstallModel.group(
-            sampleItems(),
-            lastOpenedByPath: ["/Applications/Foo.app": opened]
-        )
-        #expect(grouped.first { $0.name == "Foo" }?.lastOpened == opened)
-        #expect(grouped.first { $0.name == "Bar" }?.lastOpened == nil,
-                "an app the map holds no date for simply has none")
-    }
-
-    @Test func lastOpenedUnreadableOnlyWhenNothingCouldBeRead() async {
-        let model = makeModel()
-        model.activate()
-        await model.waitUntilSettled()
-        #expect(model.lastOpenedUnreadable, "an app listed with no date at all reads as unreadable")
-
-        // One date among the apps means the index is readable: the rest were
-        // genuinely never launched, and the page may say so.
-        let withOne = AppUninstallModel(scan: {
-            AppUninstallModel.AppScanResult(items: sampleItems(), lastOpenedByPath: ["/Applications/Foo.app": Date()])
-        })
-        withOne.activate()
-        await withOne.waitUntilSettled()
-        #expect(!withOne.lastOpenedUnreadable)
-        #expect(entry("Foo", in: withOne).lastOpened != nil)
-        #expect(entry("Bar", in: withOne).lastOpened == nil)
-    }
-
-    @Test func lastOpenedUnreadableIsFalseBeforeTheFirstScan() {
-        let model = makeModel()
-        #expect(!model.lastOpenedUnreadable, "an empty list is not a read failure")
-    }
-
-    /// The lookup must degrade to nil, never crash, for paths the system
-    /// holds no metadata for — that is also the shape of an unreadable
-    /// index, which the page reports through `lastOpenedUnreadable`.
-    @Test func appLastOpenedReturnsNilForPathsWithoutARecord() {
-        #expect(AppLastOpened.lastOpened(at: "/definitely/not/an/app.app") == nil)
-        #expect(AppLastOpened.lastOpened(at: "") == nil)
-    }
-
     // MARK: - Selection
 
     @Test func appCheckboxIsTriStateOverBundleAndResidues() async {
@@ -705,13 +661,7 @@ struct AppUninstallModelTests {
                 await Task.detached(priority: .utility) {
                     let discovered = AppScanner.scanApps(roots: [fixture.apps.path], home: fixture.home.path)
                     let measured = await ScanEngine.measure(discovered)
-                    // A fixture app has no Spotlight usage record, so the
-                    // date is supplied here — the plumbing under test is the
-                    // scan-result → entry path, not the system's record.
-                    return AppUninstallModel.AppScanResult(
-                        items: measured,
-                        lastOpenedByPath: [fixture.appPath: Date(timeIntervalSince1970: 0)]
-                    )
+                    return AppUninstallModel.AppScanResult(items: measured)
                 }.value
             },
             clean: { items, moveToTrash in
@@ -722,11 +672,6 @@ struct AppUninstallModelTests {
         await model.waitUntilSettled()
         #expect(model.apps.count == 1)
         #expect(model.apps[0].residues.count == 2, "cache + preferences")
-        // The last-opened date survived discovery, grouping and the page's
-        // read path, and one date among the apps means the dates are
-        // readable — no "unavailable" notice.
-        #expect(model.apps[0].lastOpened != nil)
-        #expect(!model.lastOpenedUnreadable)
 
         model.setAppSelected(model.apps[0], selected: true)
         model.requestUninstall()
@@ -767,9 +712,6 @@ struct AppUninstallModelTests {
         await model.waitUntilSettled()
         model.setAppSelected(model.apps[0], selected: true)
         #expect(model.runningAppNames == ["Foo"], "the confirmation lists it in advance")
-        // No dates at all with an app listed: the page reads that as an
-        // unreadable index rather than as "never launched".
-        #expect(model.lastOpenedUnreadable)
 
         model.requestUninstall()
         model.beginClean(moveToTrash: false)

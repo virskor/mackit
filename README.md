@@ -140,7 +140,7 @@ Command-line clean items are grouped under their tool's category, shown alongsid
 
 ### App uninstall
 
-App uninstalling is its own tool page in the sidebar's Tools section, not part of the cleanup scan: the page lists every installed app with its real icon, version, size, leftover-file count and — when the system's launch record is readable — how long ago the app was last opened ("last opened 12 days ago"), the signal that says whether it is still worth keeping; one row per app with a tri-state checkbox — checking it selects the app bundle and all of its leftover files at once, and expanding the row reveals each leftover file with its own checkbox, so a single cache or preferences file can be kept or removed on its own. The last-used times come from the Spotlight index, which needs Full Disk Access to read for third-party apps; without it the page says so instead of claiming every app was never launched. Right-clicking an app row offers the two shortcuts:
+App uninstalling is its own tool page in the sidebar's Tools section, not part of the cleanup scan: the page lists every installed app with its real icon, version, size and leftover-file count; one row per app with a tri-state checkbox — checking it selects the app bundle and all of its leftover files at once, and expanding the row reveals each leftover file with its own checkbox, so a single cache or preferences file can be kept or removed on its own. Right-clicking an app row offers the two shortcuts:
 
 - **Uninstall with leftover files…**: checks the app itself plus all of its leftover files and opens the confirmation
 - **Clean leftover files only…**: cleans leftovers, keeps the app

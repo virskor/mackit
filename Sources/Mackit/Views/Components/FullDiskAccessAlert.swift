@@ -12,8 +12,8 @@ import SwiftUI
 /// The copy must not spell out the click path through the settings tree: the
 /// button does the walking, and the path ages the moment macOS moves the row.
 struct FullDiskAccessAlert: View {
-    /// What the feature cannot do without the permission — "Cannot read the
-    /// apps' last-used times", not the generic "Permission required".
+    /// What the feature cannot do without the permission — "249 folders
+    /// could not be read", not the generic "Permission required".
     let title: String
     /// The permission and what to do after granting it.
     let message: String

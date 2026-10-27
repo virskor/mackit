@@ -6,7 +6,7 @@ import Foundation
 /// `x-apple.systempreferences:` is the URL scheme System Settings registers;
 /// the part before `?` selects the pane, the part after it the row inside the
 /// pane. Every permission-gated feature in this app (the disk analysis scan,
-/// the app uninstall tool's last-used dates) sends the user to the same row,
+/// the large-file walk's unreadable folders) sends the user to the same row,
 /// so the link lives here once instead of being spelled out at each call
 /// site — the same reason `Links` owns the website URL.
 ///

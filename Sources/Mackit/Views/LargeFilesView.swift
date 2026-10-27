@@ -423,7 +423,11 @@ struct LargeFilesView: View {
     }
 
     /// The notices that qualify the list: a stopped walk's hits are partial,
-    /// and unreadable folders hold files the walk never saw.
+    /// and unreadable folders hold files the walk never saw — but only while
+    /// Full Disk Access is missing. With the grant in place the folders the
+    /// walk still could not read are ignored: a grant cannot unlock a
+    /// system-protected or locked folder, so the notice would only offer a
+    /// permission the user already has.
     @ViewBuilder
     private var notices: some View {
         if !model.isScanning, !model.scanCompleted {
@@ -438,7 +442,7 @@ struct LargeFilesView: View {
             .padding(.top, 12)
         }
 
-        if model.scanCompleted, model.unreadableDirectories > 0 {
+        if model.scanCompleted, model.unreadableDirectories > 0, !model.fullDiskAccessGranted {
             FullDiskAccessAlert(
                 title: L10n.fmt("largeFiles.unreadable.title", model.unreadableDirectories),
                 message: L10n.tr("largeFiles.unreadable.message")

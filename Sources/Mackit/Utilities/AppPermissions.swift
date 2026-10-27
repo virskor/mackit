@@ -1,21 +1,23 @@
 import AppKit
 import Carbon
+import Darwin
 import Foundation
 
 /// What the system currently lets this process do, permission by permission.
 ///
 /// The app runs without the App Sandbox — it must read `~/Library` and
 /// `/Applications` to clean caches — so its reach comes from permissions the
-/// user grants in System Settings, one row at a time. A grant or a revoke
-/// takes effect the moment it is made and changes what the next scan can see,
-/// so this component asks the system every time instead of caching an answer.
+/// user grants in System Settings, one row at a time. This component asks the
+/// system every time instead of caching an answer, so System Settings stays
+/// the source of truth; whether a fresh grant needs the app relaunched is the
+/// system's call, not something a cached status here could fix.
 ///
 /// Every probe here is side-effect free: none of them pops a dialog. That is
 /// what makes it safe to run on every page appearance — a permission page
 /// that asks for consent just to render its own status would be the opposite
 /// of helpful. Asking on the user's behalf is a separate, explicit action
 /// (`requestAutomation`).
-enum PermissionStatus {
+enum PermissionStatus: Sendable {
     /// The system has granted it.
     case granted
     /// The system holds an answer this app cannot send events (or read
@@ -37,35 +39,91 @@ enum PermissionStatus {
 }
 
 enum AppPermissions {
-    /// Whether this process can read third-party apps' launch records — the
-    /// capability Full Disk Access actually gates for this app.
+    /// What opening a protected directory did. "Denied" and "missing" must
+    /// stay apart: a path that is not usable says nothing about the
+    /// permission, while a folder that exists and refuses is the denial.
+    enum DirectoryAccess: Equatable {
+        /// Opens for reading: the grant is in place.
+        case readable
+        /// Exists but refuses: the grant is missing.
+        case denied
+        /// No usable directory here (absent, a symlink, a non-directory).
+        /// It says nothing about the permission.
+        case missing
+    }
+
+    /// Whether this process can read the locations Full Disk Access alone
+    /// unlocks.
     ///
     /// There is no public API that answers "does this app have Full Disk
-    /// Access" directly, and the answer must not come from the system's TCC
-    /// database: that file is shared by every app on the machine, and reading
-    /// it to render Mackit's own status would reach past what a permissions
-    /// page is about. The app-scoped signal is the one the uninstall tool
-    /// already depends on — the Spotlight index's per-app launch record
-    /// (`kMDItemLastUsedDate`, see `AppLastOpened`). Reading a third-party
-    /// bundle's record is gated by Full Disk Access, measured on a real
-    /// machine: 0 of 44 third-party apps under /Applications resolved a date
-    /// without it. So the probe asks about Mackit's own bundle — the one
-    /// third-party app that is certainly running right now, and therefore
-    /// certainly has a record to read.
+    /// Access". The previous probe asked the Spotlight index for Mackit's own
+    /// last-used date, which cannot tell a missing grant from an index that
+    /// is not running: with indexing turned off that lookup is nil whether or
+    /// not the grant exists, so the probe reported "not granted" either way.
+    /// The permission itself is a filesystem gate, so this probe tests the
+    /// gate directly by opening one of the folders TCC hides from every
+    /// process without the grant. On macOS 27, without the grant, every
+    /// candidate below fails with EPERM while `~/Library/Calendars` and
+    /// `~/Library/Reminders` open normally — the gate is the permission, not
+    /// the folder's mode. With the grant the same open succeeds.
     ///
-    /// `bundlePath` and `lastOpened` are seams for tests. An installed bundle
-    /// is required for the answer to mean anything: the gating the
-    /// measurement above was taken against applies to /Applications, and a
-    /// build running from DerivedData would read its own record either way
-    /// and answer "granted" on a machine that granted nothing. ~/Applications
-    /// installs are excluded with them — the gating there is unmeasured, and
-    /// "could not tell" beats a guess.
+    /// The first candidate that exists decides: readable means the grant,
+    /// denied means its absence. Candidates the account does not have (Mail
+    /// or Messages never set up) are skipped, and when none exists at all the
+    /// probe answers "undetermined" rather than guessing. Nothing is read
+    /// from the opened directory, and the TCC database is never touched.
+    ///
+    /// The list stays short on purpose: every path here has been protected by
+    /// Full Disk Access since before the deployment floor, so a readable
+    /// answer really means the grant. A path whose gating is uncertain could
+    /// open without the grant and turn the probe into a false positive; a
+    /// narrower list can only produce "undetermined", which the UI already
+    /// handles honestly.
+    ///
+    /// `homeDirectory` and `probe` are seams for tests; the defaults are the
+    /// real ones.
     static func fullDiskAccess(
-        bundlePath: String = Bundle.main.bundlePath,
-        lastOpened: (String) -> Date? = AppLastOpened.lastOpened
+        homeDirectory: String = NSHomeDirectory(),
+        probe: (String) -> DirectoryAccess = { probeDirectory(at: $0) }
     ) -> PermissionStatus {
-        guard bundlePath.hasPrefix("/Applications/") else { return .undetermined }
-        return lastOpened(bundlePath) == nil ? .notGranted : .granted
+        let candidates = [
+            "\(homeDirectory)/Library/Safari",
+            "\(homeDirectory)/Library/Mail",
+            "\(homeDirectory)/Library/Messages",
+            "\(homeDirectory)/Library/Shortcuts",
+            "\(homeDirectory)/Library/Containers/com.apple.mail",
+        ]
+        for path in candidates {
+            switch probe(path) {
+            case .readable: return .granted
+            case .denied: return .notGranted
+            case .missing: continue
+            }
+        }
+        return .undetermined
+    }
+
+    /// Opens `path` as a directory and closes it again — no listing, no
+    /// reading. `open` is the call TCC gates; `EACCES`/`EPERM` is a denial,
+    /// and every other failure (an absent path, a symlink, a non-directory)
+    /// is a candidate this probe cannot use, so the answer falls towards
+    /// "undetermined" instead of a false grant. `O_NOFOLLOW` keeps a symlink
+    /// sitting at a protected path from answering for the real directory.
+    ///
+    /// The answer is classified inside the `withCString` closure, right after
+    /// `open`, so no later libc call can overwrite `errno`.
+    static func probeDirectory(at path: String) -> DirectoryAccess {
+        path.withCString { cPath in
+            let descriptor = open(cPath, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
+            guard descriptor >= 0 else {
+                switch errno {
+                case EACCES, EPERM: return .denied
+                default: return .missing
+                }
+            }
+            close(descriptor)
+            return .readable
+        }
     }
 
     /// Whether this app may send Apple events to `bundleID`'s application

@@ -126,8 +126,18 @@ final class LargeFilesModel {
     /// nothing to redo and the new value is simply what the first walk uses.
     private(set) var hasScanned = false
     /// Directories the walk could not read at all (a denied TCC prompt, a
-    /// locked folder). Non-zero means the scan may have missed files.
+    /// locked folder). Non-zero means the scan may have missed files. The
+    /// page's notice about that is suppressed when Full Disk Access is
+    /// already granted — see `fullDiskAccessGranted`.
     private(set) var unreadableDirectories = 0
+    /// Whether Full Disk Access is currently granted, probed when a walk
+    /// lands. The unreadable-folders notice is gated on it: a folder the
+    /// walk still could not read with the grant in place is one the grant
+    /// cannot help (a system-protected or locked location), so the notice —
+    /// whose offer is the grant — would only send the user to a permission
+    /// they already have. Those folders stay ignored instead of counted
+    /// into a notice.
+    private(set) var fullDiskAccessGranted = false
 
     /// Every hit, in discovery order. The presentation order lives in
     /// `visibleFiles` so the sort can change — and re-sort a list that is
@@ -177,6 +187,11 @@ final class LargeFilesModel {
     private let scan: @Sendable (String, Set<String>, Int64) -> AsyncStream<LargeFileScanEvent>
     /// Removes the given items, reporting each outcome.
     private let clean: @MainActor @Sendable ([JunkItem], Bool) -> AsyncStream<CleanEvent>
+    /// Whether Full Disk Access is currently granted. A seam like the
+    /// others: the real probe is a few directory opens, and pinning it lets
+    /// a test decide the unreadable-folders notice's answer without
+    /// depending on the machine running the suite.
+    private let fullDiskAccess: @MainActor @Sendable () -> Bool
     /// The real icon of a file path.
     private let iconForPath: @MainActor @Sendable (String) -> NSImage?
 
@@ -225,11 +240,15 @@ final class LargeFilesModel {
         clean: @escaping @MainActor @Sendable ([JunkItem], Bool) -> AsyncStream<CleanEvent> = { items, moveToTrash in
             CleanEngine.clean(items: items, moveToTrash: moveToTrash)
         },
+        fullDiskAccess: @escaping @MainActor @Sendable () -> Bool = {
+            AppPermissions.fullDiskAccess() == .granted
+        },
         iconForPath: @escaping @MainActor @Sendable (String) -> NSImage? = { NSWorkspace.shared.icon(forFile: $0) }
     ) {
         self.rootPath = rootPath
         self.scan = scan
         self.clean = clean
+        self.fullDiskAccess = fullDiskAccess
         self.iconForPath = iconForPath
     }
 
@@ -441,6 +460,10 @@ final class LargeFilesModel {
         hasScanned = true
         scanCompleted = true
         unreadableDirectories = unreadable
+        // Probed here, where the notice the answer gates becomes relevant:
+        // the grant state during the walk is the one that explains the
+        // folders it could not read.
+        fullDiskAccessGranted = fullDiskAccess()
         // A rescan re-walks the disk: a file that no longer exists (deleted
         // elsewhere) or no longer passes the threshold (the user lowered it)
         // must not stay checked as a ghost. Files the walk found again keep

@@ -126,12 +126,14 @@ struct LargeFilesModelTests {
     private func makeModel(
         events: [LargeFileScanEvent]? = nil,
         scan: (@Sendable (String, Set<String>, Int64) -> AsyncStream<LargeFileScanEvent>)? = nil,
-        clean: (@MainActor @Sendable ([JunkItem], Bool) -> AsyncStream<CleanEvent>)? = nil
+        clean: (@MainActor @Sendable ([JunkItem], Bool) -> AsyncStream<CleanEvent>)? = nil,
+        fullDiskAccess: @escaping @MainActor @Sendable () -> Bool = { false }
     ) -> LargeFilesModel {
         LargeFilesModel(
             rootPath: "/Users/x",
             scan: scan ?? fakeScan(events: events ?? sampleEvents),
-            clean: clean ?? fakeClean()
+            clean: clean ?? fakeClean(),
+            fullDiskAccess: fullDiskAccess
         )
     }
 
@@ -165,6 +167,31 @@ struct LargeFilesModelTests {
         #expect(model.files.map(\.name) == ["big.bin", "small.bin", "mid.bin"])
         #expect(model.visibleFiles.map(\.name) == ["big.bin", "mid.bin", "small.bin"])
         #expect(model.totalSize == 3_000_000_000 + 2_000_000_000 + 1_200_000_000)
+    }
+
+    /// With Full Disk Access in place the unreadable-folders notice has
+    /// nothing to offer — the grant is already there — so those folders are
+    /// ignored rather than pointed at a permission the user has.
+    @Test func unreadableFoldersAreIgnoredWhenFullDiskAccessIsGranted() async {
+        let model = makeModel(fullDiskAccess: { true })
+
+        model.startScan()
+        await model.waitUntilSettled()
+
+        #expect(model.unreadableDirectories == 2, "the walk's finding stays honest")
+        #expect(model.fullDiskAccessGranted)
+    }
+
+    /// Without the grant the notice's offer is the fix, so the folders the
+    /// walk could not read stay surfaced for the notice to name.
+    @Test func unreadableFoldersStaySurfacedWhenFullDiskAccessIsMissing() async {
+        let model = makeModel(fullDiskAccess: { false })
+
+        model.startScan()
+        await model.waitUntilSettled()
+
+        #expect(model.unreadableDirectories == 2)
+        #expect(!model.fullDiskAccessGranted)
     }
 
     @Test func thresholdChangeBeforeTheFirstWalkIsJustRemembered() async {

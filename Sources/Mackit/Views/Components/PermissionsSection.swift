@@ -51,9 +51,9 @@ struct PermissionsSection: View {
 
                 Spacer(minLength: 8)
 
-                // A probe is a directory listing and two permission lookups,
-                // so the button never spins — it re-reads the system on the
-                // spot.
+                // A probe is a few directory opens and two permission
+                // lookups, so the button never spins — it re-reads the
+                // system on the spot.
                 Button {
                     probe()
                 } label: {

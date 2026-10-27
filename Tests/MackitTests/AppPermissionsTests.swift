@@ -5,47 +5,125 @@ import Testing
 
 /// The probes the permissions section renders.
 ///
-/// What can be asserted portably is split from what cannot: the probe logic
-/// and the automation probe's deterministic direction are pinned here, while
-/// whether Full Disk Access or an automation consent happens to be granted is
-/// the machine's own state. The ungated directions were measured on a real
-/// machine (0 of 44 third-party apps under /Applications resolved a launch
-/// date without Full Disk Access); the tests below never depend on them.
+/// The machine's own grants are not something a test run may depend on, so
+/// the Full Disk Access probe is pinned through its seam: what matters is the
+/// mapping (a readable protected folder is the grant, a refused one is its
+/// absence, no folder at all is "could not tell") and the fall-through
+/// between candidates. The automation probe's deterministic directions are
+/// pinned the same way.
 struct AppPermissionsTests {
-    /// The probe only trusts an installed bundle: the gating the Spotlight
-    /// signal was measured against applies to /Applications, and a build
-    /// running from DerivedData would read its own record either way.
-    /// ~/Applications is excluded with them — unmeasured, not assumed.
-    @Test func probeOutsideApplicationsIsUndetermined() {
-        #expect(AppPermissions.fullDiskAccess(bundlePath: "/Users/me/build/Debug/Mackit") == .undetermined)
-        #expect(AppPermissions.fullDiskAccess(bundlePath: "/Users/me/Applications/Mackit.app") == .undetermined)
+    /// Answers only for the paths the test names; everything else is a folder
+    /// the account does not have.
+    private func probe(
+        _ answers: [String: AppPermissions.DirectoryAccess]
+    ) -> (String) -> AppPermissions.DirectoryAccess {
+        { answers[$0] ?? .missing }
     }
 
-    /// An installed bundle whose own launch record resolves — the app is
-    /// running, so it has one — means the record is readable, which is the
-    /// grant.
-    @Test func readableLaunchRecordMeansGranted() {
+    private let home = "/Users/me"
+
+    private func candidate(_ name: String) -> String {
+        "\(home)/Library/\(name)"
+    }
+
+    /// A protected folder that opens is the grant.
+    @Test func readableProtectedFolderMeansGranted() {
         #expect(AppPermissions.fullDiskAccess(
-            bundlePath: "/Applications/Mackit.app",
-            lastOpened: { _ in Date() }
+            homeDirectory: home,
+            probe: probe([candidate("Safari"): .readable])
         ) == .granted)
     }
 
-    /// An installed bundle with no readable launch record: the ungated
-    /// direction was measured on a real machine (third-party records all read
-    /// nil without Full Disk Access), so nil is the refusal.
-    @Test func missingLaunchRecordMeansNotGranted() {
+    /// A protected folder that exists and refuses is the missing grant.
+    @Test func refusedProtectedFolderMeansNotGranted() {
         #expect(AppPermissions.fullDiskAccess(
-            bundlePath: "/Applications/Mackit.app",
-            lastOpened: { _ in nil }
+            homeDirectory: home,
+            probe: probe([candidate("Safari"): .denied])
         ) == .notGranted)
     }
 
-    /// The real probe in a test run answers "could not tell" rather than
-    /// guessing: the test bundle never lives under /Applications, and the one
-    /// thing the probe must never do is invent a permission state.
-    @Test func realProbeNeverInventsAState() {
-        #expect(AppPermissions.fullDiskAccess() == .undetermined)
+    /// A folder the account never created says nothing about the permission:
+    /// the probe moves on to the next candidate.
+    @Test func absentFoldersFallThroughToTheNextCandidate() {
+        #expect(AppPermissions.fullDiskAccess(
+            homeDirectory: home,
+            probe: probe([
+                candidate("Safari"): .missing,
+                candidate("Mail"): .readable,
+            ])
+        ) == .granted)
+    }
+
+    /// A refusal is the answer even if a later candidate would read: the
+    /// candidates are all gated by the same permission, so the first one that
+    /// exists and refuses settles it.
+    @Test func refusalStopsTheProbe() {
+        #expect(AppPermissions.fullDiskAccess(
+            homeDirectory: home,
+            probe: probe([
+                candidate("Safari"): .denied,
+                candidate("Mail"): .readable,
+            ])
+        ) == .notGranted)
+    }
+
+    /// None of the candidates exists: the probe says "could not tell" rather
+    /// than inventing either answer.
+    @Test func noExistingCandidateIsUndetermined() {
+        #expect(AppPermissions.fullDiskAccess(
+            homeDirectory: home,
+            probe: probe([:])
+        ) == .undetermined)
+    }
+
+    /// The primitive behind the probe reads a directory the process owns and
+    /// reports a nonexistent path as missing. The refusal a real protected
+    /// folder produces without the grant is pinned below with a mode-000
+    /// directory, which yields the same EACCES.
+    @Test func directoryProbeDistinguishesReadableAndMissing() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-probe-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        #expect(AppPermissions.probeDirectory(at: directory.path) == .readable)
+        #expect(AppPermissions.probeDirectory(at: "/definitely/not/here/\(UUID().uuidString)") == .missing)
+    }
+
+    /// A symlink standing in for a directory must not answer for it; the
+    /// probe treats it as unusable and tries the next candidate.
+    @Test func symlinkAtAProtectedPathIsNotReadable() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-probe-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let link = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-probe-link-\(UUID().uuidString)")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: directory)
+        defer { try? FileManager.default.removeItem(at: link) }
+
+        #expect(AppPermissions.probeDirectory(at: link.path) == .missing)
+    }
+
+    /// A directory the process may not read is a refusal — the answer that
+    /// separates "the grant is missing" from "no folder here". A mode-000
+    /// directory the test owns produces the same EACCES a protected folder
+    /// produces without the grant, so the classification is pinned without
+    /// depending on the machine's own grants.
+    @Test func directoryProbeClassifiesAPermissionRefusalAsDenied() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-probe-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            // The permissions come back before the cleanup: a 0o700 directory
+            // is what removal expects to walk into.
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+            try? FileManager.default.removeItem(at: directory)
+        }
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: directory.path)
+
+        #expect(AppPermissions.probeDirectory(at: directory.path) == .denied)
     }
 
     /// A bundle id that cannot name a running application is the
