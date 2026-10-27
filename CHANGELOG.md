@@ -4,14 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
 ## [1.0.10] - 2026-10-26
 
 ### Added
 
 - **App uninstall** is its own tool page in the sidebar's Tools section: every app in `/Applications` and `~/Applications` with its icon, version, size, leftover-file count and last-opened time. One row per app with a tri-state checkbox — bundle and all leftovers, or nothing — expandable per leftover file with its own checkbox, risk label and path. The confirmation sheet names running apps before the clean refuses them, offers a one-tap "Select all" for unchecked leftovers, and cleans through the same engine as the cleanup scan (move to Trash or delete permanently, per the shared setting). Without Full Disk Access the last-opened times read as unavailable rather than "never launched"
 - **Large file analysis** is a second new tool page, directly under disk analysis: it walks the whole startup disk and lists every file at or above a threshold (500 MB / 1 GB / 5 GB, decimal units matching Finder's Get Info). The walk waits for the button — a full traversal is minutes of IO — then streams hits in under a strip showing the found count, directories visited, the directory being read, elapsed time and a cancel. Six sort orders (size / name / date, both ways), search by name, and the checked files clean through the same shared sheet and engine, with the plain warning that a large file may be a VM image, a database or a project. Unreadable folders are counted and named, a stopped walk labels its list partial, and Documents / Desktop / Downloads are skipped unless opted in on the start screen
+- **Crash log collection**: when the app or the tray agent dies on a fatal signal or an uncaught Objective-C exception, one plain-text record with the process, the cause and the backtrace is written to Application Support/Mackit/CrashLogs before the process dies — in addition to the system's own report — and the records are listed in Settings → General under a switch that is on by default, each opening a detail sheet with on-demand symbolication through the system `atos`, reveal in Finder, export and delete; the newest 50 are kept
 
 ### Changed
 

@@ -235,6 +235,30 @@ struct LocalizationTests {
             "largeFiles.confirm.reviewMessage",
             "largeFiles.confirm.action.trash", "largeFiles.confirm.action.delete",
             "largeFiles.ctx.select", "largeFiles.ctx.deselect",
+            "settings.crashLogs.header", "settings.crashLogs.collect",
+            "settings.crashLogs.hint", "settings.crashLogs.empty",
+            "settings.crashLogs.notice.off",
+            "settings.crashLogs.deleteAll",
+            "settings.crashLogs.deleteAllConfirm",
+            "settings.crashLogs.deleteAllConfirmAction",
+            "settings.crashLogs.deleteAllFailed.one",
+            "settings.crashLogs.deleteAllFailed.other",
+            "crashLogs.row.summary",
+            "crashLogs.detail.title", "crashLogs.detail.process",
+            "crashLogs.detail.version", "crashLogs.detail.versionValue",
+            "crashLogs.detail.os", "crashLogs.detail.pid",
+            "crashLogs.detail.signal", "crashLogs.detail.faultAddress",
+            "crashLogs.detail.exception", "crashLogs.detail.backtrace",
+            "crashLogs.detail.deleteConfirm",
+            "crashLogs.process.app", "crashLogs.process.agent",
+            "crashLogs.action.symbolicate", "crashLogs.action.symbolicating",
+            "crashLogs.action.symbolicated", "crashLogs.action.symbolicateFailed",
+            "crashLogs.action.reveal", "crashLogs.action.export",
+            "crashLogs.action.delete",
+            "crashLogs.symbolize.noImageRange", "crashLogs.symbolize.noOwnFrames",
+            "crashLogs.symbolize.binaryMissing", "crashLogs.symbolize.binaryReplaced",
+            "crashLogs.symbolize.atosFailed",
+            "toast.crashLogDeleted", "toast.crashLogExported",
         ]
         for key in keys {
             #expect(!isFallback(L10n.tr(key), key: key), "\(key) not localized")
@@ -466,7 +490,12 @@ struct LocalizationTests {
             ("homebrew.result.serviceStarted", 1),
             ("homebrew.result.serviceStopped", 1),
             ("homebrew.result.serviceRestarted", 1),
-            ("homebrew.result.failed", 1)
+            ("homebrew.result.failed", 1),
+            ("crashLogs.row.summary", 3),
+            ("crashLogs.detail.versionValue", 2),
+            ("crashLogs.symbolize.binaryReplaced", 2),
+            ("settings.crashLogs.deleteAllFailed.one", 1),
+            ("settings.crashLogs.deleteAllFailed.other", 1)
         ]
         // Compatible with positional parameters (%1$@): residue file
         // subtitles use this layout
@@ -508,7 +537,8 @@ struct LocalizationTests {
             "diskAnalysis.scan.count",
             "diskAnalysis.others",
             "homebrew.result.autoremoved",
-            "homebrew.progress.steps"
+            "homebrew.progress.steps",
+            "settings.crashLogs.deleteAllFailed"
         ]
         let placeholder = /%(?:\d+\$)?(?:@|lld)/
         for base in pairs {
@@ -564,7 +594,9 @@ struct LocalizationTests {
             ("homebrew.result.autoremoved.one", [1]),
             ("homebrew.result.autoremoved.other", [5]),
             ("homebrew.progress.steps.one", [1]),
-            ("homebrew.progress.steps.other", [5])
+            ("homebrew.progress.steps.other", [5]),
+            ("settings.crashLogs.deleteAllFailed.one", [1]),
+            ("settings.crashLogs.deleteAllFailed.other", [5])
         ]
         for (key, args) in calls {
             let value = String(format: L10n.tr(key), arguments: args)

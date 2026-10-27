@@ -84,4 +84,37 @@ struct SettingsPersistenceTests {
 
         #expect(reread.launchAtLogin == true)
     }
+
+    /// The crash-collection choice has to reach the shared file like every
+    /// other setting, and applying it has to go through the injected seam —
+    /// a test that flips the switch must not install signal handlers in the
+    /// test runner itself.
+    @Test func crashCollectionChoiceIsPersistedAndApplied() {
+        var saved: [String: Any] = [:]
+        let vm = AppViewModel(statsPolling: false)
+        vm.settingsSink = { saved = $0 }
+        var applied: [Bool] = []
+        vm.crashCollectionApply = { applied.append($0) }
+
+        vm.setCrashLogCollection(false)
+
+        #expect(vm.collectCrashLogs == false)
+        #expect(saved["collectCrashLogs"] as? Bool == false)
+        #expect(applied == [false])
+
+        let reread = AppViewModel(statsPolling: false)
+        reread.loadSettings(from: saved)
+
+        #expect(reread.collectCrashLogs == false)
+    }
+
+    /// Default on: a settings file written before the key existed (an
+    /// upgrade) must not silently turn collection off.
+    @Test func crashCollectionDefaultsOn() {
+        let vm = AppViewModel(statsPolling: false)
+
+        vm.loadSettings(from: [:])
+
+        #expect(vm.collectCrashLogs == true)
+    }
 }

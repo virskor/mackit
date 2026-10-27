@@ -1,5 +1,25 @@
 import Foundation
 
+/// The app's directories under Application Support.
+///
+/// A nonisolated namespace rather than members of the main-actor
+/// `SharedStore` below: the crash collector reads the crash-log path from a
+/// signal handler's context, which is no actor context at all, and a
+/// main-actor-isolated constant cannot be read from there.
+///
+/// The paths are touched once during launch — arming crash collection is
+/// what first reads them — so the lazy initialization has always completed
+/// before any handler could run. A signal handler that raced a static
+/// initializer would be a deadlock, and this ordering is what rules it out.
+enum AppDirectories {
+    /// The shared folder: ~/Library/Application Support/Mackit.
+    static let shared = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Application Support/Mackit", isDirectory: true)
+
+    /// Where the two processes' crash records live (see `CrashCollector`).
+    static let crashLogs = shared.appendingPathComponent("CrashLogs", isDirectory: true)
+}
+
 /// Shared settings storage for the two processes.
 ///
 /// It originally used App Group
@@ -21,10 +41,7 @@ import Foundation
 @MainActor
 enum SharedStore {
     /// Shared directory: ~/Library/Application Support/Mackit.
-    static let directoryURL: URL = {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Mackit", isDirectory: true)
-    }()
+    static let directoryURL = AppDirectories.shared
 
     /// Shared settings file.
     static let settingsURL = directoryURL.appendingPathComponent("shared-settings.plist")

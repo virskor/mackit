@@ -32,6 +32,8 @@ struct SettingsView: View {
     /// The auto-update controller (singleton). When no update source is
     /// configured, the entire update section is not rendered.
     @StateObject private var updates = UpdateController.shared
+    /// Whether the "delete all crash logs" confirmation is up.
+    @State private var confirmsDeleteAllCrashLogs = false
 
     var body: some View {
         @Bindable var vm = vm
@@ -48,6 +50,17 @@ struct SettingsView: View {
             }
         }
         .onAppear { tab = .general }
+        // The crash log list is read on entry: a record may have been
+        // written since the last visit — by a crash, or by the other
+        // process — and the section shows what is on disk now.
+        .task { vm.crashLogs.reload() }
+        .sheet(item: Binding(
+            get: { vm.crashLogs.selectedEntry },
+            set: { vm.crashLogs.select($0) }
+        )) { entry in
+            CrashLogDetailSheet(entry: entry)
+                .environment(vm)
+        }
         .onChange(of: vm.autoSelectRisk) { _, _ in vm.saveSettings() }
         .onChange(of: vm.moveToTrash) { _, _ in vm.saveSettings() }
         .onChange(of: vm.includeCLI) { _, _ in vm.saveSettings() }
@@ -57,6 +70,13 @@ struct SettingsView: View {
         .onChange(of: vm.showMenuBarTemperature) { _, _ in vm.saveSettings() }
         .onChange(of: vm.showMenuBarLogo) { _, _ in vm.saveSettings() }
         .onChange(of: vm.showDesktopStats) { _, _ in vm.saveSettings() }
+        // A crash log deletion that failed (a file that would not move to
+        // the Trash, say) carries its own message; the row stays listed.
+        .onChange(of: vm.crashLogs.lastError) { _, message in
+            if let message {
+                vm.showToast(.error, message)
+            }
+        }
     }
 
     /// Form column width: close to System Settings' reading width; the column
@@ -146,6 +166,10 @@ struct SettingsView: View {
             if updates.isEnabled {
                 updateSection
             }
+            // Crash logs close the general form: diagnostics are a different
+            // kind of setting from the ones above, and the section carries
+            // both the collection switch and the records it produced.
+            crashLogsSection
         }
         .formStyle(.grouped)
         // Hide the whole gray background the Form brings: the settings page
@@ -513,6 +537,90 @@ struct SettingsView: View {
         if panel.runModal() == .OK, let url = panel.url {
             vm.addProjectRoot(url.path)
         }
+    }
+
+    // MARK: - Crash Logs
+
+    /// The crash log section: the collection switch, and the records the
+    /// switch has produced.
+    ///
+    /// The list lives here rather than on a tool page of its own: a crash
+    /// record is something the user opens once, when something has already
+    /// gone wrong, and it belongs next to the switch that decides whether
+    /// more of them get written.
+    private var crashLogsSection: some View {
+        Section {
+            Toggle(L10n.tr("settings.crashLogs.collect"), isOn: Binding(
+                get: { vm.collectCrashLogs },
+                set: { vm.setCrashLogCollection($0) }
+            ))
+            // Said out loud when collection is off: the list below is still
+            // the truth, it is just not growing.
+            if !vm.collectCrashLogs {
+                Text(verbatim: L10n.tr("settings.crashLogs.notice.off"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            crashLogsRows
+        } header: {
+            Label(L10n.tr("settings.crashLogs.header"), systemImage: "exclamationmark.triangle.fill")
+        } footer: {
+            Text(verbatim: L10n.tr("settings.crashLogs.hint"))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var crashLogsRows: some View {
+        let entries = vm.crashLogs.entries
+        if entries.isEmpty {
+            Text(verbatim: L10n.tr("settings.crashLogs.empty"))
+                .foregroundStyle(.secondary)
+        } else {
+            ForEach(entries) { entry in
+                Button {
+                    vm.crashLogs.select(entry)
+                } label: {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(verbatim: Formatters.dateTime(entry.date))
+                                .font(.system(size: 13))
+                                .foregroundStyle(.primary)
+                            Text(verbatim: crashLogSummary(entry))
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                // The same press feedback every other list row in the app
+                // uses: a plain button in a form reads as dead text.
+                .buttonStyle(RowPressStyle())
+            }
+            Button(L10n.tr("settings.crashLogs.deleteAll"), role: .destructive) {
+                confirmsDeleteAllCrashLogs = true
+            }
+            .confirmationDialog(
+                L10n.tr("settings.crashLogs.deleteAllConfirm"),
+                isPresented: $confirmsDeleteAllCrashLogs,
+                titleVisibility: .visible
+            ) {
+                Button(L10n.tr("settings.crashLogs.deleteAllConfirmAction"), role: .destructive) {
+                    Task { await vm.crashLogs.deleteAll(moveToTrash: vm.moveToTrash) }
+                }
+                Button(L10n.tr("common.cancel"), role: .cancel) {}
+            }
+        }
+    }
+
+    /// One line under a crash log's timestamp: which process, which build,
+    /// and what killed it.
+    private func crashLogSummary(_ entry: CrashLogEntry) -> String {
+        let cause = entry.isException ? (entry.exceptionName ?? "") : entry.signalName
+        return L10n.fmt("crashLogs.row.summary", entry.processLabel, entry.appVersion, cause)
     }
 }
 

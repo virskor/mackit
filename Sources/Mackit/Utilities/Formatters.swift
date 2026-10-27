@@ -82,6 +82,27 @@ enum Formatters {
         return relativeFormatter.localizedString(for: date, relativeTo: Date())
     }
 
+    /// Absolute date and time, e.g. "10/27/2026, 2:32 PM".
+    ///
+    /// A crash log is read to answer "when did this happen" *next to the
+    /// other crash logs*, and a relative string cannot separate two crashes
+    /// from the same day. `.abbreviated` keeps the year in every locale,
+    /// which matters for a list that is meant to outlive app updates.
+    static func dateTime(_ date: Date) -> String {
+        date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    /// A 64-bit address as lowercase hex with the `0x` prefix, e.g.
+    /// "0x100001000".
+    ///
+    /// Crash records are addresses first: the detail sheet shows them next
+    /// to their symbols, and `atos` takes them as arguments. One spelling,
+    /// so a frame reads the same in the list, in the sheet and on atos's
+    /// command line.
+    static func hex(_ value: UInt64) -> String {
+        "0x" + String(value, radix: 16)
+    }
+
     @MainActor
     private static let relativeFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()

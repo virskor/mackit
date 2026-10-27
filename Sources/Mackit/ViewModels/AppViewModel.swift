@@ -121,6 +121,12 @@ final class AppViewModel {
     /// walk instead of the real disk.
     let largeFiles: LargeFilesModel
 
+    /// State model of the crash log list shown in the settings page. Same
+    /// injectability contract as the tool models: the settings section lists
+    /// whatever store this holds, so tests drive it against fixture records
+    /// instead of the real Application Support folder.
+    let crashLogs: CrashLogsModel
+
     /// Cleanup result summary.
     var lastReclaimed: Int64 = 0
     var lastFailures: Int = 0
@@ -164,6 +170,13 @@ final class AppViewModel {
     /// themselves are not part of the scan — uninstalling them is the app
     /// uninstall tool's job.
     var includeApps: Bool = true
+    /// Whether either process writes a crash record when it dies on a fatal
+    /// signal or an uncaught exception (see `CrashCollector`). On by default:
+    /// the record is a few hundred bytes in Application Support, and the one
+    /// time it matters is the one time nobody could have turned it on first.
+    /// Turning it off stops future writes and keeps the records already
+    /// collected.
+    var collectCrashLogs: Bool = true
     var projectRoots: [String] = []
     /// Whether the app is registered to launch at login — the user's choice,
     /// persisted in shared settings. The system registration is reconciled
@@ -297,11 +310,12 @@ final class AppViewModel {
     /// "emit one event, assert one snapshot" in tests. Visible within the
     /// module so tests can drive it directly; the default value is the
     /// app's startup behavior.
-    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel(), largeFiles: LargeFilesModel = LargeFilesModel()) {
+    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel(), largeFiles: LargeFilesModel = LargeFilesModel(), crashLogs: CrashLogsModel = CrashLogsModel()) {
         self.diskAnalysis = diskAnalysis
         self.homebrew = homebrew
         self.appUninstall = appUninstall
         self.largeFiles = largeFiles
+        self.crashLogs = crashLogs
         // A remembered row selection is the one piece of selection state that
         // outlives a process, so the model's user actions route through here
         // to persist it. `loadSettings` below assigns the stored value
@@ -1870,6 +1884,14 @@ final class AppViewModel {
     /// Never reassigned in production, where it writes the shared file.
     var settingsSink: @MainActor ([String: Any]) -> Void = { SharedStore.saveSettings($0) }
 
+    /// Applies the crash-collection preference to this process — arming or
+    /// disarming the handlers.
+    ///
+    /// A seam for the same reason as `settingsSink`: the VM is constructed by
+    /// tests as freely as by the app, and a test that flips the setting must
+    /// not install signal handlers in the test runner itself.
+    var crashCollectionApply: @MainActor (Bool) -> Void = { CrashCollector.setEnabled($0) }
+
     private func loadSettings() {
         // The two processes (main app and tray agent) each hold a VM, and
         // settings live in a shared file, so a change on one side becomes
@@ -1899,6 +1921,9 @@ final class AppViewModel {
         }
         if let value = values["includeApps"] as? Bool {
             includeApps = value
+        }
+        if let value = values["collectCrashLogs"] as? Bool {
+            collectCrashLogs = value
         }
         // The remembered general-cleanup row selection. Absent (or empty)
         // means "never saved" and falls back to the built-in default.
@@ -1949,6 +1974,7 @@ final class AppViewModel {
             "moveToTrash": moveToTrash,
             "includeCLI": includeCLI,
             "includeApps": includeApps,
+            "collectCrashLogs": collectCrashLogs,
             "projectRoots": projectRoots,
             // nil is stored as an absent key (plists have no null)
             "generalSelectedRows": generalSelectedRows.map { Array($0) } ?? [],
@@ -1969,6 +1995,17 @@ final class AppViewModel {
     /// settings-changed broadcast.
     func reloadSettings() {
         loadSettings()
+    }
+
+    /// Toggles crash-log collection. Persists the choice and applies it in
+    /// this process immediately — arming or disarming the handlers needs no
+    /// restart. The other process catches up through the settings-changed
+    /// broadcast, the same path every other setting travels.
+    func setCrashLogCollection(_ enabled: Bool) {
+        guard collectCrashLogs != enabled else { return }
+        collectCrashLogs = enabled
+        saveSettings()
+        crashCollectionApply(enabled)
     }
 
     /// Toggle launch-at-login. Both register / unregister are

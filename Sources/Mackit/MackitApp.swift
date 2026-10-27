@@ -265,6 +265,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static var viewModel: AppViewModel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Crash collection is armed here, before anything can crash and in
+        // both roles — the tray agent is the same binary and dies on its
+        // own. It reads the shared preference directly rather than going
+        // through the view model: the VM is constructed by tests as freely
+        // as by the app, and installing signal handlers as a construction
+        // side effect would point the test runner's own crashes at our
+        // writer. Pruning runs after arming because arming is what creates
+        // the records directory.
+        CrashCollector.applyStoredPreference()
+        CrashLogStore.prune()
+
         if AppIdentity.currentProcessIsAgent {
             MackitLog.ui.info("tray agent started")
             // A resident process does not accept being terminated for
@@ -287,6 +298,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // agent restart.
             AppBridge.observeSettingsChanged {
                 Self.viewModel?.reloadSettings()
+                // The crash-collection switch takes effect in this process
+                // too: the handlers were armed (or not) at launch, and a
+                // change made in the main app has to reach the resident
+                // agent without waiting for its next restart.
+                CrashCollector.applyStoredPreference()
                 // If the language selection has changed, this process's
                 // resolved language cannot be changed, so restart the
                 // whole process

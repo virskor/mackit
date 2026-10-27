@@ -85,4 +85,31 @@ struct FormattersTests {
         // as 0:02 while the next second has not fully elapsed.
         #expect(Formatters.clock(.milliseconds(1_900)) == "0:01")
     }
+
+    /// A crash log is read next to the other crash logs, so its timestamp
+    /// has to separate two deaths from the same day — which a relative
+    /// string ("today") cannot. The absolute date and time also has to be
+    /// stable across calls: a list row that re-renders to a different string
+    /// breaks row identity in SwiftUI.
+    @Test func dateTimeSeparatesTwoDeathsFromTheSameDay() {
+        let first = Date(timeIntervalSince1970: 1_760_000_000)
+        let second = first.addingTimeInterval(6 * 3600)
+
+        let firstText = Formatters.dateTime(first)
+        let secondText = Formatters.dateTime(second)
+
+        #expect(!firstText.isEmpty)
+        #expect(firstText.contains { $0.isNumber }, "no digits in \(firstText)")
+        #expect(firstText != secondText)
+        #expect(firstText == Formatters.dateTime(first))
+    }
+
+    /// A crash record's frames and fault addresses are read as hex next to
+    /// their symbols, and `atos` takes the same spelling on its command
+    /// line — one function so the three never disagree.
+    @Test func hexIsPrefixedAndLowercase() {
+        #expect(Formatters.hex(0) == "0x0")
+        #expect(Formatters.hex(0x10) == "0x10")
+        #expect(Formatters.hex(0x1000d875c) == "0x1000d875c")
+    }
 }
