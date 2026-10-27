@@ -17,29 +17,35 @@ import Foundation
 /// inside it invalidates the seal and can stop a hardened-runtime app from
 /// launching at all).
 ///
-/// Beyond that, four languages are always kept per bundle: `Base` and `en`
-/// (the universal fallbacks), every Chinese variant (Mackit's own UI
-/// languages), the languages the system can select — including the one a
-/// single app was given — and the bundle's development region. And a bundle is
-/// never stripped of its *last* localization — with nothing left to fall back
-/// to, an app that loads a resource by name crashes on launch instead of
-/// degrading to English.
+/// Beyond that, five languages are always kept per bundle: `Base` and `en`
+/// (the universal fallbacks), every Chinese variant plus `ko` and `ja`
+/// (Mackit's own UI languages), the languages the system can select —
+/// including the one a single app was given — and the bundle's development
+/// region. And a bundle is never stripped of its *last* localization — with
+/// nothing left to fall back to, an app that loads a resource by name
+/// crashes on launch instead of degrading to English.
 enum LanguageFileScanner {
     /// Rule id shared by all language-file items.
     static let ruleID = "language.lproj"
 
     /// Languages always kept: English, the unlocalized `Base` fallback every
-    /// bundle carries, and Chinese in any variant (`zh-Hans`, `zh-Hant`,
-    /// `zh-TW`, `zh-Hans-CN`, …) — the three UI languages Mackit itself ships.
+    /// bundle carries, and Chinese, Korean and Japanese in any variant
+    /// (`zh-Hans`, `zh-Hant`, `zh-TW`, `zh-Hans-CN`, `ko-KR`, `ja-JP`, …) —
+    /// the five UI languages Mackit itself ships.
     ///
-    /// English and Chinese are matched by primary subtag, not by exact
-    /// spelling: bundle authors ship `en-GB.lproj` and `en_US.lproj` just as
-    /// often as `en.lproj`, and dropping the only English pack of such a
-    /// bundle would break the "English is always kept" promise above while
+    /// The keep-set is the whole shipped set, not just the language currently
+    /// selected: whoever runs Mackit reads at least one of them, and stripping
+    /// the rest out of every other app would hit a Korean-reading user exactly
+    /// like the Japanese-locale case described on `isSystemLanguage`.
+    ///
+    /// English, Chinese, Korean and Japanese are matched by primary subtag,
+    /// not by exact spelling: bundle authors ship `en-GB.lproj` and `en_US.lproj`
+    /// just as often as `en.lproj`, and dropping the only English pack of such
+    /// a bundle would break the "English is always kept" promise above while
     /// leaving nothing else for the app to fall back to.
     static func isWhitelisted(_ language: String) -> Bool {
         switch primarySubtag(language) {
-        case "en", "zh", "base": return true
+        case "en", "zh", "ko", "ja", "base": return true
         default: return false
         }
     }

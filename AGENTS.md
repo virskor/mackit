@@ -6,7 +6,7 @@ Guidance for AI coding agents working on Mackit.
 
 **English is the primary language for all development work.** Code comments, commit messages, PR and issue descriptions, documentation, and review feedback are all written in English.
 
-This applies to development artifacts only. User-facing product strings are content, not development language: they still go through the localization catalog (`Localizable.xcstrings`) in all three supported languages — Simplified Chinese, English, and Traditional Chinese.
+This applies to development artifacts only. User-facing product strings are content, not development language: they still go through the localization catalog (`Localizable.xcstrings`) in all five supported languages — Simplified Chinese, English, Traditional Chinese, Korean, and Japanese.
 
 ## Project Overview
 
@@ -34,7 +34,7 @@ A change is not complete until `swift build` and `swift test` both pass. Running
 - **Page layouts fill their container** — see [UI Layout](#ui-layout); a collapsed page passes every unit test and fails the first time it is seen
 - **Swift 6 strict concurrency is enabled** — new code must pass concurrency checking; if an exemption is truly needed, explain why in a comment
 - **Comments explain "why", not "what"** — constraints, trade-offs, and pitfalls are worth writing down; obvious logic does not need a comment
-- **All user-facing strings go through localization** — no user-facing literals in code; use `L10n.tr` / `L10n.fmt` / `L10n.items` and add every string to `Localizable.xcstrings` in all three languages
+- **All user-facing strings go through localization** — no user-facing literals in code; use `L10n.tr` / `L10n.fmt` / `L10n.items` and add every string to `Localizable.xcstrings` in all five languages (zh-Hans / en / zh-Hant / ko / ja)
 - **Singular and plural keys (`.one` / `.other`) must use consistent placeholder layouts** — the `.one` string must also contain `%lld`, changing only the noun to its singular form, or the UI crashes on render
 - Logging goes through `MackitLog` (`os.Logger`) — record counts, sizes, durations, and rule IDs only, never file contents
 - New scan rules go in `Engine/RulesCatalog.swift`, following the organization of the existing rules

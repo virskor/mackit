@@ -257,6 +257,8 @@ struct TreemapLabelTests {
     /// by `L10n.fmt`, so this is the string the view will actually draw. All
     /// three languages keep the unspaced form, because the 84pt threshold was
     /// measured against it — a translation that added spaces would fail here.
+    /// Five, since Korean and Japanese joined the catalog: both render the
+    /// separator without spaces exactly like the original three.
     @Test func fullLabelLineFitsTheWidthItPromises() {
         let textWidth = 96 - TreemapLabel.inset
         let line = L10n.fmt("diskAnalysis.tile.sizeShare", "999.99GB", "100%")

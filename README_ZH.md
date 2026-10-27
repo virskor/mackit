@@ -12,7 +12,7 @@
 [![Release](https://img.shields.io/github/v/release/virskor/mackit?style=flat-square)](https://github.com/virskor/mackit/releases)
 [![Downloads](https://img.shields.io/github/downloads/virskor/mackit/total?style=flat-square)](https://github.com/virskor/mackit/releases)
 
-[简体中文](README_ZH.md) · [English](README.md)
+[简体中文](README_ZH.md) · [繁體中文](README_ZH_HANT.md) · [English](README.md) · [한국어](README_KO.md) · [日本語](README_JA.md)
 
 🌐 [官方网站 / 落地页](https://www.mingcui.cn)
 
@@ -45,7 +45,7 @@ Mackit 做的事情：
 - **磁盘空间分析**：侧边栏"工具"分区（清理条目下方）的工具页，回答"空间都去哪了"——从启动磁盘逐层下钻，每个文件夹的递归体积，以及所选文件夹构成的 treemap
 - **硬件信息**：机型、磁盘、电池等静态信息
 - **原生界面**：SwiftUI 侧边栏 + 表格 + 工具栏，原生右键菜单、快捷键、搜索与点击排序的表头
-- **本地化**：简体中文 / 英文 / 繁体中文，默认跟随系统语言
+- **本地化**：简体中文 / 英文 / 繁体中文 / 韩语 / 日语，默认跟随系统语言
 - **安全护栏**：内置受保护路径清单；系统目录与钥匙串一律拒绝
 
 ## 截图
@@ -189,7 +189,7 @@ Mackit 是同一份二进制里的两个进程，打成两个 bundle，通过 bu
 
 ### 本地化
 
-所有面向用户的字符串都放在 `Sources/Mackit/Resources/Localizable.xcstrings`（String Catalog），以简体中文为源语言，另有英文与繁体中文翻译。代码中不出现面向用户的字面量，一切都经过 `Utilities/L10n.swift`：
+所有面向用户的字符串都放在 `Sources/Mackit/Resources/Localizable.xcstrings`（String Catalog），以简体中文为源语言，另有英文、繁体中文、韩语与日语翻译。代码中不出现面向用户的字面量，一切都经过 `Utilities/L10n.swift`：
 
 ```swift
 Text(verbatim: L10n.tr("toolbar.rescan"))                 // 静态字符串
@@ -197,9 +197,9 @@ Text(verbatim: L10n.fmt("toast.trashed", item.title))     // 带占位符：%@ /
 Text(verbatim: L10n.items(count))                         // "N 项"，复数已处理
 ```
 
-新增语言：在 Xcode 中打开 catalog，点左下角 `+` 再翻译即可，无需改代码。新字符串以键的形式加入 catalog；测试套件中的 `LocalizationTests` 会对照调用点检查键完整性与占位符一致性。
+新增语言：先在 catalog 中翻译（在 Xcode 中打开，点左下角 `+`），再完成注册——`Utilities/AppLanguage.swift` 中新增枚举项（自带文字名与系统语言匹配）、`Scripts/build-app.sh` 两处 `CFBundleLocalizations` 中加入该语言；该语言随界面发布后，还要把主子 tag 加入 `LanguageFileScanner.isWhitelisted`，语言包清理规则才会保留它。新字符串以键的形式加入 catalog；测试套件中的 `LocalizationTests` 会对照调用点检查键完整性与占位符一致性。
 
-界面语言选择在 `Utilities/AppLanguage.swift`："跟随系统"外加三种语言，存于 UserDefaults 的 `appLanguage`，并镜像进 App 域的 `AppleLanguages`——CFBundle 的字符串查找读这个键，因此重启后生效（Sparkle 的更新界面与系统文件面板也随之切换）。为什么是重启而不是进程内切换：扫描结果的标题与描述在创建时即以当前语言定稿，进程内刷新只会得到一份中英混杂的列表（详见源码注释）。
+界面语言选择在 `Utilities/AppLanguage.swift`："跟随系统"外加五种语言，存于 UserDefaults 的 `appLanguage`，并镜像进 App 域的 `AppleLanguages`——CFBundle 的字符串查找读这个键，因此重启后生效（Sparkle 的更新界面与系统文件面板也随之切换）。为什么是重启而不是进程内切换：扫描结果的标题与描述在创建时即以当前语言定稿，进程内刷新只会得到一份中英混杂的列表（详见源码注释）。
 
 两个复数键（`.one` / `.other`）必须保持相同的占位符布局——`.one` 也要有 `%lld`，只把名词换成单数形式；否则 `%@` 会收到整数，界面首次渲染即崩溃。
 
@@ -243,13 +243,13 @@ Sources/Mackit/
 ├── Views/                        # SwiftUI：主窗口、托盘面板、悬浮条、设置、硬件、磁盘分析
 │   └── Components/               #   可复用组件（徽章、进度环、提示行、流式布局……）
 └── Utilities/
-    ├── AppLanguage.swift         # 界面语言选择（系统 + 三种语言，写 AppleLanguages）
+    ├── AppLanguage.swift         # 界面语言选择（系统 + 五种语言，写 AppleLanguages）
     ├── MackitLog.swift           # 统一 os.Logger 封装
     ├── Formatters.swift          # 字节与时间格式化
     ├── LaunchAtLogin.swift       # 登录项注册（指向内置的 MackitAgent.app）
     └── L10n.swift                # 本地化查找（String Catalog）
     Resources/
-    ├── Localizable.xcstrings     # 三种语言（zh-Hans / en / zh-Hant）
+    ├── Localizable.xcstrings     # 五种语言（zh-Hans / en / zh-Hant / ko / ja）
     └── sparkle-blue.png          # 品牌图标（App 内展示与应用图标共用）
 Scripts/                          # 构建 / 打包 / 图标生成脚本
 Tests/MackitTests/                # 52 个测试文件

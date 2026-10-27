@@ -2,8 +2,8 @@ import Foundation
 
 /// The core entry point for localization lookup. All user-facing text goes through here,
 /// with the actual strings in `Resources/Localizable.xcstrings` (String Catalog): the
-/// source language is Simplified Chinese, plus English and Traditional Chinese
-/// translations.
+/// source language is Simplified Chinese, plus English, Traditional Chinese, Korean
+/// and Japanese translations.
 ///
 /// The whole tool only provides lookup and formatting: the engine and monitoring layers
 /// use Foundation alone, and SwiftUI is not dragged in here.

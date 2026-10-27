@@ -55,7 +55,8 @@ struct AppLanguageTests {
 
     @Test func storedRoundTripsEveryLanguage() {
         let (defaults, _) = suite()
-        for language in [AppLanguage.en, .zhHans, .zhHant] {
+        // Every concrete language (`.system` excluded: it clears the keys)
+        for language in AppLanguage.allCases where language != .system {
             AppLanguage.store(language, in: defaults)
             #expect(AppLanguage.stored(in: defaults) == language)
         }
@@ -105,11 +106,15 @@ struct AppLanguageTests {
     }
 
     @Test func systemPreferredTakesFirstSupportedLanguage() {
-        #expect(AppLanguage.systemPreferred(languages: ["ja-JP", "en-US", "zh-Hans"]) == .en)
+        // Japanese and Korean are supported now, so the first entry wins
+        #expect(AppLanguage.systemPreferred(languages: ["ja-JP", "en-US", "zh-Hans"]) == .ja)
+        #expect(AppLanguage.systemPreferred(languages: ["ko-KR", "en-US"]) == .ko)
+        // A language the app does not ship is skipped, not fallen back to
+        #expect(AppLanguage.systemPreferred(languages: ["fr-FR", "en-US"]) == .en)
     }
 
     @Test func systemPreferredFallsBackToSourceLanguage() {
-        #expect(AppLanguage.systemPreferred(languages: ["ja-JP", "ko-KR"]) == .zhHans)
+        #expect(AppLanguage.systemPreferred(languages: ["fr-FR", "de-DE"]) == .zhHans)
         #expect(AppLanguage.systemPreferred(languages: []) == .zhHans)
     }
 
@@ -118,9 +123,12 @@ struct AppLanguageTests {
     @Test func effectiveResolvesSystemToConcreteLanguage() {
         #expect(AppLanguage.en.effective == .en)
         #expect(AppLanguage.zhHant.effective == .zhHant)
-        // "Follow System" must resolve to one of the three built-in languages
-        // and cannot stop at the relay state.
+        #expect(AppLanguage.ko.effective == .ko)
+        #expect(AppLanguage.ja.effective == .ja)
+        // "Follow System" must resolve to one of the built-in languages and
+        // cannot stop at the relay state.
         #expect(AppLanguage.system.effective != .system)
+        #expect(AppLanguage.allCases.contains(AppLanguage.system.effective))
     }
 
     // MARK: - Display name
@@ -129,6 +137,8 @@ struct AppLanguageTests {
         #expect(AppLanguage.zhHans.displayName == "简体中文")
         #expect(AppLanguage.en.displayName == "English")
         #expect(AppLanguage.zhHant.displayName == "繁體中文")
+        #expect(AppLanguage.ko.displayName == "한국어")
+        #expect(AppLanguage.ja.displayName == "日本語")
     }
 
     // MARK: - Localization key completeness

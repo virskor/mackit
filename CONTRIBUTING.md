@@ -32,7 +32,7 @@ New features should come with tests — follow the existing organization in `Tes
 
 - **Swift 6 Strict Concurrency is enabled** — new code must pass concurrency checking; if an exemption is truly needed, explain why in a comment
 - **Comments explain "why", not "what"**: constraints, trade-offs, and pitfalls you've hit are worth writing down; obvious logic doesn't need a comment
-- **All user-facing strings go through localization**: no user-facing literals in code — use `Utilities/L10n.swift` (`L10n.tr` / `L10n.fmt` / `L10n.items`) and add strings to `Sources/Mackit/Resources/Localizable.xcstrings` for all three languages
+- **All user-facing strings go through localization**: no user-facing literals in code — use `Utilities/L10n.swift` (`L10n.tr` / `L10n.fmt` / `L10n.items`) and add strings to `Sources/Mackit/Resources/Localizable.xcstrings` for all five languages (zh-Hans / en / zh-Hant / ko / ja)
 - **Singular and plural keys (`.one` / `.other`) must use consistent placeholder layouts** — the `.one` string must also include `%lld`, changing only the noun to singular; otherwise `%@` receives an integer and the UI crashes on render
 - Logging goes through `Utilities/MackitLog.swift` (`os.Logger`) — record only counts, sizes, durations, and rule IDs, never file contents
 - New scan rules go in `Engine/RulesCatalog.swift`, following the organization of the existing rules
@@ -41,7 +41,7 @@ New features should come with tests — follow the existing organization in `Tes
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages: `feat:` / `fix:` / `docs:` / `refactor:` / `test:` / `chore:`; commit messages and PR descriptions are written in English
 - Keep PRs small and focused; explain the motivation and impact, and link related issues
-- Before merging, self-check: `swift build` passes, `swift test` passes, strings added in all three languages
+- Before merging, self-check: `swift build` passes, `swift test` passes, strings added in all five languages
 
 ## Security
 

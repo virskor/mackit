@@ -121,7 +121,7 @@ enum Formatters {
     /// past an hour. Both readings come from a measurement whose total is only
     /// an estimate, so minutes and seconds carry the precision — a rounded
     /// "2 min" would claim an accuracy the estimate does not have. mm:ss reads
-    /// the same in all three languages, so no unit words are needed.
+    /// the same in all five languages, so no unit words are needed.
     static func clock(_ duration: Duration) -> String {
         // A duration can go negative when the clock is read across a sleep
         // boundary; clamp rather than render "-1:-5".

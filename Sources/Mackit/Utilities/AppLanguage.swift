@@ -1,9 +1,10 @@
 import Foundation
 
-/// Interface language. The app bundles only three translations (see `Resources/Localizable.xcstrings`),
-/// and the selection is written into the app domain's `AppleLanguages`—CFBundle's string
-/// lookup reads this key, resolves according to it after relaunch, and Sparkle's update
-/// UI and the system file panels follow it as well.
+/// Interface language. The app bundles five translations (see
+/// `Resources/Localizable.xcstrings`), and the selection is written into the
+/// app domain's `AppleLanguages`—CFBundle's string lookup reads this key,
+/// resolves according to it after relaunch, and Sparkle's update UI and the
+/// system file panels follow it as well.
 ///
 /// Why not switch within the process: scan result titles and descriptions are fixed at
 /// creation time according to the current language (see `JunkItem`'s comments); an
@@ -19,19 +20,25 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case en
     /// Traditional Chinese.
     case zhHant = "zh-Hant"
+    /// Korean.
+    case ko
+    /// Japanese.
+    case ja
 
     var id: String { rawValue }
 
-    /// Display name in the picker. Each of the three languages uses its own endonym (the
-    /// convention in System Settings, so someone looking for their own language does not
-    /// have to first understand the current language); "Follow system" goes through a
-    /// localization key.
+    /// Display name in the picker. Every concrete language uses its own
+    /// endonym (the convention in System Settings, so someone looking for
+    /// their own language does not have to first understand the current
+    /// language); "Follow system" goes through a localization key.
     var displayName: String {
         switch self {
         case .system: return L10n.tr("settings.language.system")
         case .zhHans: return "简体中文"
         case .en: return "English"
         case .zhHant: return "繁體中文"
+        case .ko: return "한국어"
+        case .ja: return "日本語"
         }
     }
 
@@ -63,7 +70,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
 
     /// The language currently in effect in the process: the `.lproj` chosen by CFBundle
     /// per `AppleLanguages`. Falls back to `.system` when it does not land on one of the
-    /// three built-in languages.
+    /// five built-in languages.
     static var running: AppLanguage {
         guard let code = Bundle.module.preferredLocalizations.first,
               let language = AppLanguage(rawValue: code)
@@ -81,7 +88,8 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     static func systemPreferred(languages: [String] = Locale.preferredLanguages) -> AppLanguage {
         for code in languages {
             let normalized = code.lowercased()
-            guard normalized.hasPrefix("zh") || normalized.hasPrefix("en") else { continue }
+            guard normalized.hasPrefix("zh") || normalized.hasPrefix("en")
+                || normalized.hasPrefix("ko") || normalized.hasPrefix("ja") else { continue }
             // Script subtags take priority over region: "zh-Hans-HK" is Simplified, "zh-Hant-TW" is Traditional.
             if normalized.contains("hans") { return .zhHans }
             if normalized.contains("hant")
@@ -90,6 +98,10 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
                 || normalized.hasSuffix("-mo") {
                 return .zhHant
             }
+            // Korean and Japanese carry no script subtag worth distinguishing, so the
+            // primary subtag decides ("ko-KR" → Korean, "ja-JP" → Japanese).
+            if normalized.hasPrefix("ko") { return .ko }
+            if normalized.hasPrefix("ja") { return .ja }
             if normalized.hasPrefix("en") { return .en }
             // Bare "zh" and zh-CN / zh-SG: treated as Simplified.
             return .zhHans
