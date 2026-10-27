@@ -395,6 +395,22 @@ plutil -lint "$APP/Contents/Info.plist" > /dev/null
 #   → agent's resource bundle → agent app (it lives inside the main app and
 #     must be signed before the main app)
 #   → main app's resource bundle → main app
+#
+# Signing reaches Apple's timestamp authority over the network, and that
+# path is unreliable on some machines: a request can stall ~15s and fail
+# with the misleading "A timestamp was expected but was not found". The
+# first request after an idle period fails this way, and an occasional one
+# mid-sequence too. A failed attempt leaves the target half-signed, which
+# the next attempt replaces cleanly, so retry before giving up.
+sign_codesign() {
+    local attempt
+    for attempt in 1 2 3 4; do
+        codesign "$@" && return 0
+        echo "  codesign attempt $attempt failed; retrying" >&2
+        sleep 3
+    done
+    return 1
+}
 echo "==> Signing"
 SIGN_ARGS=(--force --sign)
 # Sparkle.framework embeds Updater.app and the two XPC services under
@@ -417,9 +433,9 @@ sign_nested_sparkle() {
     local real nested
     real="$(cd "$framework/Versions/Current" && pwd -P)"
     for nested in "$real"/XPCServices/*.xpc "$real"/Updater.app "$real"/Autoupdate; do
-        [ -e "$nested" ] && codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$nested"
+        [ -e "$nested" ] && sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$nested"
     done
-    codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$framework"
+    sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$framework"
 }
 sign_nested_sparkle_adhoc() {
     local framework="$1"
@@ -435,15 +451,15 @@ if [ -n "${MACKIT_SIGN_IDENTITY:-}" ]; then
     echo "(Developer ID: ${MACKIT_SIGN_IDENTITY}, hardened runtime enabled)"
     IDENTITY="$MACKIT_SIGN_IDENTITY"
     # agent: resource bundle → Sparkle nesting → framework → agent itself
-    codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp \
+    sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp \
         "$AGENT/Contents/Resources/Mackit_Mackit.bundle"
     sign_nested_sparkle "$AGENT/Contents/Frameworks/Sparkle.framework"
-    codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$AGENT"
+    sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$AGENT"
     # main app: resource bundle → Sparkle nesting → framework → app itself
-    codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp \
+    sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp \
         "$APP/Contents/Resources/Mackit_Mackit.bundle"
     sign_nested_sparkle "$APP/Contents/Frameworks/Sparkle.framework"
-    codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$APP"
+    sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$APP"
 else
     echo "(ad-hoc local signature; set MACKIT_SIGN_IDENTITY for distribution)"
     IDENTITY="-"

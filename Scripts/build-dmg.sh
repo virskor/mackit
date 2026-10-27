@@ -312,9 +312,21 @@ hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG" -ov
 rm -f "$TEMP_DMG"
 
 # ---------- 8. Sign the DMG ----------
+# Same timestamp-authority stall as build-app.sh: the request can hang ~15s
+# and fail with the misleading "A timestamp was expected but was not found",
+# so retry instead of letting one dropped request abort the release.
+sign_codesign() {
+    local attempt
+    for attempt in 1 2 3 4; do
+        codesign "$@" && return 0
+        echo "  codesign attempt $attempt failed; retrying" >&2
+        sleep 3
+    done
+    return 1
+}
 if [ -n "${MACKIT_SIGN_IDENTITY:-}" ]; then
     echo "==> Signing DMG"
-    codesign --force --sign "$MACKIT_SIGN_IDENTITY" --timestamp "$DMG"
+    sign_codesign --force --sign "$MACKIT_SIGN_IDENTITY" --timestamp "$DMG"
     codesign --verify --verbose=2 "$DMG" 2>&1 | sed 's/^/    /'
 fi
 
