@@ -22,8 +22,12 @@ struct ToastTests {
         vm.showToast(.error, "Cannot move to Trash")
         #expect(vm.banner != nil)
 
-        // Auto-dismissal is set to 3.5 seconds; wait past that
-        try await Task.sleep(nanoseconds: 4_000_000_000)
+        // Auto-dismissal is set to 3.5 seconds. The wait must clear it by a
+        // wide margin, not a hair: the dismiss is a task on the same actor as
+        // every other suite running in parallel, and on a loaded machine it
+        // can be scheduled late. A 4-second wait left a 500 ms margin, which
+        // the suite's IO-heavy neighbors ate often enough to flake.
+        try await Task.sleep(nanoseconds: 7_000_000_000)
 
         #expect(vm.banner == nil, "the toast should auto-dismiss after about 3.5 seconds")
     }
@@ -49,7 +53,9 @@ struct ToastTests {
         try await Task.sleep(nanoseconds: 1_000_000_000)
         #expect(vm.banner?.message == "second")
 
-        try await Task.sleep(nanoseconds: 3_000_000_000)
+        // Wide margin past its 3.5 seconds, for the same reason as
+        // `toastAutoDismisses`.
+        try await Task.sleep(nanoseconds: 6_000_000_000)
         #expect(vm.banner == nil)
     }
 
@@ -57,7 +63,7 @@ struct ToastTests {
     @Test func dismissAfterAutoDismissIsSafe() async throws {
         let vm = AppViewModel()
         vm.showToast(.info, "notice")
-        try await Task.sleep(nanoseconds: 4_000_000_000)
+        try await Task.sleep(nanoseconds: 7_000_000_000)
         #expect(vm.banner == nil)
 
         vm.dismissToast()

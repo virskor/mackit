@@ -353,10 +353,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
          the icon disappears. -->
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.utilities</string>
-    <!-- "Open in Terminal" sends Apple Events to Terminal; both the TCC
+    <!-- "Open in Terminal" sends Apple Events to Terminal, and "Show in
+         Finder" sends one to Finder to select the revealed file; both the TCC
          authorization prompt and later review require this usage description. -->
     <key>NSAppleEventsUsageDescription</key>
-    <string>Mackit needs to control Terminal to open a terminal window at the selected path.</string>
+    <string>Mackit needs to control Terminal and Finder to open a terminal window or reveal a file at the selected path.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 mingcui. All rights reserved.</string>
     <key>NSPrincipalClass</key>

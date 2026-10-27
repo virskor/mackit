@@ -20,6 +20,14 @@ import SwiftUI
 /// list. For the borderless warning rows inside the confirmation sheet,
 /// `NoticeRow` stays the component — a card per warning would bury the
 /// sheet's own list.
+///
+/// No `.fixedSize(vertical:)` on the copy: it makes the page that hosts this
+/// card size its content region to the laid-out rows instead of the card, the
+/// page then grows past the card, and macOS 26+ centers whatever the detail
+/// column is handed that does not exactly fill it — clipping the page's
+/// header above the window's top edge and its list below the bottom (the
+/// app-uninstall page shipped that way once). The description wraps naturally
+/// without it. Same hazard class as `HeroPromptView`'s no-fixedSize rule.
 struct AlertCard: View {
     /// Leading symbol; nil leaves the card text-only.
     var systemImage: String?
@@ -56,7 +64,6 @@ struct AlertCard: View {
                 Text(verbatim: message)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 12)

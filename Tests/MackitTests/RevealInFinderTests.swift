@@ -28,4 +28,15 @@ struct RevealInFinderTests {
 
         #expect(RevealInFinder.opensDirectly(base), "a plain folder is shown by Finder itself")
     }
+
+    /// The file reveal selects the file through an AppleEvent to Finder, and
+    /// an unpermitted target gets silence rather than an error — so the probe
+    /// gates it. A bundle id that cannot name a running application is the
+    /// deterministic direction of that gate: the target never resolves, so
+    /// the answer is a no whatever the machine's Finder state is. (The
+    /// permitted direction — Finder running, consent granted — was verified
+    /// by hand on a real machine and cannot be asserted portably.)
+    @Test func automationProbeDeclinesATargetThatCannotBeRunning() {
+        #expect(RevealInFinder.canAutomate("com.example.noSuchApplication") == false)
+    }
 }

@@ -75,10 +75,16 @@ final class AppViewModel {
     /// area switches to the manager page, same embedded-page pattern again.
     var showsHomebrew: Bool = false
     /// The app uninstall tool row is selected in the sidebar: the detail
-    /// area switches to the uninstall page, the same embedded-page pattern.
+    /// area switches to the uninstall page, same embedded-page pattern again.
     /// Apps are no longer part of the cleanup scan — uninstalling is its own
     /// tool, and this flag is what shows it.
     var showsAppUninstall: Bool = false
+    /// The large-file analysis tool row is selected in the sidebar: the
+    /// detail area switches to the analysis page, the same embedded-page
+    /// pattern as the other tools. This one answers "which individual files
+    /// are taking up the space", where the disk analysis answers it by
+    /// directory tree.
+    var showsLargeFiles: Bool = false
 
     /// Row selection set, consistent with the list checkmarks. All of the
     /// state and every rule that decides it live in `CleanupSelection`; this
@@ -108,6 +114,12 @@ final class AppViewModel {
     /// app list survives page switches, and tests drive the page against
     /// fixture apps.
     let appUninstall: AppUninstallModel
+
+    /// State model of the large-file analysis tool page. Same session-lifetime
+    /// and injectability contract as the other tools: the walked file list
+    /// survives page switches, and tests drive the page against a fixture
+    /// walk instead of the real disk.
+    let largeFiles: LargeFilesModel
 
     /// Cleanup result summary.
     var lastReclaimed: Int64 = 0
@@ -285,10 +297,11 @@ final class AppViewModel {
     /// "emit one event, assert one snapshot" in tests. Visible within the
     /// module so tests can drive it directly; the default value is the
     /// app's startup behavior.
-    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel()) {
+    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel(), largeFiles: LargeFilesModel = LargeFilesModel()) {
         self.diskAnalysis = diskAnalysis
         self.homebrew = homebrew
         self.appUninstall = appUninstall
+        self.largeFiles = largeFiles
         // A remembered row selection is the one piece of selection state that
         // outlives a process, so the model's user actions route through here
         // to persist it. `loadSettings` below assigns the stored value
@@ -652,6 +665,7 @@ final class AppViewModel {
         dismissDiskAnalysis()
         dismissHomebrew()
         dismissAppUninstall()
+        dismissLargeFiles()
         hardwareProfile = HardwareSampler.profile()
     }
 
@@ -674,6 +688,7 @@ final class AppViewModel {
         dismissDiskAnalysis()
         dismissHomebrew()
         dismissAppUninstall()
+        dismissLargeFiles()
     }
 
     /// Opens the disk analysis tool page from the sidebar. Same
@@ -688,6 +703,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         showsHomebrew = false
         showsAppUninstall = false
+        showsLargeFiles = false
         if cleanPhase == .done { dismissCleanResult() }
         diskAnalysis.activate()
     }
@@ -720,6 +736,7 @@ final class AppViewModel {
         showsHardware = false
         showsGeneralCleanup = false
         showsAppUninstall = false
+        showsLargeFiles = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
         homebrew.activate()
@@ -745,6 +762,7 @@ final class AppViewModel {
         showsHardware = false
         showsGeneralCleanup = false
         showsHomebrew = false
+        showsLargeFiles = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
         appUninstall.activate()
@@ -757,6 +775,32 @@ final class AppViewModel {
     private func dismissAppUninstall() {
         guard showsAppUninstall else { return }
         showsAppUninstall = false
+    }
+
+    /// Opens the large-file analysis tool page from the sidebar. Same
+    /// embedded-page pattern as the other tools: the detail area swaps
+    /// entirely and the main toolbar hides.
+    func showLargeFiles() {
+        guard !showsLargeFiles else { return }
+        showsLargeFiles = true
+        selectedCategory = nil
+        showsSettings = false
+        showsHardware = false
+        showsGeneralCleanup = false
+        showsHomebrew = false
+        showsAppUninstall = false
+        dismissDiskAnalysis()
+        if cleanPhase == .done { dismissCleanResult() }
+        largeFiles.activate()
+    }
+
+    /// Leaves the large-file analysis page. Deliberately does not touch the
+    /// walk — same contract as the other tools: the walk belongs to the
+    /// session, not to the page being visible, and an in-flight traversal is
+    /// the model's to keep or cancel.
+    private func dismissLargeFiles() {
+        guard showsLargeFiles else { return }
+        showsLargeFiles = false
     }
 
     // MARK: - Memory Release
@@ -1487,6 +1531,7 @@ final class AppViewModel {
         dismissDiskAnalysis()
         dismissHomebrew()
         dismissAppUninstall()
+        dismissLargeFiles()
         if cleanPhase == .done { dismissCleanResult() }
     }
 
@@ -1500,6 +1545,7 @@ final class AppViewModel {
         dismissDiskAnalysis()
         dismissHomebrew()
         dismissAppUninstall()
+        dismissLargeFiles()
         if cleanPhase == .done { dismissCleanResult() }
     }
 

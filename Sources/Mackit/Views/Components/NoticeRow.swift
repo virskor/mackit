@@ -25,10 +25,13 @@ struct NoticeRow: View {
                     Text(verbatim: title)
                         .font(.system(size: 12, weight: .semibold))
                 }
+                // No `.fixedSize(vertical:)` here: same hazard as AlertCard —
+                // it makes the hosting page size its content region to the
+                // laid-out rows instead of the card, and the oversized page
+                // is then centered and clipped by macOS 26+.
                 Text(verbatim: message)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()

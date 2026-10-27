@@ -55,11 +55,11 @@ struct ContentView: View {
             // the card itself still hugs the sidebar and the window's right edge.
             VStack(spacing: 0) {
                 // The settings, hardware, general cleanup, disk analysis,
-                // homebrew and app uninstall pages have their own headers;
-                // the main toolbar's scan / clean actions are unrelated to
-                // them, so it is hidden entirely, leaving only the page
-                // content.
-                if !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsAppUninstall {
+                // homebrew, large-file analysis and app uninstall pages have
+                // their own headers; the main toolbar's scan / clean actions
+                // are unrelated to them, so it is hidden entirely, leaving
+                // only the page content.
+                if !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsLargeFiles && !vm.showsAppUninstall {
                     ContentToolbarRow()
                     Divider()
                 }
@@ -135,10 +135,11 @@ struct ContentView: View {
     @ViewBuilder
     private var page: some View {
         // When the sidebar's hardware detection / settings / general cleanup /
-        // disk analysis / homebrew / app uninstall row is selected, the detail
-        // area switches entirely to the corresponding embedded page (within
-        // the same window, not a separate window); clicking back or any
-        // category row returns to the cleanable items content.
+        // disk analysis / homebrew / large-file analysis / app uninstall row is
+        // selected, the detail area switches entirely to the corresponding
+        // embedded page (within the same window, not a separate window);
+        // clicking back or any category row returns to the cleanable items
+        // content.
         if vm.showsHardware {
             HardwareView()
         } else if vm.showsSettings {
@@ -149,6 +150,8 @@ struct ContentView: View {
             DiskAnalysisView()
         } else if vm.showsHomebrew {
             HomebrewView()
+        } else if vm.showsLargeFiles {
+            LargeFilesView()
         } else if vm.showsAppUninstall {
             AppUninstallView()
         } else {

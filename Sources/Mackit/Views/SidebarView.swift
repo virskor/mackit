@@ -49,6 +49,20 @@ struct SidebarView: View {
                 )
                 .help(L10n.tr("sidebar.diskAnalysis.help"))
 
+                // The large-file tool sits directly under the disk analysis:
+                // the two answer the same question at different resolutions,
+                // "where did the space go" by tree and by individual file, so
+                // they are one click apart in either direction.
+                row(
+                    icon: .symbol("scalemass.fill"),
+                    tint: .accentColor,
+                    title: L10n.tr("sidebar.largeFiles"),
+                    isSelected: vm.showsLargeFiles,
+                    isBusy: vm.largeFiles.isScanning,
+                    action: { vm.showLargeFiles() }
+                )
+                .help(L10n.tr("sidebar.largeFiles.help"))
+
                 row(
                     icon: .symbol("shippingbox"),
                     tint: .accentColor,
@@ -129,7 +143,7 @@ struct SidebarView: View {
     /// sidebar has one selected item at a time, and switching pages has to
     /// clear the highlight.
     private var itemListIsActive: Bool {
-        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsAppUninstall
+        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsLargeFiles && !vm.showsAppUninstall
     }
 
     /// One sidebar row: icon, title, and the trailing slot that carries the
