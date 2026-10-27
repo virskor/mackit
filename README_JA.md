@@ -14,7 +14,7 @@
 
 [日本語](README_JA.md) · [English](README.md) · [简体中文](README_ZH.md) · [繁體中文](README_ZH_HANT.md) · [한국어](README_KO.md)
 
-🌐 [公式ウェブサイト](https://www.mingcui.cn)
+🌐 [公式ウェブサイト](https://www.mingcui.cn) · ⬇️ [ダウンロード](https://www.mingcui.cn/ja/download/mackit)
 
 </div>
 
@@ -56,6 +56,8 @@ Mackitが行うこと:
 ## インストール
 
 ### 事前構築済みバイナリをダウンロード（推奨）
+
+⬇️ [Mackitをダウンロード](https://www.mingcui.cn/ja/download/mackit)
 
 [Releases](https://github.com/virskor/mackit/releases) から最新のDMGを取得し、開いてMackitを「アプリケーション」にドラッグします。
 

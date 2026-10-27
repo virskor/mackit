@@ -12,7 +12,7 @@
 [![Release](https://img.shields.io/github/v/release/virskor/mackit?style=flat-square)](https://github.com/virskor/mackit/releases)
 [![Downloads](https://img.shields.io/github/downloads/virskor/mackit/total?style=flat-square)](https://github.com/virskor/mackit/releases)
 
-🌐 [Official Website](https://www.mingcui.cn) · [简体中文](README_ZH.md) · [繁體中文](README_ZH_HANT.md) · [한국어](README_KO.md) · [日本語](README_JA.md)
+🌐 [Official Website](https://www.mingcui.cn) · ⬇️ [Download](https://www.mingcui.cn/en/download/mackit) · [简体中文](README_ZH.md) · [繁體中文](README_ZH_HANT.md) · [한국어](README_KO.md) · [日本語](README_JA.md)
 
 </div>
 
@@ -54,6 +54,8 @@ What Mackit does:
 ## Installation
 
 ### Download a prebuilt binary (recommended)
+
+⬇️ [Download Mackit](https://www.mingcui.cn/en/download/mackit)
 
 Grab the latest DMG from [Releases](https://github.com/virskor/mackit/releases), open it and drag Mackit into Applications.
 

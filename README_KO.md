@@ -14,7 +14,7 @@
 
 [한국어](README_KO.md) · [English](README.md) · [简体中文](README_ZH.md) · [繁體中文](README_ZH_HANT.md) · [日本語](README_JA.md)
 
-🌐 [공식 웹사이트](https://www.mingcui.cn)
+🌐 [공식 웹사이트](https://www.mingcui.cn) · ⬇️ [다운로드](https://www.mingcui.cn/ko/download/mackit)
 
 </div>
 
@@ -56,6 +56,8 @@ Mackit이 하는 일:
 ## 설치
 
 ### 사전 빌드된 바이너리 다운로드(권장)
+
+⬇️ [Mackit 다운로드](https://www.mingcui.cn/ko/download/mackit)
 
 [Releases](https://github.com/virskor/mackit/releases)에서 최신 DMG 파일을 내려받아 열고, Mackit을 "응용 프로그램"에 드래그하세요.
 

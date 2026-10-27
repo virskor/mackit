@@ -14,7 +14,7 @@
 
 [繁體中文](README_ZH_HANT.md) · [简体中文](README_ZH.md) · [English](README.md) · [한국어](README_KO.md) · [日本語](README_JA.md)
 
-🌐 [官方網站 / 落地頁](https://www.mingcui.cn)
+🌐 [官方網站 / 落地頁](https://www.mingcui.cn) · ⬇️ [下載](https://www.mingcui.cn/zh-Hant/download/mackit)
 
 </div>
 
@@ -57,6 +57,8 @@ Mackit 做的事情：
 ## 安裝
 
 ### 下載預編譯版本（推薦）
+
+⬇️ [下載 Mackit](https://www.mingcui.cn/zh-Hant/download/mackit)
 
 從 [Releases](https://github.com/virskor/mackit/releases) 取最新的 DMG，打開後把 Mackit 拖進"應用程式"。
 
