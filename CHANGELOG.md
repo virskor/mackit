@@ -4,11 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.11] - 2026-10-27
 
 ### Added
 
-- **Fourteen more language ecosystems** in the cleanup scan: Ruby (RubyGems spec cache, user-installed gems, Bundler cache), PHP (Composer cache), .NET (NuGet global packages and HTTP cache), Scala / JVM (Coursier cache, sbt boot, Ivy cache), Haskell (Cabal package cache and build store, Stack toolchains and snapshots), Clojure (tools.deps git libs, Leiningen installation), Elixir / Erlang (Hex registry cache, Mix archives, rebar3 cache), Lua (LuaRocks tree), Julia (precompile cache, registries, installed packages), OCaml (opam download cache and package index), Zig (compiler global cache), Nim (compiler cache, Nimble packages), Crystal (compiler cache) and Perl (CPAN sources and build leftovers). Each ecosystem is its own sidebar category with its brand mark, and every location was verified against the tool itself where it is installed on the development machine, or against the tool's own source / official documentation where it is not — the paths follow each tool's documented environment variables (GEM_HOME, BUNDLE_USER_HOME, COMPOSER_CACHE_DIR, NUGET_PACKAGES, COURSIER_CACHE, HEX_HOME, MIX_HOME, ZIG_GLOBAL_CACHE_DIR, CRYSTAL_CACHE_DIR, NIMBLE_DIR, the XDG trio, …) the way the existing Go and Gradle rules do. Package stores and toolchains that re-download wholesale are review-level; pure caches stay safe. Five new command-line items join them, each the tool's own cleanup command: `gem cleanup`, `composer clear-cache`, `dotnet nuget locals http-cache --clear`, `dotnet nuget locals global-packages --clear` and `crystal clear_cache`
+- **Cache cleanup for fourteen more language ecosystems** — Ruby, PHP, .NET, Scala, Haskell, Clojure, Elixir/Erlang, Lua, Julia, OCaml, Zig, Nim, Crystal and Perl each join the scan as their own category with brand mark, and every path was verified against the installed tool or its official source rather than assumed.
 
 ## [1.0.10] - 2026-10-26
 
