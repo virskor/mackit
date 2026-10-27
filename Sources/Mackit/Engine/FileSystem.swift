@@ -570,6 +570,24 @@ enum FileSystem {
         return path == root || path.hasPrefix(root + "/")
     }
 
+    /// The TCC-protected home trio — Documents, Desktop, Downloads — under
+    /// `home`, as the set a walk refuses to enter.
+    ///
+    /// Both spellings of each path go in: the listing layer yields paths as
+    /// spelled by the traversal's base URL, while `canonical` resolves
+    /// firmlinks and symlinks — on a machine where the two differ, a set
+    /// built from one spelling alone would never match the other.
+    static func protectedHomePaths(under home: String) -> Set<String> {
+        var paths: Set<String> = []
+        for name in ["Documents", "Desktop", "Downloads"] {
+            let raw = home + "/" + name
+            paths.insert(raw)
+            let resolved = canonical(raw)
+            if resolved != raw { paths.insert(resolved) }
+        }
+        return paths
+    }
+
     /// Protected paths; the cleaning engine rejects them outright.
     ///
     /// Both the as-is and realpath spellings are compared: on deletion the

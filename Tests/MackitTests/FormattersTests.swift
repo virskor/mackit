@@ -112,4 +112,18 @@ struct FormattersTests {
         #expect(Formatters.hex(0x10) == "0x10")
         #expect(Formatters.hex(0x1000d875c) == "0x1000d875c")
     }
+
+    /// The home prefix reads shorter and names the same place, and the
+    /// prefix must land on a directory boundary: another user whose name
+    /// starts with the current username (/Users/weizhang2) must not be
+    /// abbreviated to ~2. An empty path — a command-line item's — stays
+    /// empty rather than collapsing to ~.
+    @Test func abbreviateHomeReplacesThePrefixOnlyOnABoundary() {
+        let home = NSHomeDirectory()
+        #expect(Formatters.abbreviateHome(home) == "~")
+        #expect(Formatters.abbreviateHome(home + "/Library/Caches/foo") == "~/Library/Caches/foo")
+        #expect(Formatters.abbreviateHome("/var/tmp/foo") == "/var/tmp/foo")
+        #expect(Formatters.abbreviateHome("") == "")
+        #expect(Formatters.abbreviateHome(home + "2/Library/Caches") == home + "2/Library/Caches")
+    }
 }

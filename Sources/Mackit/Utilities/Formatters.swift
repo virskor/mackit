@@ -133,4 +133,26 @@ enum Formatters {
         if hours > 0 { return "\(hours):\(padded(minutes)):\(padded(remainder))" }
         return "\(minutes):\(padded(remainder))"
     }
+
+    /// Replaces the home prefix with `~`, for the path column in lists.
+    ///
+    /// The prefix must land on a directory boundary: other users whose names
+    /// start with the current username (`/Users/weizhang2`) must not be
+    /// abbreviated to `~2`.
+    ///
+    /// The home path is looked up once per process: `JunkItem` used to call
+    /// `NSHomeDirectory()` per render of every cell, which during fast
+    /// scrolling of a long list was visible overhead. Every path display —
+    /// item lists and the large-file tool alike — funnels through here, so
+    /// the lookup happens exactly once.
+    static func abbreviateHome(_ path: String) -> String {
+        if path == homePath { return "~" }
+        if path.hasPrefix(homePath + "/") {
+            return "~" + path.dropFirst(homePath.count)
+        }
+        return path
+    }
+
+    /// Home directory prefix, looked up only once per process.
+    private static let homePath = NSHomeDirectory()
 }

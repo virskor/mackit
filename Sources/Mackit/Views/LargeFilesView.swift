@@ -385,7 +385,7 @@ struct LargeFilesView: View {
                     .foregroundStyle(.tertiary)
                     .monospacedDigit()
 
-                    Text(verbatim: abbreviated(model.scanCurrentPath))
+                    Text(verbatim: Formatters.abbreviateHome(model.scanCurrentPath))
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -510,7 +510,7 @@ struct LargeFilesView: View {
                     // The holding directory, not the full path: the name is
                     // right above it, and "~/Library/Containers" is the part
                     // a user recognizes when deciding whether they need this.
-                    Text(verbatim: abbreviated(file.parentPath))
+                    Text(verbatim: Formatters.abbreviateHome(file.parentPath))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -587,15 +587,5 @@ struct LargeFilesView: View {
         ) {
             model.setSelected(file, selected: !model.isSelected(file))
         }
-    }
-
-    /// The home prefix reads shorter and names the same place. The boundary
-    /// check keeps a sibling directory whose name merely starts with the
-    /// username (/Users/weizhang2) from being abbreviated to ~2.
-    private func abbreviated(_ path: String) -> String {
-        let home = FileSystem.expand("~")
-        if path == home { return "~" }
-        if path.hasPrefix(home + "/") { return "~" + path.dropFirst(home.count) }
-        return path
     }
 }

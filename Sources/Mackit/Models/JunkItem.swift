@@ -86,7 +86,7 @@ struct JunkItem: Identifiable, Hashable, Sendable {
         self.appKind = appKind
         self.appName = appName
         self.holdsLiveAppData = holdsLiveAppData
-        self.abbreviatedPath = Self.abbreviate(path)
+        self.abbreviatedPath = Formatters.abbreviateHome(path)
         let extra = searchExtra.map { "\n\($0)" } ?? ""
         self.searchBlob = "\(title)\n\(detail)\n\(path)\(extra)".lowercased()
     }
@@ -96,23 +96,4 @@ struct JunkItem: Identifiable, Hashable, Sendable {
     }
 
     var isUnknownSize: Bool { size <= 0 }
-
-    /// Home directory prefix, looked up only once per process.
-    ///
-    /// `abbreviatedPath` used to be a computed property, calling `NSHomeDirectory()` on
-    /// every render of every cell; during fast scrolling of a long list this was visible
-    /// overhead.
-    private static let homePath = NSHomeDirectory()
-
-    /// Replaces the home prefix with `~`, for the path column in lists.
-    ///
-    /// The prefix must land on a directory boundary: other users whose names start with
-    /// the current username (`/Users/weizhang2`) must not be abbreviated to `~2`.
-    static func abbreviate(_ path: String) -> String {
-        if path == homePath { return "~" }
-        if path.hasPrefix(homePath + "/") {
-            return "~" + path.dropFirst(homePath.count)
-        }
-        return path
-    }
 }

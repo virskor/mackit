@@ -491,21 +491,9 @@ final class LargeFilesModel {
     /// pops the system access dialog, so a whole-disk walk skips them and the
     /// start screen carries the opt-in — the same trade the disk analysis
     /// makes, for the same reason.
-    ///
-    /// Both spellings of each path go in: the listing layer yields paths as
-    /// spelled by the traversal's base URL, while `canonical` resolves
-    /// firmlinks and symlinks — on a machine where the two differ, a set
-    /// built from one spelling alone would never match the other.
     private var skipPaths: Set<String> {
         guard !includeProtectedPaths else { return [] }
-        var paths: Set<String> = []
-        for name in ["Documents", "Desktop", "Downloads"] {
-            let raw = FileSystem.expand("~") + "/" + name
-            paths.insert(raw)
-            let resolved = FileSystem.canonical(raw)
-            if resolved != raw { paths.insert(resolved) }
-        }
-        return paths
+        return FileSystem.protectedHomePaths(under: FileSystem.expand("~"))
     }
 
     // MARK: Trash flow

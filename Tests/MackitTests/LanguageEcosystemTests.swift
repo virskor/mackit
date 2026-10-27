@@ -146,7 +146,8 @@ struct LanguageEcosystemTests {
 
     /// The CLI rules invoke each tool's own documented cleanup command,
     /// verified against the tools' references.
-    @Test func newCLIRulesInvokeOfficialCommands() {        let byID = Dictionary(uniqueKeysWithValues: RulesCatalog.cliRules.map { ($0.id, $0) })
+    @Test func newCLIRulesInvokeOfficialCommands() {
+        let byID = Dictionary(uniqueKeysWithValues: RulesCatalog.cliRules.map { ($0.id, $0) })
 
         let gem = byID["cli.gem-cleanup"]
         #expect(gem?.executable == "gem")

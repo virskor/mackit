@@ -642,20 +642,9 @@ final class DiskAnalysisModel {
     /// the TCC-protected home trio, minus any the user has approved. Entering
     /// one pops the system access dialog, so a full-disk scan skips them and
     /// their rows say "not scanned" until the user asks.
-    ///
-    /// Both spellings of each path go in: the listing layer yields paths as
-    /// spelled by the traversal's base URL, while `canonical` resolves
-    /// firmlinks and symlinks — on a machine where the two differ, a set
-    /// built from one spelling alone would never match the other.
     private var skipPaths: Set<String> {
-        var paths: Set<String> = []
-        for name in ["Documents", "Desktop", "Downloads"] {
-            let raw = homePath + "/" + name
-            paths.insert(raw)
-            let resolved = FileSystem.canonical(raw)
-            if resolved != raw { paths.insert(resolved) }
-        }
-        return paths.subtracting(approvedPaths.flatMap { [$0, FileSystem.canonical($0)] })
+        FileSystem.protectedHomePaths(under: homePath)
+            .subtracting(approvedPaths.flatMap { [$0, FileSystem.canonical($0)] })
     }
 
     /// Identity of the skip set this session scans with, for the progress

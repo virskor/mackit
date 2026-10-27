@@ -262,6 +262,47 @@ struct FileSystemTests {
         #expect(FileSystem.isProtected("/private/var/db/some-daemon-state"))
     }
 
+    /// The skip set is the TCC-protected home trio under the given home.
+    /// Each path goes in under both spellings the traversal can yield: the
+    /// raw spelling and the realpath one. The temp directory's /var is a
+    /// firmlink to /private/var on macOS, so with the trio in place the two
+    /// differ here, and a set built from one spelling alone would never
+    /// match the other.
+    @Test func protectedHomePathsListsTheTrioInBothSpellings() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-home-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        for name in ["Documents", "Desktop", "Downloads"] {
+            try FileManager.default.createDirectory(
+                at: home.appendingPathComponent(name),
+                withIntermediateDirectories: true
+            )
+        }
+        defer { try? FileManager.default.removeItem(at: home) }
+
+        let paths = FileSystem.protectedHomePaths(under: home.path)
+        for name in ["Documents", "Desktop", "Downloads"] {
+            #expect(paths.contains(home.appendingPathComponent(name).path))
+        }
+        let canonicalHome = FileSystem.canonical(home.path)
+        #expect(paths.count == (canonicalHome == home.path ? 3 : 6), "unexpected skip set: \(paths.sorted())")
+        for path in paths {
+            #expect(paths.contains(FileSystem.canonical(path)), "\(path) is missing its canonical spelling")
+        }
+    }
+
+    /// A home whose trio does not exist resolves to itself — realpath cannot
+    /// resolve a missing leaf — so the set is exactly the three raw
+    /// spellings.
+    @Test func protectedHomePathsOfAMissingTrioIsJustTheRawSpellings() {
+        let paths = FileSystem.protectedHomePaths(under: "/definitely/not/a/real/home")
+        #expect(paths == [
+            "/definitely/not/a/real/home/Documents",
+            "/definitely/not/a/real/home/Desktop",
+            "/definitely/not/a/real/home/Downloads",
+        ])
+    }
+
     /// Everything the cleaning engine routes through "move to Trash" needs to
     /// know which entries already sit in one: recycling those is a no-op the
     /// API reports as success (verified — the source stays where it is), so
