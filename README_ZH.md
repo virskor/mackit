@@ -119,6 +119,20 @@ swift test
 | Go | go-build 缓存、模块下载缓存 |
 | Rust | cargo registry 缓存/src、git 依赖 |
 | Python | pip、uv、Poetry、pre-commit 缓存 |
+| Ruby | RubyGems 规格缓存、用户级 Gem、Bundler 缓存 |
+| PHP | Composer 缓存 |
+| .NET | NuGet 全局包、HTTP 缓存 |
+| Scala / JVM | Coursier 缓存、sbt 启动目录、Ivy 缓存 |
+| Haskell | Cabal 包缓存与构建存储、Stack 工具链与快照 |
+| Clojure | tools.deps git 依赖、Leiningen 主程序 |
+| Elixir / Erlang | Hex 注册表缓存、Mix 归档、rebar3 缓存 |
+| Lua | LuaRocks 安装目录 |
+| Julia | 预编译缓存、注册表、已安装包 |
+| OCaml | opam 下载缓存、包索引 |
+| Zig | 编译器全局缓存 |
+| Nim | 编译缓存、Nimble 包 |
+| Crystal | 编译器缓存 |
+| Perl | CPAN 下载源、构建残留 |
 | CocoaPods | CocoaPods 缓存、Carthage 缓存、spec 仓库 |
 | IDE | JetBrains、VS Code / Cursor 的缓存与日志 |
 | Homebrew | 下载缓存 |

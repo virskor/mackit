@@ -13,7 +13,9 @@ import Foundation
 /// label a cache category with the logo of the very toolchain it belongs to.
 /// See that folder's README for the update procedure.
 enum BrandLogo: String, CaseIterable, Sendable {
-    case go, node, flutter, rust, python, android, xcode, pods, homebrew
+    case go, node, flutter, rust, python, ruby, php, dotnet, scala, haskell,
+         clojure, elixir, lua, julia, ocaml, zig, nim, crystal, perl,
+         android, xcode, pods, homebrew
 
     /// Bundled file name, kept at the upstream slug rather than the case name
     /// so the file can be diffed against a fresh simple-icons download.

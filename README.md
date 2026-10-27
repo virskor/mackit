@@ -116,6 +116,20 @@ Keyboard shortcuts:
 | Go | go-build cache, module download cache |
 | Rust | cargo registry cache/src, git dependencies |
 | Python | pip, uv, Poetry, pre-commit caches |
+| Ruby | RubyGems spec cache, user-installed gems, Bundler cache |
+| PHP | Composer cache |
+| .NET | NuGet global packages, HTTP cache |
+| Scala / JVM | Coursier cache, sbt boot, Ivy cache |
+| Haskell | Cabal package cache and build store, Stack toolchains and snapshots |
+| Clojure | tools.deps git libs, Leiningen installation |
+| Elixir / Erlang | Hex registry cache, Mix archives, rebar3 cache |
+| Lua | LuaRocks tree |
+| Julia | precompile cache, registries, installed packages |
+| OCaml | opam download cache, package index |
+| Zig | compiler global cache |
+| Nim | compiler cache, Nimble packages |
+| Crystal | compiler cache |
+| Perl | CPAN sources, build leftovers |
 | CocoaPods | CocoaPods cache, Carthage cache, spec repos |
 | IDEs | JetBrains, VS Code / Cursor caches and logs |
 | Homebrew | download cache |

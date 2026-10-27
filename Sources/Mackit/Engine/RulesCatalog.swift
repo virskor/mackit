@@ -314,6 +314,305 @@ enum RulesCatalog {
             risk: .safe
         ),
 
+        // MARK: Ruby
+        // RubyGems' spec cache: `gem env` reports it as ~/.gem/specs
+        // (RubyGems' defaults.rb derives it from the user home, falling
+        // back to the XDG cache dir only when ~/.gem/specs is absent).
+        // It is the compact-index client cache, re-fetched on demand.
+        ScanRule(
+            id: "ruby.gem-specs",
+            category: .ruby,
+            target: .directory("~/.gem/specs"),
+            risk: .safe
+        ),
+        // GEM_HOME's default location: user-installed gems, one subtree
+        // per Ruby ABI version. Review, not safe — every user-installed
+        // gem re-downloads.
+        ScanRule(
+            id: "ruby.gem-user",
+            category: .ruby,
+            target: .children("${GEM_HOME}"),
+            risk: .review
+        ),
+        // Bundler's global cache: bundler's settings table maps
+        // BUNDLE_USER_CACHE to $BUNDLE_USER_HOME/cache, and
+        // BUNDLE_USER_HOME to ~/.bundle. Holds the compact index cache
+        // and anything `bundle cache` stashed; rebuilt on the next run.
+        ScanRule(
+            id: "ruby.bundle-cache",
+            category: .ruby,
+            target: .children("${BUNDLE_USER_CACHE}"),
+            risk: .safe
+        ),
+
+        // MARK: PHP / Composer
+        // Composer's cache dir on macOS, verified against
+        // `composer config --global cache-dir` (files/repo/vcs
+        // children); COMPOSER_CACHE_DIR overrides.
+        ScanRule(
+            id: "php.composer-cache",
+            category: .php,
+            target: .children("${COMPOSER_CACHE_DIR}"),
+            risk: .safe
+        ),
+
+        // MARK: .NET / NuGet
+        // NuGet's documented Mac/Linux defaults (Microsoft's "Managing
+        // the global packages and cache folders"). The global-packages
+        // folder holds every extracted package — clearing it forces a
+        // full restore of every project, hence review.
+        ScanRule(
+            id: "dotnet.nuget-packages",
+            category: .dotnet,
+            target: .children("${NUGET_PACKAGES}"),
+            risk: .review
+        ),
+        // The HTTP response cache: feed metadata and .nupkg downloads,
+        // expired on their own after roughly 30 minutes.
+        ScanRule(
+            id: "dotnet.nuget-http-cache",
+            category: .dotnet,
+            target: .children("${NUGET_HTTP_CACHE_PATH}"),
+            risk: .safe
+        ),
+
+        // MARK: Scala / JVM
+        // Coursier's platform defaults (get-coursier.io):
+        // ~/Library/Caches/Coursier/v1 on macOS, ~/.cache/coursier/v1 on
+        // Linux; COURSIER_CACHE overrides. It is sbt's and the Scala
+        // CLI's download cache — artifacts re-download.
+        ScanRule(
+            id: "scala.coursier-cache",
+            category: .scala,
+            target: .children("${COURSIER_CACHE}"),
+            risk: .safe
+        ),
+        // sbt's boot directory (the sbt FAQ names ~/.sbt/boot) holds
+        // sbt's own launcher jars and the Scala compiler it runs —
+        // hundreds of MB to re-fetch, hence review.
+        ScanRule(
+            id: "scala.sbt-boot",
+            category: .scala,
+            target: .children("~/.sbt/boot"),
+            risk: .review
+        ),
+        // Ivy's default cache (Apache Ivy's docs: ~/.ivy2/cache), still
+        // used by older sbt builds and Ant+Ivy setups.
+        ScanRule(
+            id: "scala.ivy2-cache",
+            category: .scala,
+            target: .children("~/.ivy2/cache"),
+            risk: .safe
+        ),
+
+        // MARK: Haskell
+        // Cabal's XDG layout (cabal's configuration docs): the package
+        // cache defaults to ~/.cache/cabal on Unix — macOS included —
+        // and the build store to ~/.local/state/cabal; CABAL_DIR
+        // relocates both. The cache is downloaded tarballs and the
+        // index; the store is what every project links against, so
+        // clearing it rebuilds every dependency, hence review.
+        ScanRule(
+            id: "haskell.cabal-cache",
+            category: .haskell,
+            target: .children("${XDG_CACHE_HOME}/cabal"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "haskell.cabal-store",
+            category: .haskell,
+            target: .children("${XDG_STATE_HOME}/cabal"),
+            risk: .review
+        ),
+        // Stack's root (docs.haskellstack.org: ~/.stack by default,
+        // STACK_ROOT overrides). programs holds the GHC toolchains stack
+        // downloaded and snapshots the per-snapshot dependency builds —
+        // both are big re-downloads, so each is its own review-level
+        // entry rather than a sweep of the whole root, which also holds
+        // the user's config.yaml.
+        ScanRule(
+            id: "haskell.stack-programs",
+            category: .haskell,
+            target: .children("~/.stack/programs"),
+            risk: .review
+        ),
+        ScanRule(
+            id: "haskell.stack-snapshots",
+            category: .haskell,
+            target: .children("~/.stack/snapshots"),
+            risk: .review
+        ),
+
+        // MARK: Clojure
+        // tools.deps' git dependency cache (Clojure's deps.edn
+        // reference: "Git libs are downloaded by default to the
+        // ~/.gitlibs directory") — re-cloned on the next resolve.
+        ScanRule(
+            id: "clojure.gitlibs",
+            category: .clojure,
+            target: .children("~/.gitlibs"),
+            risk: .safe
+        ),
+        // Leiningen's self-installed standalone jar (the lein script:
+        // LEIN_HOME defaults to ~/.lein, the jar lives in
+        // self-installs/). It re-downloads itself on the next run, but
+        // it is the build tool itself — review.
+        ScanRule(
+            id: "clojure.lein",
+            category: .clojure,
+            target: .glob("~/.lein/self-installs/*"),
+            risk: .review
+        ),
+
+        // MARK: Elixir / Erlang
+        // Hex's registry cache: Hex.Registry.Server writes cache.ets and
+        // cache.bin into the cache_home setting, which defaults to
+        // ~/.hex (HEX_HOME overrides). The glob keeps hex.config — the
+        // API credentials — out of the sweep.
+        ScanRule(
+            id: "elixir.hex-cache",
+            category: .elixir,
+            target: .glob("${HEX_HOME}/cache.*"),
+            risk: .safe
+        ),
+        // Mix's archives (Mix's docs: MIX_HOME defaults to ~/.mix and
+        // MIX_ARCHIVES to ~/.mix/archives) — the hex and rebar archives
+        // `mix local.hex` / `mix local.rebar` install.
+        ScanRule(
+            id: "elixir.mix-archives",
+            category: .elixir,
+            target: .children("${MIX_HOME}/archives"),
+            risk: .safe
+        ),
+        // Rebar3's global cache (rebar3's rebar_dir module: cache_dir
+        // defaults to ~/.cache/rebar3, global_rebar_dir overrides) —
+        // the dependency downloads of Erlang builds.
+        ScanRule(
+            id: "elixir.rebar3-cache",
+            category: .elixir,
+            target: .children("~/.cache/rebar3"),
+            risk: .safe
+        ),
+
+        // MARK: Lua
+        // LuaRocks' user tree (luarocks' config module: home_tree
+        // defaults to $HOME/.luarocks on Unix). Installed rocks live
+        // here — deleting the tree forces every rock to reinstall,
+        // hence review.
+        ScanRule(
+            id: "lua.luarocks",
+            category: .lua,
+            target: .children("~/.luarocks"),
+            risk: .review
+        ),
+
+        // MARK: Julia
+        // Julia's precompile cache (julia's initdefs.jl: the default
+        // depot is ~/.julia, JULIA_DEPOT_PATH overrides); the compiled
+        // images regenerate on demand.
+        ScanRule(
+            id: "julia.compiled",
+            category: .julia,
+            target: .children("~/.julia/compiled"),
+            risk: .safe
+        ),
+        // The General registry clone — re-cloned by Pkg on the next
+        // update.
+        ScanRule(
+            id: "julia.registries",
+            category: .julia,
+            target: .children("~/.julia/registries"),
+            risk: .safe
+        ),
+        // Installed packages in the user depot — review: every package
+        // re-downloads from the registry.
+        ScanRule(
+            id: "julia.packages",
+            category: .julia,
+            target: .children("~/.julia/packages"),
+            risk: .review
+        ),
+
+        // MARK: OCaml
+        // opam's download cache and package index inside its root
+        // (opam's docs: the root defaults to ~/.opam, with repo data
+        // under ~/.opam/repo). Both regenerate on the next opam update
+        // or install. The root's switch directories — the installed
+        // compiler and libraries — are deliberately not swept.
+        ScanRule(
+            id: "ocaml.opam-download-cache",
+            category: .ocaml,
+            target: .children("~/.opam/download-cache"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "ocaml.opam-repo",
+            category: .ocaml,
+            target: .children("~/.opam/repo"),
+            risk: .safe
+        ),
+
+        // MARK: Zig
+        // Zig's global cache (zig's introspect module:
+        // resolveGlobalCacheDir reads ZIG_GLOBAL_CACHE_DIR, then
+        // $XDG_CACHE_HOME/zig, then ~/.cache/zig).
+        ScanRule(
+            id: "zig.cache",
+            category: .zig,
+            target: .children("${ZIG_GLOBAL_CACHE_DIR}"),
+            risk: .safe
+        ),
+
+        // MARK: Nim
+        // The compiler's nimcache root (nimc's docs:
+        // $XDG_CACHE_HOME/nim/$projectname(_r|_d), i.e. ~/.cache/nim/...
+        // by default) — one entry per project, regenerated on rebuild.
+        ScanRule(
+            id: "nim.cache",
+            category: .nim,
+            target: .children("${XDG_CACHE_HOME}/nim"),
+            risk: .safe
+        ),
+        // Nimble's package directory (nimble's options module:
+        // nimbleDir defaults to ~/.nimble, NIMBLE_DIR overrides) —
+        // installed packages, review.
+        ScanRule(
+            id: "nim.nimble",
+            category: .nim,
+            target: .children("${NIMBLE_DIR}"),
+            risk: .review
+        ),
+
+        // MARK: Crystal
+        // The compiler cache (crystal's codegen/cache_dir.cr: the
+        // candidates are CRYSTAL_CACHE_DIR, $XDG_CACHE_HOME/crystal,
+        // ~/.cache/crystal and ~/.crystal). The compiler itself keeps
+        // only the 10 most recently used entries.
+        ScanRule(
+            id: "crystal.cache",
+            category: .crystal,
+            target: .children("${CRYSTAL_CACHE_DIR}"),
+            risk: .safe
+        ),
+
+        // MARK: Perl
+        // CPAN's downloaded sources and build leftovers (CPAN's
+        // FirstTime.pm: keep_source_where defaults to
+        // <cpan_home>/sources and build_dir to <cpan_home>/build, with
+        // cpan_home at ~/.cpan).
+        ScanRule(
+            id: "perl.cpan-sources",
+            category: .perl,
+            target: .children("~/.cpan/sources"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "perl.cpan-build",
+            category: .perl,
+            target: .children("~/.cpan/build"),
+            risk: .safe
+        ),
+
         // MARK: CocoaPods / Carthage
         ScanRule(
             id: "pods.cocoapods",
@@ -653,6 +952,54 @@ enum RulesCatalog {
             title: "gradle --stop",
             risk: .review,
             sizeHints: []
+        ),
+        // RubyGems' own cleanup: drops old versions of every installed
+        // gem, keeping the newest of each. Global, unlike
+        // `bundle clean --force`, which needs a project to run in.
+        CLIRule(
+            id: "cli.gem-cleanup",
+            category: .ruby,
+            executable: "gem",
+            arguments: ["cleanup"],
+            title: "gem cleanup",
+            sizeHints: ["${GEM_HOME}"]
+        ),
+        CLIRule(
+            id: "cli.composer-clear-cache",
+            category: .php,
+            executable: "composer",
+            arguments: ["clear-cache"],
+            title: "composer clear-cache",
+            sizeHints: ["${COMPOSER_CACHE_DIR}"]
+        ),
+        // NuGet's own commands (the `dotnet nuget locals` reference):
+        // the http-cache clear is safe; global-packages forces every
+        // project to restore again.
+        CLIRule(
+            id: "cli.dotnet-nuget-http-cache",
+            category: .dotnet,
+            executable: "dotnet",
+            arguments: ["nuget", "locals", "http-cache", "--clear"],
+            title: "dotnet nuget locals http-cache --clear",
+            sizeHints: ["${NUGET_HTTP_CACHE_PATH}"]
+        ),
+        CLIRule(
+            id: "cli.dotnet-nuget-global-packages",
+            category: .dotnet,
+            executable: "dotnet",
+            arguments: ["nuget", "locals", "global-packages", "--clear"],
+            title: "dotnet nuget locals global-packages --clear",
+            risk: .review,
+            sizeHints: ["${NUGET_PACKAGES}"]
+        ),
+        // Crystal's own cache clear (`crystal clear_cache`).
+        CLIRule(
+            id: "cli.crystal-clear-cache",
+            category: .crystal,
+            executable: "crystal",
+            arguments: ["clear_cache"],
+            title: "crystal clear_cache",
+            sizeHints: ["${CRYSTAL_CACHE_DIR}"]
         )
     ]
 }

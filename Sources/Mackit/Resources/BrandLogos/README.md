@@ -5,9 +5,12 @@ Single-color SVG marks for the developer-tool categories (see
 and per-item rows.
 
 - **Source** — vendored verbatim from [simple-icons](https://simpleicons.org)
-  (v16.35.0, fetched 2026-10-25). File names are the upstream slugs
-  (`nodedotjs.svg`, `cocoapods.svg`, ...), so refreshing a mark is a
-  byte-for-byte file replacement and diffing against upstream stays trivial.
+  (v16.35.0, fetched 2026-10-25; the Ruby, PHP, .NET, Scala, Haskell, Clojure,
+  Elixir, Lua, Julia, OCaml, Zig, Nim, Crystal and Perl marks were fetched
+  later, on 2026-10-27, and are byte-identical to the same release). File
+  names are the upstream slugs (`nodedotjs.svg`, `cocoapods.svg`, ...), so
+  refreshing a mark is a byte-for-byte file replacement and diffing against
+  upstream stays trivial.
 - **License** — simple-icons' repository is CC0-licensed (the code, i.e. the
   path data). Each mark remains a trademark of its respective owner and is
   used here nominatively: labeling a cache category with the logo of the very

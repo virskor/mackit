@@ -23,6 +23,24 @@ struct SVGPathParserTests {
         }
     }
 
+    /// The points that lie on the drawn geometry — curve and quad *endpoints*
+    /// included, control points excluded. A Bézier control point routinely
+    /// sits outside the convex hull of its own curve (the vendored ruby mark
+    /// has one at y = -0.548 against a 0..24 box while every point of the
+    /// rendered curve stays inside), so the box confinement below is checked
+    /// against these rather than against every parsed coordinate.
+    private func anchoredPoints(in elements: [SVGPath.Element]) -> [CGPoint] {
+        elements.flatMap { element -> [CGPoint] in
+            switch element {
+            case .move(let p): return [p]
+            case .line(let p): return [p]
+            case .curve(_, _, let end): return [end]
+            case .quadCurve(_, let end): return [end]
+            case .close: return []
+            }
+        }
+    }
+
     @Test func movelineAndClose() throws {
         #expect(try parse("M1 1L2 2Z") == [
             .move(CGPoint(x: 1, y: 1)),
@@ -187,9 +205,16 @@ struct SVGPathParserTests {
         ])
     }
 
-    /// Every bundled mark must decode: non-empty, anchored by a moveto,
-    /// closed, with a declared viewBox confining the geometry. A truncated or
+    /// Every bundled mark must decode: non-empty, anchored by a moveto, with
+    /// a declared viewBox confining the drawn geometry. A truncated or
     /// corrupted SVG fails here instead of shipping a broken icon.
+    ///
+    /// Two properties the original nine marks happened to share are
+    /// deliberately not required: a final `Z`, which upstream marks are free
+    /// to omit (clojure and perl leave their last subpath open, and SVG
+    /// fill closes it implicitly — they render as upstream draws them), and
+    /// control-point containment, which Béziers do not promise (see
+    /// `anchoredPoints`).
     @Test func everyBundledBrandLogoDecodesInsideItsViewBox() throws {
         #expect(!BrandLogo.allCases.isEmpty)
         for logo in BrandLogo.allCases {
@@ -197,12 +222,11 @@ struct SVGPathParserTests {
 
             #expect(!elements.isEmpty, "\(logo.rawValue) loaded no elements")
             #expect(elements.first?.isMove == true, "\(logo.rawValue) does not start with a moveto")
-            #expect(elements.last?.isClose == true, "\(logo.rawValue) does not end with a close")
 
             let box = logo.viewBox
             #expect(box.width > 0 && box.height > 0, "\(logo.rawValue) has no usable viewBox")
 
-            for point in points(in: elements) {
+            for point in anchoredPoints(in: elements) {
                 #expect(point.x >= box.minX - 0.5 && point.x <= box.maxX + 0.5,
                         "\(logo.rawValue) x \(point.x) outside the viewBox")
                 #expect(point.y >= box.minY - 0.5 && point.y <= box.maxY + 0.5,
@@ -240,11 +264,16 @@ struct SVGPathParserTests {
     }
 
     /// Every category carrying a brand resolves to it; every other category
-    /// keeps its SF Symbol.
+    /// keeps its SF Symbol. The map is the whitelist of branded categories —
+    /// it grows with every ecosystem that vendors a mark.
     @Test func categoryIconSourcesResolveBrandThenSymbol() {
         let branded: [JunkCategory: BrandLogo] = [
             .xcode: .xcode, .android: .android, .go: .go, .node: .node,
             .flutter: .flutter, .rust: .rust, .python: .python,
+            .ruby: .ruby, .php: .php, .dotnet: .dotnet, .scala: .scala,
+            .haskell: .haskell, .clojure: .clojure, .elixir: .elixir,
+            .lua: .lua, .julia: .julia, .ocaml: .ocaml, .zig: .zig,
+            .nim: .nim, .crystal: .crystal, .perl: .perl,
             .pods: .pods, .homebrew: .homebrew,
         ]
         for category in JunkCategory.allCases {
@@ -260,11 +289,6 @@ struct SVGPathParserTests {
 extension SVGPath.Element {
     var isMove: Bool {
         if case .move = self { return true }
-        return false
-    }
-
-    var isClose: Bool {
-        if case .close = self { return true }
         return false
     }
 }
