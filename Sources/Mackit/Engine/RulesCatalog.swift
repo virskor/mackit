@@ -408,10 +408,11 @@ enum RulesCatalog {
         // MARK: Haskell
         // Cabal's XDG layout (cabal's configuration docs): the package
         // cache defaults to ~/.cache/cabal on Unix — macOS included —
-        // and the build store to ~/.local/state/cabal; CABAL_DIR
-        // relocates both. The cache is downloaded tarballs and the
-        // index; the store is what every project links against, so
-        // clearing it rebuilds every dependency, hence review.
+        // and the build store to ~/.local/state/cabal. The rules cover
+        // that default layout only: a CABAL_DIR relocation is not
+        // followed. The cache is downloaded tarballs and the index;
+        // the store is what every project links against, so clearing
+        // it rebuilds every dependency, hence review.
         ScanRule(
             id: "haskell.cabal-cache",
             category: .haskell,
@@ -424,8 +425,9 @@ enum RulesCatalog {
             target: .children("${XDG_STATE_HOME}/cabal"),
             risk: .review
         ),
-        // Stack's root (docs.haskellstack.org: ~/.stack by default,
-        // STACK_ROOT overrides). programs holds the GHC toolchains stack
+        // Stack's root (docs.haskellstack.org: ~/.stack by default).
+        // The rules target that default root; a STACK_ROOT relocation
+        // is not followed. programs holds the GHC toolchains stack
         // downloaded and snapshots the per-snapshot dependency builds —
         // both are big re-downloads, so each is its own review-level
         // entry rather than a sweep of the whole root, which also holds
@@ -485,8 +487,9 @@ enum RulesCatalog {
             risk: .safe
         ),
         // Rebar3's global cache (rebar3's rebar_dir module: cache_dir
-        // defaults to ~/.cache/rebar3, global_rebar_dir overrides) —
-        // the dependency downloads of Erlang builds.
+        // defaults to ~/.cache/rebar3) — the dependency downloads of
+        // Erlang builds. The rule targets that default; an install
+        // that overrides the global rebar directory is not followed.
         ScanRule(
             id: "elixir.rebar3-cache",
             category: .elixir,
@@ -496,9 +499,10 @@ enum RulesCatalog {
 
         // MARK: Lua
         // LuaRocks' user tree (luarocks' config module: home_tree
-        // defaults to $HOME/.luarocks on Unix). Installed rocks live
-        // here — deleting the tree forces every rock to reinstall,
-        // hence review.
+        // defaults to $HOME/.luarocks on Unix). The sweep takes the
+        // whole tree: installed rocks, plus the bin/ executables and
+        // share/ Lua modules the tool installs there — all of it
+        // reinstalls, hence review.
         ScanRule(
             id: "lua.luarocks",
             category: .lua,
@@ -508,8 +512,10 @@ enum RulesCatalog {
 
         // MARK: Julia
         // Julia's precompile cache (julia's initdefs.jl: the default
-        // depot is ~/.julia, JULIA_DEPOT_PATH overrides); the compiled
-        // images regenerate on demand.
+        // depot is ~/.julia); the compiled images regenerate on
+        // demand. The rules target the default depot — a
+        // JULIA_DEPOT_PATH relocation (a colon-separated depot list)
+        // is not followed.
         ScanRule(
             id: "julia.compiled",
             category: .julia,
@@ -575,7 +581,9 @@ enum RulesCatalog {
         ),
         // Nimble's package directory (nimble's options module:
         // nimbleDir defaults to ~/.nimble, NIMBLE_DIR overrides) —
-        // installed packages, review.
+        // the whole tree is swept: installed packages plus the bin/
+        // executables nimble installs alongside them, all of which
+        // reinstall, hence review.
         ScanRule(
             id: "nim.nimble",
             category: .nim,

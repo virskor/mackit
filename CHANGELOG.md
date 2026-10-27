@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Settings → General reports the app's own permissions** — Full Disk Access, the Finder and Terminal automation consents and administrator authorization each get a row with their live status, what the permission unlocks, and a button that opens the exact settings row, with the statuses re-probed whenever the app returns to the foreground so a grant made while it was in the background shows up without a relaunch
 - **Cache cleanup for fourteen more language ecosystems** — Ruby, PHP, .NET, Scala, Haskell, Clojure, Elixir/Erlang, Lua, Julia, OCaml, Zig, Nim, Crystal and Perl each join the scan as their own category with brand mark, and every path was verified against the installed tool or its official source rather than assumed.
 
 ## [1.0.10] - 2026-10-26
