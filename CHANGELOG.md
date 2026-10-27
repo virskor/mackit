@@ -4,13 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.12] - 2026-10-27
 
 ### Added
 
 - **Korean and Japanese interface languages** — the String Catalog now carries all 956 keys in `ko` and `ja` beside the existing Simplified Chinese / English / Traditional Chinese, and Settings → General's language picker offers them with their endonyms (한국어 / 日本語), following the system when set to "Follow system". Both bundles declare the five localizations, and the unused-language-packs rule keeps `ko` and `ja` per bundle the way it already kept Chinese and English: whoever runs Mackit reads at least one of the five, so cleaning may no longer strip Korean or Japanese out of every other app on the machine. Translations follow the existing placeholder and separator conventions (positional `%1$@` / `%2$lld`, the unspaced `·` of the treemap tile line, `\n` in the welcome message), and `LocalizationTests` now checks all five `.lproj` key sets instead of three.
-- **Korean and Japanese READMEs** (`README_KO.md` / `README_JA.md`) — the full English README translated, with the app's own Korean/Japanese UI terminology (스캔 / スキャン, 정리 / クリーンアップ, 캐시 / キャッシュ, 휴지통 / ゴミ箱) so the documentation and the product read as one, and every command, path, identifier and URL byte-identical to the English source. Both READMEs' language switchers now offer all four translations.
-- **Traditional Chinese README** (`README_ZH_HANT.md`) — the Simplified Chinese README in Traditional Chinese with Taiwan vocabulary matching the app's `zh-Hant` UI strings (快取, 應用程式, 垃圾桶, 記憶體, 資料夾, 選單列, 硬體, 圖示 …), carrying the same 1.0.11 corrections the English README already had (the app-uninstall page no longer documents the removed last-opened times). All four READMEs cross-link in their own language order.
+- **Korean and Japanese READMEs** (`README_KO.md` / `README_JA.md`) — the full English README translated, with the app's own Korean/Japanese UI terminology (스캔 / スキャン, 정리 / クリーンアップ, 캐시 / キャッシュ, 휴지통 / ゴミ箱) so the documentation and the product read as one, and every command, path, identifier and URL byte-identical to the English source.
+- **Traditional Chinese README** (`README_ZH_HANT.md`) — the Simplified Chinese README in Traditional Chinese with Taiwan vocabulary matching the app's `zh-Hant` UI strings (快取, 應用程式, 垃圾桶, 記憶體, 資料夾, 選單列, 硬體, 圖示 …), carrying the same 1.0.11 corrections the English README already had (the app-uninstall page no longer documents the removed last-opened times). All five READMEs cross-link in their own language order.
 
 ## [1.0.11] - 2026-10-27
 
