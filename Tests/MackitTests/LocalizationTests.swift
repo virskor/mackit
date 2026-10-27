@@ -259,6 +259,20 @@ struct LocalizationTests {
             "crashLogs.symbolize.binaryMissing", "crashLogs.symbolize.binaryReplaced",
             "crashLogs.symbolize.atosFailed",
             "toast.crashLogDeleted", "toast.crashLogExported",
+            "settings.permissions.header", "settings.permissions.intro",
+            "settings.permissions.footer",
+            "permissions.refresh", "permissions.refresh.help",
+            "permissions.item.fullDiskAccess", "permissions.item.fullDiskAccess.what",
+            "permissions.item.automationFinder", "permissions.item.automationFinder.what",
+            "permissions.item.automationTerminal", "permissions.item.automationTerminal.what",
+            "permissions.item.administrator", "permissions.item.administrator.what",
+            "permissions.status.granted", "permissions.status.notGranted",
+            "permissions.status.undetermined", "permissions.status.onDemand",
+            "permissions.action.request", "permissions.action.request.help",
+            "permissions.hint.notGranted", "permissions.hint.notRequested",
+            "permissions.hint.undetermined.automation",
+            "permissions.hint.undetermined.fullDiskAccess",
+            "permissions.hint.onDemand",
         ]
         for key in keys {
             #expect(!isFallback(L10n.tr(key), key: key), "\(key) not localized")

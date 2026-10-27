@@ -1,5 +1,4 @@
 import AppKit
-import Carbon
 import Foundation
 
 /// Shows a file or folder in Finder.
@@ -47,36 +46,23 @@ enum RevealInFinder {
     /// through.
     static let finderBundleID = "com.apple.finder"
 
+    /// Terminal's bundle id, the automation target "Open in Terminal" sends
+    /// its script to (see `AppViewModel.openInTerminal`). Lives beside the
+    /// Finder target because the two are the only applications this app
+    /// automates, and the permissions page lists both.
+    static let terminalBundleID = "com.apple.Terminal"
+
     /// Whether this app may send Apple events to `bundleID`'s application
     /// right now, without prompting.
     ///
-    /// `AEDeterminePermissionToAutomateTarget` with `askUserIfNeeded: false`
-    /// is a read-only probe: it never pops the consent dialog, and answers
-    /// noErr when the target is running and permitted. The event class and
-    /// id passed are immaterial — automation consent is per target
-    /// application, not per event — so any pair answers the question. Every
-    /// other status (not permitted, would require consent, target not
-    /// running, descriptor failure) is a no: the caller has a working
-    /// fallback for those.
+    /// The probe itself lives in `AppPermissions.automation` — the
+    /// permissions page asks the same question for the same targets, and one
+    /// copy of the Apple Events descriptor dance is enough. A target that is
+    /// not running reads as "not granted" from here, which is the safe
+    /// answer for a reveal: the fallback needs no permission, and launching
+    /// Finder just to ask would be a cold-start consent prompt.
     static func canAutomate(_ bundleID: String) -> Bool {
-        var target = AEAddressDesc()
-        let id = bundleID as CFString
-        let maxSize = CFStringGetMaximumSizeForEncoding(CFStringGetLength(id) + 1, CFStringBuiltInEncodings.UTF8.rawValue)
-        var buffer = [UInt8](repeating: 0, count: maxSize)
-        let used = CFStringGetBytes(
-            id,
-            CFRange(location: 0, length: CFStringGetLength(id)),
-            CFStringBuiltInEncodings.UTF8.rawValue,
-            0,
-            false,
-            &buffer,
-            maxSize,
-            nil
-        )
-        guard used > 0 else { return false }
-        guard OSStatus(AECreateDesc(typeApplicationBundleID, &buffer, used, &target)) == noErr else { return false }
-        defer { AEDisposeDesc(&target) }
-        return AEDeterminePermissionToAutomateTarget(&target, kAECoreSuite, kAEOpenDocuments, false) == noErr
+        AppPermissions.automation(bundleID) == .granted
     }
 
     /// Whether opening `url` itself shows the folder in Finder rather than

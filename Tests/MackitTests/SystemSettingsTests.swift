@@ -17,4 +17,15 @@ struct SystemSettingsTests {
         #expect(url.path() == "com.apple.preference.security")
         #expect(url.query == "Privacy_AllFiles")
     }
+
+    /// The automation row is where the per-app Apple events consents live —
+    /// Finder for the reveal, Terminal for "open in Terminal". A typo in the
+    /// anchor ships as a button that opens the pane but not the row.
+    @Test func automationLinkTargetsTheSecurityPane() {
+        let url = SystemSettings.automation
+
+        #expect(url.scheme == "x-apple.systempreferences")
+        #expect(url.path() == "com.apple.preference.security")
+        #expect(url.query == "Privacy_Automation")
+    }
 }

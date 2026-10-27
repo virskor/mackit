@@ -22,9 +22,23 @@ enum SystemSettings {
         string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
     )!
 
+    /// The Automation row of the Privacy & Security pane, where the per-app
+    /// Apple events consents live — Finder for "Show in Finder", Terminal for
+    /// "Open in Terminal". Both targets share the one row, so the permissions
+    /// page sends either permission to the same place.
+    static let automation = URL(
+        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+    )!
+
     /// Opens the Full Disk Access pane, so a permission hint can take the
     /// user straight to the row instead of describing the click path.
     static func openFullDiskAccess() {
-        NSWorkspace.shared.open(fullDiskAccess)
+        open(fullDiskAccess)
+    }
+
+    /// Opens one of the pane URLs above. Shared so a caller that holds a URL
+    /// does not re-spell the workspace call.
+    static func open(_ url: URL) {
+        NSWorkspace.shared.open(url)
     }
 }

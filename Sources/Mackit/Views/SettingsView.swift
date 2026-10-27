@@ -166,6 +166,12 @@ struct SettingsView: View {
             if updates.isEnabled {
                 updateSection
             }
+            // The permissions report sits between the app's own switches and
+            // the diagnostics that close the form: like the crash logs it is
+            // a status report rather than a setting, and it belongs with the
+            // app's relationship to the system (launch at login above) rather
+            // than among the cleaning preferences.
+            PermissionsSection()
             // Crash logs close the general form: diagnostics are a different
             // kind of setting from the ones above, and the section carries
             // both the collection switch and the records it produced.

@@ -144,7 +144,7 @@ swift test
 
 ## 权限
 
-Mackit 需要读取 `~/Library`、`~/.pub-cache`、`~/.gradle`、`/Applications` 等位置，因此**未启用 App Sandbox**。`~/Library` 下的部分路径需要"完全磁盘访问权限"，可在"系统设置 › 隐私与安全性 › 完全磁盘访问权限"中手动授予。在终端中打开路径会请求控制终端的 Apple Events 权限（`NSAppleEventsUsageDescription`）。托盘面板的"释放内存"会请求管理员授权并执行 `purge`（丢弃文件缓存，不影响应用自身占用的内存）。磁盘空间分析工具在扫描时刻意不进入 `~/Documents`、`~/Desktop`、`~/Downloads`——枚举它们会弹出系统访问对话框——这些文件夹会被列为"未扫描"，可按需扫描（点一下，或授予完全磁盘访问权限以完整扫描）。CPU、内存与各应用内存来自公开系统接口（`host_statistics64`、`proc_pid_rusage`）；macOS 没有公开的温度接口，所示温度为系统热状态。
+Mackit 需要读取 `~/Library`、`~/.pub-cache`、`~/.gradle`、`/Applications` 等位置，因此**未启用 App Sandbox**。`~/Library` 下的部分路径需要"完全磁盘访问权限"，可在"系统设置 › 隐私与安全性 › 完全磁盘访问权限"中手动授予。在终端中打开路径会请求控制终端的 Apple Events 权限（`NSAppleEventsUsageDescription`）。托盘面板的"释放内存"会请求管理员授权并执行 `purge`（丢弃文件缓存，不影响应用自身占用的内存）。磁盘空间分析工具在扫描时刻意不进入 `~/Documents`、`~/Desktop`、`~/Downloads`——枚举它们会弹出系统访问对话框——这些文件夹会被列为"未扫描"，可按需扫描（点一下，或授予完全磁盘访问权限以完整扫描）。CPU、内存与各应用内存来自公开系统接口（`host_statistics64`、`proc_pid_rusage`）；macOS 没有公开的温度接口，所示温度为系统热状态。「设置 › 通用」中的「权限管理」一栏实时报告上述每一项——是否已授予、解锁哪些功能、以及直达对应设置行的按钮（对从未请求过的自动化授权，则先向系统发起请求：macOS 只把“问过”的应用列进自动化列表）——某个功能表现异常时，可以一次点击定位到背后的权限。
 
 ## 开发
 
