@@ -29,14 +29,39 @@ struct RevealInFinderTests {
         #expect(RevealInFinder.opensDirectly(base), "a plain folder is shown by Finder itself")
     }
 
-    /// The file reveal selects the file through an AppleEvent to Finder, and
-    /// an unpermitted target gets silence rather than an error — so the probe
-    /// gates it. A bundle id that cannot name a running application is the
-    /// deterministic direction of that gate: the target never resolves, so
-    /// the answer is a no whatever the machine's Finder state is. (The
-    /// permitted direction — Finder running, consent granted — was verified
-    /// by hand on a real machine and cannot be asserted portably.)
-    @Test func automationProbeDeclinesATargetThatCannotBeRunning() {
-        #expect(RevealInFinder.canAutomate("com.example.noSuchApplication") == false)
+    /// A permitted target is the everyday case: the reveal sends the event and
+    /// Finder comes forward with the item selected.
+    @Test func grantedAutomationSelects() {
+        #expect(RevealInFinder.decision(for: .granted) == .select)
+    }
+
+    /// Never asked is the one direction that asks, because the dialog is what
+    /// creates the system's answer — and it is asked at most once, since the
+    /// answer is recorded and the next reveal goes straight to select or
+    /// fallback.
+    @Test func neverAskedRequestsConsentThenSelects() {
+        #expect(RevealInFinder.decision(for: .notRequested) == .requestThenSelect)
+    }
+
+    /// A recorded refusal degrades to the permission-free fallback instead of
+    /// asking again on every click.
+    @Test func recordedRefusalOpensWithoutSelecting() {
+        #expect(RevealInFinder.decision(for: .notGranted) == .openWithoutSelecting)
+    }
+
+    /// The target is not running is the one direction the probe cannot answer,
+    /// and it still sends: with consent on record the event launches Finder
+    /// and selects. (The permitted direction of that — and of the ask itself —
+    /// was verified by hand on a real machine and cannot be asserted
+    /// portably.)
+    @Test func undeterminedAutomationStillSelects() {
+        #expect(RevealInFinder.decision(for: .undetermined) == .select)
+    }
+
+    /// The administrator-authorization answer cannot occur for an automation
+    /// target; there is nothing to request up front, so it degrades like a
+    /// refusal.
+    @Test func onDemandDegradesToOpeningWithoutSelecting() {
+        #expect(RevealInFinder.decision(for: .onDemand) == .openWithoutSelecting)
     }
 }

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.13] - 2026-10-28
+
+### Changed
+
+- **"Show in Finder" now reveals the file or folder selected**, the way every other Mac app does: the reveal asks the system for the Finder automation consent the first time it is needed, brings Finder forward with the item selected once granted, and falls back to opening the enclosing folder when the consent is refused.
+
 ## [1.0.12] - 2026-10-27
 
 ### Added

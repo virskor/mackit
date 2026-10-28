@@ -149,11 +149,4 @@ struct AppPermissionsTests {
         #expect(AppPermissions.status(ofAutomationStatus: OSStatus(errAEEventNotPermitted)) == .notGranted)
         #expect(AppPermissions.status(ofAutomationStatus: OSStatus(-1)) == .notGranted)
     }
-
-    /// The reveal's gate stays a plain yes/no on top of the three-way probe:
-    /// "could not tell" must read as no there, because the reveal has a
-    /// working permission-free fallback for it.
-    @Test func revealGateTreatsUndeterminedAsNo() {
-        #expect(RevealInFinder.canAutomate("com.example.noSuchApplication") == false)
-    }
 }
