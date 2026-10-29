@@ -142,27 +142,74 @@ if let glow = CGGradient(
     )
 }
 
-// Install arrow: spans the gap between the two icons. Finder places the app at
-// {165,150} and Applications at {555,150} with an icon size of 108 — converted
-// to CG coordinates (origin at the bottom-left), the arrow's center line is at
-// y=168, the vertical center of the icon band.
+// One hand-drawn stroke: a quadratic segment with round caps. The bow comes
+// from where the control point sits — above both endpoints the stroke flicks
+// up as it leaves and settles as it arrives, which no straight line does.
+func strokeHandCurve(
+    _ context: CGContext,
+    from start: CGPoint,
+    control: CGPoint,
+    to end: CGPoint,
+    width: CGFloat,
+    alpha: CGFloat
+) {
+    let path = CGMutablePath()
+    path.move(to: start)
+    path.addQuadCurve(to: end, control: control)
+    context.setLineWidth(width)
+    context.setStrokeColor(CGColor(gray: 1, alpha: alpha))
+    context.addPath(path)
+    context.strokePath()
+}
+
+// Install arrow, drawn the way a marker draws it: spans the gap between the
+// two icons. Finder places the app at {165,150} and Applications at {555,150}
+// with an icon size of 108 — converted to CG coordinates (origin at the
+// bottom-left), the arrow's center line is at y=168, the vertical center of
+// the icon band.
 let arrowY = logicalHeight - 204
 context.setLineCap(.round)
-context.setLineWidth(5)
-context.setStrokeColor(CGColor(gray: 1, alpha: 0.55))
-context.move(to: CGPoint(x: 292, y: arrowY))
-context.addLine(to: CGPoint(x: 505, y: arrowY))
-context.strokePath()
 
-// Arrow head: a solid triangle pointing to Applications
-context.setFillColor(CGColor(gray: 1, alpha: 0.55))
-let head = CGMutablePath()
-head.move(to: CGPoint(x: 538, y: arrowY))
-head.addLine(to: CGPoint(x: 505, y: arrowY + 15))
-head.addLine(to: CGPoint(x: 505, y: arrowY - 15))
-head.closeSubpath()
-context.addPath(head)
-context.fillPath()
+// Shaft, first pass: leaves the app icon with a slight upward flick, bows up
+// about 5pt at mid-span, and arrives level at the head's base.
+strokeHandCurve(
+    context,
+    from: CGPoint(x: 292, y: arrowY),
+    control: CGPoint(x: 397, y: arrowY + 10),
+    to: CGPoint(x: 502, y: arrowY),
+    width: 5,
+    alpha: 0.55
+)
+// Second pass: a marker going back over the start of the line without matching
+// it — flatter, a few points lower, thinner, lighter, and stopping partway.
+strokeHandCurve(
+    context,
+    from: CGPoint(x: 296, y: arrowY - 3),
+    control: CGPoint(x: 362, y: arrowY + 1),
+    to: CGPoint(x: 430, y: arrowY - 2),
+    width: 3.5,
+    alpha: 0.28
+)
+
+// Head: an open V of two strokes rather than a filled triangle — each barb
+// leaves the shaft's base bowing outward and overshoots the tip, which is what
+// makes it read as drawn instead of plotted.
+strokeHandCurve(
+    context,
+    from: CGPoint(x: 502, y: arrowY + 16),
+    control: CGPoint(x: 525, y: arrowY + 13),
+    to: CGPoint(x: 542, y: arrowY - 1),
+    width: 5,
+    alpha: 0.55
+)
+strokeHandCurve(
+    context,
+    from: CGPoint(x: 502, y: arrowY - 16),
+    control: CGPoint(x: 525, y: arrowY - 13),
+    to: CGPoint(x: 542, y: arrowY + 1),
+    width: 5,
+    alpha: 0.55
+)
 
 // Install hint text. Uses CFAttributedString + CoreText attribute keys instead
 // of NSAttributedString.Key: in a command-line swift script the latter's
