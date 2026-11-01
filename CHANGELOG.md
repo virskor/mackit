@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.14] - 2026-11-01
+
+### Changed
+
+- **The DMG install background's arrow is drawn by hand** — the shaft flicks up as it leaves the app icon, bows about 5pt at mid-span and settles level at the head, a lighter retrace rides its first half, and the head is an open V of two stroked barbs instead of a filled triangle. The straight shaft plus triangle read as vector clip-art on the soft gradient; the hand-drawn stroke reads as a marker. Geometry stays inside the icon band the Finder layout expects, so icon positions and window bounds are unchanged.
+
+### Fixed
+
+- **The sidebar no longer clips its contents in the longer localizations** — the list carried a 232pt minimum width while the split-view column renders narrower than that on current macOS, so the list's content overflowed its column and the overflow came back clipped at the leading edge: in Japanese every row lost the first characters of its title (すべての項目 showed as ての項目), the row icons and the section headers vanished entirely, and the footer's disk title and settings capsule were cut off the same way. The minimum is gone — the column's width belongs to `navigationSplitViewColumnWidth` — and the rows truncate at the tail at any width, the way a system sidebar does; the footer's capsule labels and the section headers gained `lineLimit(1)` so a narrow sidebar shortens them instead of overflowing.
+- **The settings tab bar sizes itself to its labels** — `.pickerStyle(.segmented)` fills whatever width it is offered on current macOS and ignores `.fixedSize()`, which stretched the five tabs across the whole card as equal segments and cramped the longest localized label ("Project Directories" reads プロジェクトのディレクトリ in Japanese). The tabs are now `SegmentedBlock` in a new label-hugging `.content` width — each segment takes its label's width and the control centers in the toolbar the way a native Mac segmented control does — with a `ViewThatFits` fallback to the existing equal-width mode, where labels truncate rather than overflow the card, if a translation ever outgrows it.
+
 ## [1.0.13] - 2026-10-28
 
 ### Changed
