@@ -61,7 +61,14 @@ cd "$ROOT"
 # `platforms` entry: it is written into both bundles' Info.plist as
 # LSMinimumSystemVersion and into the binary's LC_BUILD_VERSION below.
 MACOS_MINOS="14.0"
-MACOS_SDK_VERSION="$(xcrun --show-sdk-version)"
+# Pin the SDK with --sdk: a bare `xcrun --show-sdk-version` resolves the
+# default macOS SDK across every search root, which includes any SDK installed
+# under /Library/Developer/CommandLineTools/SDKs — when that one is newer than
+# this Xcode, xcrun delegates the metadata lookup to xcodebuild, which cannot
+# load an SDK newer than itself, the query fails, and `set -e` aborts the build
+# before swift build ever runs. `--sdk macosx` resolves the same SDK swift
+# build compiles against, which is what the sdk field below must declare.
+MACOS_SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 
 # SwiftPM stamps the linked binary's LC_BUILD_VERSION with the deployment
 # target for BOTH minos and sdk — the driver hands the linker
