@@ -96,3 +96,6 @@ temp/
 .zcode
 Certificates/
 .workbuddy
+
+# Local planning notes: research backlog kept on disk, never committed
+TODO.md
