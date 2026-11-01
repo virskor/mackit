@@ -18,8 +18,12 @@ struct BrandChip: View {
                 )
 
                 // The name is a proper noun, so it stays a literal rather than
-                // going through the localization catalog.
+                // going through the localization catalog. lineLimit keeps the
+                // footer's capsule row from overflowing the sidebar when the
+                // column is dragged narrow: the chip's label gives way, the
+                // capsule keeps its shape.
                 Text(verbatim: "Mackit")
+                    .lineLimit(1)
             }
         }
     }

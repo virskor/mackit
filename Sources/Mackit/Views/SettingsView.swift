@@ -85,20 +85,32 @@ struct SettingsView: View {
 
     /// Segmented switching row: the whole row spans the card's width, with the
     /// segmented control centered.
+    ///
+    /// The control is the app's own SegmentedBlock, not the native
+    /// `.segmented` picker: on current macOS the picker fills whatever width
+    /// it is offered and ignores `.fixedSize()`, so five localized labels get
+    /// stretched into equal segments and the longest one is cramped — which
+    /// reads worst in the longer CJK translations. ViewThatFits keeps the
+    /// label-hugging layout whenever the labels fit and falls back to the
+    /// space-filling one — where labels truncate instead of overflowing the
+    /// card's edge — if a translation ever outgrows the card.
     private var toolbar: some View {
         HStack(spacing: 12) {
             Spacer(minLength: 12)
 
-            Picker(L10n.tr("sidebar.settings"), selection: $tab) {
-                ForEach(SettingsTab.allCases) { tab in
-                    Text(verbatim: tab.title).tag(tab)
-                }
+            ViewThatFits(in: .horizontal) {
+                SegmentedBlock(
+                    items: SettingsTab.allCases,
+                    title: { $0.title },
+                    width: .content,
+                    selection: $tab
+                )
+                SegmentedBlock(
+                    items: SettingsTab.allCases,
+                    title: { $0.title },
+                    selection: $tab
+                )
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            // The segmented control shrinks to its content width rather than
-            // stretching to fill the remaining space
-            .fixedSize()
 
             Spacer(minLength: 12)
         }

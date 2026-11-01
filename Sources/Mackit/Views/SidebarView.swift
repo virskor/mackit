@@ -121,7 +121,13 @@ struct SidebarView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             volumeFooter
         }
-        .frame(minWidth: 232)
+        // Deliberately no .frame(minWidth:) on the list: the column's width
+        // belongs to ContentView's navigationSplitViewColumnWidth, and a list
+        // that insists on more width than the column actually gave it renders
+        // its overflow clipped at the leading edge — icons and section headers
+        // vanish and every title loses its first characters, worst in the
+        // longer CJK localizations. The list fills whatever column it gets and
+        // the rows truncate at the tail instead, at any width.
     }
 
     /// Whether the detail area is on the item list rather than on one of the

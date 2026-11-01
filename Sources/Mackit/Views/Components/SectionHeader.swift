@@ -15,6 +15,7 @@ struct SectionHeader: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .lineLimit(1)
             }
         }
     }
@@ -25,6 +26,9 @@ struct SectionHeader: View {
         let text = Text(verbatim: title)
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(.secondary)
+            // One line, truncating at the tail: a header that wraps grows its
+            // container and reads as body text.
+            .lineLimit(1)
         if let symbol {
             Label { text } icon: { Image(systemName: symbol) }
         } else {

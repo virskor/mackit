@@ -19,7 +19,10 @@ struct ShareButton: View {
                 HStack(spacing: 5) {
                     Image(systemName: "square.and.arrow.up")
                         .accessibilityHidden(true)
+                    // Same footer-overflow guard as the brand chip: the label
+                    // truncates, the capsule keeps its shape.
                     Text(verbatim: L10n.tr("share.button"))
+                        .lineLimit(1)
                 }
             }
         }
