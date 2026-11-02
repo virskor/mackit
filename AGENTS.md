@@ -39,6 +39,7 @@ A change is not complete until `swift build` and `swift test` both pass. Running
 - Logging goes through `MackitLog` (`os.Logger`) — record counts, sizes, durations, and rule IDs only, never file contents
 - New scan rules go in `Engine/RulesCatalog.swift`, following the organization of the existing rules
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:` / `fix:` / `docs:` / `refactor:` / `test:` / `chore:`
+- **Changelog and release notes entries are one sentence each** — every `CHANGELOG.md` bullet and every `docs/release-notes` item states the change and its user-visible effect in a single sentence, with no multi-paragraph explanations, rationale essays, or per-entry technical detail (that belongs in "Under the hood", one sentence per bullet)
 
 ## Security
 

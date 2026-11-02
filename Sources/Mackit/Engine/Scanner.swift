@@ -292,14 +292,12 @@ enum ScanEngine {
         names: [String],
         maxDepth: Int
     ) -> [JunkItem] {
-        // Resolved before the walk: Foundation's URL-based
-        // `contentsOfDirectory(at:)` refuses to open a symlink (ENOTDIR,
-        // verified), so a root that is itself a link — a project the user keeps
-        // on another volume and links back — made the whole scan return nothing
-        // at all, silently. Canonical (realpath) rather than a plain symlink
-        // resolution, so the reported paths name the directory the bytes
-        // actually live in; a nonexistent root comes back untouched for the
-        // existence check below.
+        // Resolved before the walk: canonical (realpath) rather than a plain
+        // symlink resolution, so the reported paths name the directory the
+        // bytes actually live in — a project the user keeps on another volume
+        // and links back would otherwise be reported, and deduplicated, under
+        // the link's own spelling. A nonexistent root comes back untouched
+        // for the existence check below.
         let rootURL = URL(fileURLWithPath: FileSystem.canonicalExpanded(root))
         var isDirectory: ObjCBool = false
         guard FileSystem.manager.fileExists(atPath: rootURL.path, isDirectory: &isDirectory),
@@ -320,28 +318,31 @@ enum ScanEngine {
         // Breadth-first with limited depth, to avoid traversing the whole disk.
         // The queue uses a cursor rather than removeFirst(): with many directories,
         // removeFirst moves the whole array every step, degrading BFS to O(n²).
-        var queue: [(url: URL, depth: Int)] = [(rootURL, 0)]
+        var queue: [(path: String, depth: Int)] = [(rootURL.path, 0)]
         var head = 0
         while head < queue.count {
-            let (url, depth) = queue[head]
+            let (path, depth) = queue[head]
             head += 1
             guard depth < maxDepth else { continue }
-            guard let children = try? FileSystem.manager.contentsOfDirectory(
-                at: url,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsSubdirectoryDescendants]
-            ) else { continue }
+            // One `getattrlistbulk` per directory instead of Foundation's
+            // per-entry stat: a project root holds tens of thousands of
+            // `node_modules` children, and the enumeration-with-keys +
+            // `isDirectory` + `isSymbolicLink` route cost three stats per
+            // entry where the bulk record already carries the name and type
+            // (see `FileSystem.entries(of:)`).
+            guard let children = FileSystem.entries(of: path) else { continue }
 
             for child in children {
-                let name = child.lastPathComponent
-                if wanted.contains(name), FileSystem.isDirectory(child) {
+                let name = child.name
+                if wanted.contains(name), child.isDirectory {
                     let risk: RiskLevel = ProjectJunkNames.reviewed.contains(name) ? .review : .safe
+                    let childPath = FileSystem.joined(name, in: path)
                     found.append(
                         JunkItem(
                             ruleID: "project.\(name)",
                             title: name,
-                            detail: relativeProjectPath(rootURL: rootURL, url: child),
-                            path: child.path,
+                            detail: relativeProjectPath(root: rootURL.path, path: childPath),
+                            path: childPath,
                             category: .projects,
                             risk: risk,
                             isDirectory: true
@@ -353,30 +354,28 @@ enum ScanEngine {
                 // A symlinked directory is not descended into: it is not the
                 // project's own directory, and a self-referential link would
                 // otherwise be walked once per depth level, each under a fresh
-                // spelling. On the local filesystems `contentsOfDirectory`
-                // refuses to open a symlink at all (ENOTDIR, verified), so this
-                // is explicit intent rather than a live fix — but that refusal
-                // is a filesystem behavior, not a documented guarantee, and a
-                // network mount may well follow the link.
-                guard !FileSystem.isSymbolicLink(child), FileSystem.isDirectory(child) else { continue }
+                // spelling. The bulk record reports the link's own type, so
+                // the check costs nothing here — but a network mount may well
+                // follow the link, so it stays explicit.
+                guard !child.isSymbolicLink, child.isDirectory else { continue }
                 if name.hasPrefix(".") { continue } // Skip hidden directories
                 // Deduplicated by vnode, not by path spelling: the same
                 // directory reached through a second path — a bind mount, a
-                // firmlink alias — is still one subtree, and walking it once per
-                // spelling measures the same bytes repeatedly.
-                guard let identity = FileSystem.identity(ofPath: child.path),
+                // firmlink alias — is still one subtree, and walking it once
+                // per spelling measures the same bytes repeatedly.
+                let childPath = FileSystem.joined(name, in: path)
+                guard let identity = FileSystem.identity(ofPath: childPath),
                       visited.insert(identity).inserted else { continue }
-                queue.append((child, depth + 1))
+                queue.append((childPath, depth + 1))
             }
         }
 
         return found
     }
 
-    private static func relativeProjectPath(rootURL: URL, url: URL) -> String {
-        let root = rootURL.path
-        guard url.path.hasPrefix(root) else { return url.path }
-        var relative = String(url.path.dropFirst(root.count))
+    private static func relativeProjectPath(root: String, path: String) -> String {
+        guard path.hasPrefix(root) else { return path }
+        var relative = String(path.dropFirst(root.count))
         if relative.hasPrefix("/") { relative.removeFirst() }
         return L10n.fmt("projects.relativePath", relative)
     }

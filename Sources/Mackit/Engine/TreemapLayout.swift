@@ -91,10 +91,19 @@ enum TreemapLayout {
         guard size.width > 0, size.height > 0, total > 0 else { return .empty }
 
         // Shares rather than raw areas: the comparison stays exact for any
-        // container size, and rounding never decides membership.
+        // container size, and rounding never decides membership. Head and
+        // tail are split in one pass over the measured items — two filters
+        // walked the list twice each.
         let floorShare = Double(minTileArea) / Double(size.width * size.height)
-        let head = measured.filter { Double($0.size) / Double(total) >= floorShare }
-        let tail = measured.filter { Double($0.size) / Double(total) < floorShare }
+        var head: [(id: String, size: Int64)] = []
+        var tail: [(id: String, size: Int64)] = []
+        for item in measured {
+            if Double(item.size) / Double(total) >= floorShare {
+                head.append(item)
+            } else {
+                tail.append(item)
+            }
+        }
         guard tail.count >= 2 else {
             return Map(rects: squarify(items: measured, in: size), overflow: nil, totalSize: total)
         }
@@ -129,9 +138,17 @@ enum TreemapLayout {
         var rects: [String: CGRect] = [:]
         guard size.width > 0, size.height > 0, !items.isEmpty else { return rects }
 
-        let sorted = items
-            .filter { $0.size > 0 }
-            .sorted { $0.size > $1.size }
+        var sorted = items.filter { $0.size > 0 }
+        // Children normally arrive largest-first from the model, so the
+        // re-sort is usually a no-op — verifying that is O(n) where sorting
+        // is O(n log n), and this layout runs on every geometry change of
+        // the selected folder. The check is strict: with equal sizes a
+        // re-sort may order the ties differently, and the input order is
+        // what the caller already saw.
+        let isLargestFirst = zip(sorted, sorted.dropFirst()).allSatisfy { $0.size > $1.size }
+        if !isLargestFirst {
+            sorted.sort { $0.size > $1.size }
+        }
         let total = sorted.reduce(Int64(0)) { $0 + $1.size }
         guard total > 0 else { return rects }
 
@@ -156,8 +173,11 @@ enum TreemapLayout {
             while index + rowCount < sorted.count {
                 let candidateSum = rowSum + sorted[index + rowCount].size
                 let candidateThickness = Double(candidateSum) / Double(total) * fullArea / side
+                // A slice view, not a mapped copy: the row is grown one
+                // candidate at a time, and materializing the sizes for every
+                // candidate allocated an array per step.
                 let worst = worstAspect(
-                    values: sorted[index...(index + rowCount)].map(\.size),
+                    values: sorted[index...(index + rowCount)],
                     sum: candidateSum,
                     side: side,
                     thickness: candidateThickness
@@ -203,9 +223,9 @@ enum TreemapLayout {
 
     /// Worst aspect ratio among a row's tiles: every tile is `side` long in
     /// one dimension and `thickness` in the other, scaled by its share of the
-    /// row.
+    /// row. `values` is the row's slice of the size-descending items.
     private static func worstAspect(
-        values: [Int64],
+        values: ArraySlice<(id: String, size: Int64)>,
         sum: Int64,
         side: CGFloat,
         thickness: CGFloat
@@ -213,7 +233,7 @@ enum TreemapLayout {
         guard thickness > 0, sum > 0 else { return .greatestFiniteMagnitude }
         var worst = 0.0
         for value in values {
-            let length = Double(value) / Double(sum) * side
+            let length = Double(value.size) / Double(sum) * side
             let aspect = max(length / thickness, thickness / length)
             worst = max(worst, aspect)
         }

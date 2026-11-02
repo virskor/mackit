@@ -242,7 +242,7 @@ struct StatsOverlayContentView: View {
             // `AppViewModel.statsOverlayVisible`), so no emptiness check is done here.
             ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
                 if index > 0 { separator }
-                metric(value: entry.value, label: entry.label)
+                metric(value: entry.value, label: entry.label, valueColor: entry.valueColor)
             }
         }
         .padding(.horizontal, 14)
@@ -264,16 +264,20 @@ struct StatsOverlayContentView: View {
 
     /// The current values and short labels of the three monitor items, in fixed
     /// order, filtered by the switches.
-    private var entries: [(value: String, label: String)] {
-        var result: [(value: String, label: String)] = []
+    private var entries: [(value: String, label: String, valueColor: Color)] {
+        var result: [(value: String, label: String, valueColor: Color)] = []
         if vm.showMenuBarCPU {
-            result.append((cpuValue, L10n.tr("menubar.cpu")))
+            result.append((cpuValue, L10n.tr("menubar.cpu"), .primary))
         }
         if vm.showMenuBarMemory {
-            result.append((memoryValue, L10n.tr("menubar.memory")))
+            result.append((memoryValue, L10n.tr("menubar.memory"), .primary))
         }
         if vm.showMenuBarTemperature {
-            result.append((thermalValue, L10n.tr("menubar.temperature")))
+            result.append((
+                vm.stats.temperatureText,
+                L10n.tr("menubar.temperature"),
+                vm.stats.temperatureIsHot ? .orange : .primary
+            ))
         }
         return result
     }
@@ -287,18 +291,15 @@ struct StatsOverlayContentView: View {
         return Formatters.percent(vm.stats.memoryUsedFraction)
     }
 
-    private var thermalValue: String {
-        L10n.tr(vm.stats.thermalStateKey)
-    }
-
     /// One "value + short label" group. The value uses monospaced digits: the
     /// width doesn't change when it jumps, so the dividers on both sides don't
     /// shake along.
-    private func metric(value: String, label: String) -> some View {
+    private func metric(value: String, label: String, valueColor: Color = .primary) -> some View {
         VStack(spacing: 2) {
             Text(verbatim: value)
                 .font(.system(size: 20, weight: .semibold))
                 .monospacedDigit()
+                .foregroundStyle(valueColor)
             Text(verbatim: label)
                 .font(.system(size: 9, weight: .medium))
                 .foregroundStyle(.white.opacity(0.6))

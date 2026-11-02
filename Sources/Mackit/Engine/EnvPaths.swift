@@ -96,6 +96,17 @@ enum EnvPaths {
         "NIMBLE_DIR": "~/.nimble",
     ]
 
+    /// The process environment, read once at first use.
+    ///
+    /// Swift evaluates default arguments on every call, so a
+    /// `= ProcessInfo.processInfo.environment` default rebuilt a fresh
+    /// 30–100-pair dictionary per invocation — and `FileSystem.expand`
+    /// funnels every rule path, every glob pattern and (via
+    /// `FileSystem.url`) every directory a traversal opens through it. On a
+    /// 1.7 M-directory walk that is seconds of CPU spent copying
+    /// dictionaries on the critical path of every scan worker.
+    private static let processEnvironment = ProcessInfo.processInfo.environment
+
     /// Substitute `${VAR}` references and expand `~`. A variable resolves
     /// from `environment` first, then from `defaults`. Environment values
     /// are locations, not expressions: they are spliced in as written, and
@@ -107,7 +118,7 @@ enum EnvPaths {
     /// deep, and a value that resolves to itself stops the loop.
     static func resolve(
         _ path: String,
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = Self.processEnvironment
     ) -> String {
         var resolved = path
         if resolved.contains("${") {

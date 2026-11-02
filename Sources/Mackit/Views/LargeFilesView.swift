@@ -538,7 +538,7 @@ struct LargeFilesView: View {
                     .lineLimit(1)
                     .frame(width: 76, alignment: .trailing)
 
-                Text(verbatim: Formatters.bytes(file.size))
+                Text(verbatim: file.sizeText)
                     .font(.system(size: 11, weight: .medium))
                     .monospacedDigit()
                     .frame(width: 76, alignment: .trailing)

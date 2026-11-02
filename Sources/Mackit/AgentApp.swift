@@ -111,13 +111,14 @@ private struct MenuBarLabel: View {
         }
         if vm.showMenuBarTemperature {
             result.append(.init(
-                value: L10n.tr(stats.thermalStateKey),
+                value: stats.temperatureText,
                 label: L10n.tr("menubar.temperature"),
-                // The width of the thermal-state word varies with the
-                // state (Normal ↔ Critical), so space is reserved for the
-                // widest of the four values; the menu bar item does not
-                // jitter when switching
-                alternativeValues: thermalStateTexts
+                // Both forms the temperature value can take: whole degrees
+                // up to three digits, or a thermal-state word on a machine
+                // whose sensor table answers nothing. Reserving the widest
+                // keeps the menu bar item from jittering as the value
+                // switches form.
+                alternativeValues: temperatureTexts
             ))
         }
         return result
@@ -132,11 +133,15 @@ private struct MenuBarLabel: View {
     /// narrow the group, dragging the groups after it sideways.
     private let percentWidthBasis = [Formatters.percent(1)]
 
-    /// The four thermal-state values, used to fix the width of the
-    /// temperature group.
-    private var thermalStateTexts: [String] {
+    /// Every rendering the temperature value can take: whole degrees up to
+    /// 110 (the SMC filter's bound — the widest numeric case), plus the four
+    /// thermal-state words shown when no numeric reading is available. The
+    /// widest of them fixes the group's width, so the menu bar item does not
+    /// jitter as the value switches form.
+    private var temperatureTexts: [String] {
         ["nominal", "fair", "serious", "critical"]
             .map { L10n.tr("menubar.thermal.\($0)") }
+            + [Formatters.degrees(110)]
     }
 
     /// Menu bar height: the distance between the top of the main screen's

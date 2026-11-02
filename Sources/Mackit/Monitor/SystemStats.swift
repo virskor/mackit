@@ -16,11 +16,16 @@ struct SystemStats: Equatable, Sendable {
     var memoryFree: Int64 = 0
     /// System thermal state, `ProcessInfo.ThermalState.rawValue`.
     ///
-    /// macOS has no public API for numeric temperature values (the private
-    /// path that reads the SMC is rejected by the kernel on macOS 27), so the
-    /// thermal state is the only public system temperature signal. An Int is
-    /// used rather than the enum itself so this struct fits a `Sendable` snapshot.
+    /// The only *public* temperature signal, and the fallback when no
+    /// numeric reading is available. An Int is used rather than the enum
+    /// itself so this struct fits a `Sendable` snapshot.
     var thermalState: Int = 0
+    /// CPU temperature in °C, or nil when the SMC read answered with
+    /// nothing usable. Read through the private SMC path (see
+    /// `SMCTemperature`), which answers on macOS 14–27 — verified on a
+    /// macOS 27 Apple Silicon machine, where the M2's sensor table answers
+    /// with `flt `-typed values under load.
+    var cpuTemperature: Double? = nil
 
     /// Used memory fraction, 0...1.
     var memoryUsedFraction: Double {
@@ -37,15 +42,41 @@ struct SystemStats: Equatable, Sendable {
         default: return "menubar.thermal.nominal"
         }
     }
+
+    /// The temperature at or above which the display warns — Lemon-cleaner's
+    /// settings-pane threshold.
+    static let hotTemperature = 70.0
+
+    /// The temperature value as the monitoring surfaces show it: whole
+    /// degrees when the SMC answered, the thermal-state word when it did not.
+    ///
+    /// The fallback keeps the public signal rather than a placeholder: a
+    /// machine whose sensor table answers nothing (or a future OS that
+    /// closes the private path) still gets an honest temperature row. Lemon
+    /// shows "--°C" for a sensor that answers with garbage; this shows the
+    /// thermal state, which is a real signal.
+    var temperatureText: String {
+        if let cpuTemperature { return Formatters.degrees(cpuTemperature) }
+        return L10n.tr(thermalStateKey)
+    }
+
+    /// Whether the numeric reading sits at or above `hotTemperature`. False
+    /// when there is no reading: a thermal state is not a temperature and
+    /// must not be colored as one.
+    var temperatureIsHot: Bool {
+        guard let cpuTemperature else { return false }
+        return cpuTemperature >= Self.hotTemperature
+    }
 }
 
 /// A stateful sampler: CPU usage requires the tick difference between two
 /// adjacent samples, so this is not a stateless function.
 ///
 /// Sampling goes entirely through public interfaces (mach host info and
-/// vm_statistics). Tray monitoring is a resident feature; the cost of private
-/// interfaces breaking with a system version is the whole monitoring section
-/// disappearing, which is not worth gambling on.
+/// vm_statistics), with one exception: `SMCTemperature.readCPU()`, the
+/// private SMC read behind the numeric temperature. It is additive — a
+/// failure is a nil, and the monitoring section keeps showing the public
+/// thermal state it always showed.
 struct SystemStatsSampler: Sendable {
     /// CPU ticks of the previous sample; the first sample has no comparable interval, so usage is nil.
     private var lastCPUTicks: CPUTicks?
@@ -67,7 +98,8 @@ struct SystemStatsSampler: Sendable {
             memoryUsed: memory?.used ?? 0,
             memoryTotal: memory?.total ?? 0,
             memoryFree: memory?.free ?? 0,
-            thermalState: ProcessInfo.processInfo.thermalState.rawValue
+            thermalState: ProcessInfo.processInfo.thermalState.rawValue,
+            cpuTemperature: SMCTemperature.readCPU()
         )
     }
 

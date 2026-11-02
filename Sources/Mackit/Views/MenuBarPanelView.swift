@@ -161,8 +161,9 @@ struct MenuBarPanelView: View {
             if vm.showMenuBarTemperature {
                 bigStat(
                     symbol: "thermometer.medium",
-                    value: L10n.tr(stats.thermalStateKey),
-                    label: L10n.tr("panel.temperature")
+                    value: stats.temperatureText,
+                    label: L10n.tr("panel.temperature"),
+                    valueColor: stats.temperatureIsHot ? .orange : .primary
                 )
             }
         }
@@ -180,18 +181,25 @@ struct MenuBarPanelView: View {
     /// digits plus the sign is the longest case there is.
     private let widestPercent = Formatters.percent(1)
 
-    private func bigStat(symbol: String, value: String, label: String, widestValue: String? = nil) -> some View {
+    private func bigStat(
+        symbol: String,
+        value: String,
+        label: String,
+        widestValue: String? = nil,
+        valueColor: Color = .primary
+    ) -> some View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
                 Image(systemName: symbol)
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                 if let widestValue {
-                    fixedWidthValue(value, widest: widestValue)
+                    fixedWidthValue(value, widest: widestValue, color: valueColor)
                 } else {
                     Text(verbatim: value)
                         .font(bigValueFont)
                         .monospacedDigit()
+                        .foregroundStyle(valueColor)
                 }
             }
             Text(verbatim: label)
@@ -211,7 +219,7 @@ struct MenuBarPanelView: View {
     /// accessibility, so VoiceOver reads only the real value — and the real
     /// value is drawn over it at the leading edge, which keeps the digits on
     /// one grid anchored right after the icon.
-    private func fixedWidthValue(_ value: String, widest: String) -> some View {
+    private func fixedWidthValue(_ value: String, widest: String, color: Color) -> some View {
         Text(verbatim: widest)
             .font(bigValueFont)
             .monospacedDigit()
@@ -220,6 +228,7 @@ struct MenuBarPanelView: View {
                 Text(verbatim: value)
                     .font(bigValueFont)
                     .monospacedDigit()
+                    .foregroundStyle(color)
             }
     }
 

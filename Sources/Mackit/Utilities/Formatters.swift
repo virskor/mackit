@@ -41,6 +41,16 @@ enum Formatters {
         return bytes(value)
     }
 
+    /// CPU temperature in whole degrees Celsius, e.g. "45°C".
+    ///
+    /// Lemon-cleaner's status-bar format: the reading is truncated to whole
+    /// degrees and the degree sign and unit ride in the same string. A
+    /// fractional reading would change width with every sample — the menu bar
+    /// item would jitter — and no user acts on 0.1°C.
+    static func degrees(_ celsius: Double) -> String {
+        L10n.fmt("format.degrees", Int(celsius))
+    }
+
     /// Compact size with no space and fixed decimals, e.g. "206.53GB", "740.35MB".
     ///
     /// The disk analysis page's tiles and title follow the mockup's tighter

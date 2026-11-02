@@ -17,11 +17,12 @@ import SwiftUI
 /// Every value is drawn with monospaced digits, and each group reserves the
 /// widest width it can ever need — the caller lists a value's possible
 /// renderings in `Metric.alternativeValues`. Percentages are clamped to 0–100
-/// with no decimals, so their widest rendering is "100%"; temperature is given
-/// as a thermal state word (macOS has no public temperature-value API), whose
-/// four possible values differ in width by a factor of two. A value whose
-/// length changes with each poll (7% → 47%) would otherwise widen and narrow
-/// the whole menu bar item, which reads as jitter.
+/// with no decimals, so their widest rendering is "100%"; the temperature is
+/// whole degrees when the SMC answers and a thermal-state word on a machine
+/// whose sensor table answers nothing, so its possible renderings span both
+/// forms and differ in width by a factor of two. A value whose length
+/// changes with each poll (7% → 47%) would otherwise widen and narrow the
+/// whole menu bar item, which reads as jitter.
 @MainActor
 enum MenuBarStatsImage {
     /// One group of "value + short label".

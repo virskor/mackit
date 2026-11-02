@@ -12,6 +12,21 @@ struct LargeFile: Identifiable, Sendable, Hashable {
     /// The directory holding the file, spelled as the traversal spelled it.
     let parentPath: String
 
+    /// Display text of the size, computed once here rather than per row per
+    /// frame — the same trade `JunkItem` makes, for the same reason: a
+    /// whole-disk walk lists hundreds of files, and every scroll frame used
+    /// to re-run `ByteCountFormatStyle` for each visible one.
+    private(set) var sizeText: String
+
+    init(path: String, name: String, size: Int64, modified: Date?, parentPath: String) {
+        self.path = path
+        self.name = name
+        self.size = size
+        self.modified = modified
+        self.parentPath = parentPath
+        self.sizeText = Formatters.bytes(size)
+    }
+
     var id: String { path }
 }
 

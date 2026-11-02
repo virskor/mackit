@@ -28,6 +28,11 @@ final class AppViewModel {
 
     /// All discovered items, appended in discovery order.
     private(set) var items: [JunkItem] = []
+    /// Dedup index over `items`' paths, maintained on every append so a
+    /// merge batch does not rescan the whole list (see `ListedPathIndex`).
+    /// Excluded from Observation: it is derived state, and writing it must
+    /// never trigger a view update.
+    @ObservationIgnored private var listedIndex = ListedPathIndex()
     /// Scan progress description.
     var progressLabel: String = ""
     var progressFraction: Double = 0
@@ -1302,6 +1307,7 @@ final class AppViewModel {
         cleanTask?.cancel()
 
         items = []
+        listedIndex = ListedPathIndex()
         selectionState.reset()
         resetGeneralRowChecks()
         cleanOutcomes = []
@@ -1405,6 +1411,7 @@ final class AppViewModel {
 
         case .discovered(let batch):
             items.append(contentsOf: batch)
+            listedIndex.insert(contentsOf: batch)
             applyDefaultSelection(batch)
             itemsDidChange()
 
@@ -1702,6 +1709,10 @@ final class AppViewModel {
         guard !ids.isEmpty else { return }
         selectionState.applyCleanResult(ids, items: items)
         items.removeAll { ids.contains($0.id) }
+        // Rebuilt rather than updated: a set cannot drop the id, path and
+        // ancestors of one item without knowing every other item's, and a
+        // clean is far rarer than a merge batch.
+        listedIndex = ListedPathIndex(items: items)
         itemsDidChange()
         selectionDidChange()
     }
@@ -1709,6 +1720,7 @@ final class AppViewModel {
     private func removeItem(id: String) {
         selectionState.discard([id])
         items.removeAll { $0.id == id }
+        listedIndex = ListedPathIndex(items: items)
         itemsDidChange()
         selectionDidChange()
         publishMenuSnapshot(force: true)
@@ -2180,40 +2192,38 @@ final class AppViewModel {
     /// scanners). Visible within the module so tests can drive it directly.
     func mergeDiscovered(_ fresh: [JunkItem]) {
         guard !fresh.isEmpty else { return }
-        let existing = Set(items.map(\.id))
         // Path-level dedup on top of the id dedup: two rules can target the
         // same path — an app's log directory is both an app-junk entry of
         // the app junk scan and a child of the user-logs rule, and the same
         // bytes must never be counted (or shown) twice. First one wins; the
         // static rules stream in before the app junk scan, so the generic
         // rule owns the path and the junk scan simply doesn't re-list it.
-        var seenPaths = Set(items.map(\.path))
+        //
         // The same bytes are also double-counted when one entry *contains*
         // another: Homebrew's cache directory is a single app-junk entry
         // while the brew rule lists each download inside it. The coarser
         // entry is the one that loses — the finer entries stay, so nothing
         // disappears from the list that was not already covered.
-        let listedPaths = items.map(\.path)
+        //
+        // All three checks read `listedIndex`, which covers the items listed
+        // *before* this batch and is extended only once the batch is
+        // accepted — the same snapshot the previous per-merge rebuilds
+        // produced, without rescanning the whole list per batch.
+        var batchPaths: Set<String> = []
         var unique: [JunkItem] = []
-        for item in fresh where !existing.contains(item.id) && !item.path.isEmpty {
-            guard seenPaths.insert(item.path).inserted else { continue }
-            guard !containsListed(item.path, in: listedPaths) else { continue }
+        for item in fresh where !listedIndex.containsID(item.id) && !item.path.isEmpty {
+            guard !listedIndex.containsPath(item.path),
+                  batchPaths.insert(item.path).inserted else { continue }
+            guard !listedIndex.containsPathInside(item.path) else { continue }
             unique.append(item)
         }
         guard !unique.isEmpty else { return }
 
         items.append(contentsOf: unique)
+        listedIndex.insert(contentsOf: unique)
         applyDefaultSelection(unique)
         itemsDidChange()
         publishMenuSnapshot()
-    }
-
-    /// Whether any already-listed entry sits inside `path` — i.e. whether
-    /// cleaning `path` would also delete entries the list already shows
-    /// separately.
-    private func containsListed(_ path: String, in listedPaths: [String]) -> Bool {
-        let prefix = path + "/"
-        return listedPaths.contains { $0.hasPrefix(prefix) }
     }
 
     // MARK: - App Icons

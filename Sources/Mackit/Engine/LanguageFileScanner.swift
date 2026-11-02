@@ -100,9 +100,18 @@ enum LanguageFileScanner {
     /// at once — the failure mode where a Japanese-locale user "cleaned" and
     /// found apps falling back to English.
     static func isSystemLanguage(_ language: String, preferredLanguages: [String]) -> Bool {
+        isSystemLanguage(language, preferredSubtags: Set(preferredLanguages.map { primarySubtag($0) }))
+    }
+
+    /// The same decision as `isSystemLanguage(_:preferredLanguages:)`, against
+    /// a pre-resolved set of primary subtags. The keep check runs once per
+    /// localization of every bundle, and re-deriving each preferred
+    /// language's subtag on every one of those calls was the bulk of the
+    /// work — the set is built once and reused.
+    private static func isSystemLanguage(_ language: String, preferredSubtags: Set<String>) -> Bool {
         let subtag = primarySubtag(language)
         guard !subtag.isEmpty else { return false }
-        return preferredLanguages.contains { primarySubtag($0) == subtag }
+        return preferredSubtags.contains(subtag)
     }
 
     /// Whether a localization is the bundle's declared development region.
@@ -139,6 +148,10 @@ enum LanguageFileScanner {
         var found: [JunkItem] = []
         var seenPaths = Set<String>()
 
+        // The system's preferred list is the same for every bundle, so its
+        // subtags are resolved once instead of per localization per bundle.
+        let preferredSubtags = Set(preferredLanguages.map { primarySubtag($0) })
+
         for root in roots {
             for app in FileSystem.children(of: root) {
                 guard app.pathExtension.lowercased() == "app" else { continue }
@@ -157,20 +170,29 @@ enum LanguageFileScanner {
                 // The languages this app can be forced to load, on top of the
                 // ones the system itself can select.
                 let ownLanguages = appLanguages(bundleID)
+                let ownSubtags = Set(ownLanguages.map { primarySubtag($0) })
                 func isKept(_ lproj: URL) -> Bool {
                     let language = lproj.deletingPathExtension().lastPathComponent
                     return isWhitelisted(language)
-                        || isSystemLanguage(language, preferredLanguages: preferredLanguages)
-                        || isSystemLanguage(language, preferredLanguages: ownLanguages)
+                        || isSystemLanguage(language, preferredSubtags: preferredSubtags)
+                        || isSystemLanguage(language, preferredSubtags: ownSubtags)
                         || isDevelopmentRegion(language, developmentRegion: developmentRegion)
                 }
 
-                let kept = localizations.filter(isKept)
+                // One pass instead of a `filter` plus a `where !isKept`
+                // re-check: each localization was classified twice, and the
+                // keep decision is the expensive part (four string-heavy
+                // checks per localization).
+                var keptCount = 0
+                var removable: [URL] = []
+                for lproj in localizations {
+                    if isKept(lproj) { keptCount += 1 } else { removable.append(lproj) }
+                }
                 // Every localization is removable: the bundle would be left
                 // with nothing to fall back to, so keep all of it.
-                guard !kept.isEmpty else { continue }
+                guard keptCount > 0 else { continue }
 
-                for lproj in localizations where !isKept(lproj) {
+                for lproj in removable {
                     guard seenPaths.insert(lproj.path).inserted else { continue }
                     found.append(
                         JunkItem(

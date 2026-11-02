@@ -50,7 +50,8 @@ enum AppScanner {
         guard !apps.isEmpty else { return [] }
         // The Application Support index is built by one shallow traversal shared by all apps
         let index = supportIndex(home: home)
-        return apps.flatMap { items(for: $0, home: home, index: index) }
+        let shared = sharedLibraryIndex(home: home)
+        return apps.flatMap { items(for: $0, home: home, index: index, shared: shared) }
     }
 
     /// Discover apps and generate only their regenerable-junk entries — what
@@ -65,8 +66,10 @@ enum AppScanner {
         // No Application Support index: the only residue kind it can add is
         // application support, which is app data the junk scan filters out
         // anyway — building the index here would charge every cleanup scan a
-        // shallow ~/Library/Application Support traversal for nothing.
-        return apps.flatMap { items(for: $0, home: home, index: nil) }
+        // shallow ~/Library/Application Support traversal for nothing. The
+        // shared report/preference listings are cheap and every app probes them.
+        let shared = sharedLibraryIndex(home: home)
+        return apps.flatMap { items(for: $0, home: home, index: nil, shared: shared) }
             .filter { $0.category == .appJunk }
     }
 
@@ -77,8 +80,13 @@ enum AppScanner {
     /// subdirectories are then not matched. Callers that want them build the
     /// index once and pass it in (`scanApps`); building it here would charge
     /// every caller for a traversal only some of them use.
-    static func items(for app: InstalledApp, home: String, index: SupportIndex? = nil) -> [JunkItem] {
-        let residues = residuePaths(for: app, home: home, index: index)
+    static func items(
+        for app: InstalledApp,
+        home: String,
+        index: SupportIndex? = nil,
+        shared: SharedLibraryIndex? = nil
+    ) -> [JunkItem] {
+        let residues = residuePaths(for: app, home: home, index: index, shared: shared)
         let junk = residues
             .filter { $0.kind.isRegenerableJunk }
             .map { residueItem(for: $0, app: app, ruleID: junkRuleID, category: .appJunk, holdsLiveAppData: false) }
@@ -216,11 +224,18 @@ enum AppScanner {
     /// vendor subdirectories are not matched at all — callers that want them
     /// build the index once and pass it in. Only paths that actually exist
     /// are returned; missing locations produce no entries.
+    ///
+    /// `shared` carries the `~/Library` listings every app matches against
+    /// (see `SharedLibraryIndex`); the composition entry points build it once
+    /// per scan. A nil one is built here, so a single-app caller pays the
+    /// three listings exactly as it did when they were enumerated inline.
     static func residuePaths(
         for app: InstalledApp,
         home: String,
-        index: SupportIndex? = nil
+        index: SupportIndex? = nil,
+        shared: SharedLibraryIndex? = nil
     ) -> [ResidueEntry] {
+        let shared = shared ?? sharedLibraryIndex(home: home)
         var found: [ResidueEntry] = []
         var seen = Set<String>()
 
@@ -285,8 +300,7 @@ enum AppScanner {
 
         // ByHost preferences: ~/Library/Preferences/ByHost/<bundleID>.<UUID>.plist
         if let id {
-            let byHost = (home as NSString).appendingPathComponent("Library/Preferences/ByHost")
-            for child in FileSystem.children(of: byHost) where child.lastPathComponent.hasPrefix("\(id).") {
+            for child in shared.byHost where child.name.hasPrefix("\(id).") {
                 addAbsolute(child.path, .preferences)
             }
         }
@@ -305,12 +319,10 @@ enum AppScanner {
         // Skipped entirely without a usable name: two directory listings are
         // not worth running to match nothing.
         if name != nil {
-            let crashReporter = (home as NSString).appendingPathComponent("Library/Application Support/CrashReporter")
-            for child in FileSystem.children(of: crashReporter) where isReportOf(child.lastPathComponent) {
+            for child in shared.crashReports where isReportOf(child.name) {
                 addAbsolute(child.path, .crashReports)
             }
-            let diagnosticReports = (home as NSString).appendingPathComponent("Library/Logs/DiagnosticReports")
-            for child in FileSystem.children(of: diagnosticReports) where isReportOf(child.lastPathComponent) {
+            for child in shared.diagnosticReports where isReportOf(child.name) {
                 addAbsolute(child.path, .diagnosticReports)
             }
         }
@@ -321,6 +333,42 @@ enum AppScanner {
         }
 
         return found
+    }
+
+    // MARK: - Shared ~/Library listings
+
+    /// One child of a shared `~/Library` directory, kept by name: residue
+    /// probing matches these listings by file name only.
+    struct LibraryChild: Sendable {
+        let name: String
+        let path: String
+    }
+
+    /// The `~/Library` directories whose children every app's residue probing
+    /// matches against: ByHost preferences and the two report directories.
+    ///
+    /// Each listing is shared by all apps, yet was enumerated once per app —
+    /// three directory listings per app, hundreds of apps per scan. Built once
+    /// per scan by the composition entry points and threaded through
+    /// `residuePaths(for:home:index:shared:)`.
+    struct SharedLibraryIndex: Sendable {
+        let byHost: [LibraryChild]
+        let crashReports: [LibraryChild]
+        let diagnosticReports: [LibraryChild]
+    }
+
+    static func sharedLibraryIndex(home: String) -> SharedLibraryIndex {
+        func children(_ relative: String) -> [LibraryChild] {
+            let root = (home as NSString).appendingPathComponent(relative)
+            return FileSystem.entries(of: root)?.map {
+                LibraryChild(name: $0.name, path: $0.url.path)
+            } ?? []
+        }
+        return SharedLibraryIndex(
+            byHost: children("Library/Preferences/ByHost"),
+            crashReports: children("Library/Application Support/CrashReporter"),
+            diagnosticReports: children("Library/Logs/DiagnosticReports")
+        )
     }
 
     // MARK: - Application Support index
@@ -363,14 +411,21 @@ enum AppScanner {
     static func supportIndex(home: String) -> SupportIndex {
         var entries: [(components: [String], path: String)] = []
         let root = (home as NSString).appendingPathComponent("Library/Application Support")
-        // Breadth-first: the first level is each app/vendor directory, the second level is product directories under vendors
-        var frontier = FileSystem.children(of: root).map { ($0, 1) }
-        while !frontier.isEmpty {
-            let (url, depth) = frontier.removeFirst()
-            guard FileSystem.isDirectory(url) else { continue }
-            entries.append((relativeComponents(of: url), url.path))
-            if depth < 2 {
-                frontier.append(contentsOf: FileSystem.children(of: url.path).map { ($0, depth + 1) })
+        // Breadth-first: the first level is each app/vendor directory, the second level is product directories under vendors.
+        // A cursor rather than removeFirst() keeps the walk linear (see scanProjectJunk), and one bulk
+        // listing per directory carries the entry types, so no per-entry stat is needed.
+        var frontier: [(path: String, depth: Int)] = [(root, 1)]
+        var head = 0
+        while head < frontier.count {
+            let (path, depth) = frontier[head]
+            head += 1
+            guard let children = FileSystem.entries(of: path) else { continue }
+            for child in children where child.isDirectory {
+                let childPath = FileSystem.joined(child.name, in: path)
+                entries.append((relativeComponents(of: childPath), childPath))
+                if depth < 2 {
+                    frontier.append((childPath, depth + 1))
+                }
             }
         }
         return SupportIndex(entries: entries)
@@ -379,8 +434,8 @@ enum AppScanner {
     /// The index stores only path components relative to
     /// `Application Support` (lowercased): matching is done by components, and
     /// the prefix of an absolute path is meaningless for matching.
-    private static func relativeComponents(of url: URL) -> [String] {
-        var components = url.pathComponents.filter { $0 != "/" }
+    private static func relativeComponents(of path: String) -> [String] {
+        var components = path.split(separator: "/").map(String.init)
         // Drop the "Library/Application Support" prefix and everything before it, keeping only the relative part
         if let index = components.lastIndex(where: { $0 == "Application Support" }) {
             components = Array(components.dropFirst(index + 1))

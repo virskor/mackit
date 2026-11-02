@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.16] - 2026-11-02
+
+### Added
+
+- **CPU temperature, in degrees, on the menu bar, the panel and the desktop stats** — read through the SMC, shown in whole degrees and turned orange from 70°C up, with the thermal-state word kept as the fallback when no sensor answers.
+
+### Changed
+
+- **Scans read each directory once** — the project-junk walk, Downloads scan, app-residue probe and Application Support index now take one bulk listing per directory instead of a stat per entry, and the shared `~/Library` listings, language subtags and merge dedup index are each computed once per scan instead of per app, per localization or per merge batch.
+- **Result pages stop re-doing per-frame work** — the general cleanup page's hundreds of sub-rows render lazily, large-file rows cache their size text, and the treemap skips its re-sort when children already arrive largest-first.
+
 ## [1.0.15] - 2026-11-01
 
 ### Changed

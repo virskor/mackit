@@ -30,9 +30,11 @@ enum DownloadsScanner {
         let downloads = (home as NSString).appendingPathComponent("Downloads")
         var found: [JunkItem] = []
 
-        for child in FileSystem.children(of: downloads) {
-            guard !FileSystem.isDirectory(child) else { continue }
-            let ext = child.pathExtension.lowercased()
+        // The bulk listing already types every entry: `children(of:)` +
+        // `isDirectory` threw that away and re-stat'ed each child.
+        for entry in FileSystem.entries(of: downloads) ?? [] {
+            guard !entry.isDirectory else { continue }
+            let ext = URL(fileURLWithPath: entry.name).pathExtension.lowercased()
             let ruleID: String
             if installerExtensions.contains(ext) {
                 ruleID = installerRuleID
@@ -41,12 +43,13 @@ enum DownloadsScanner {
             } else {
                 continue
             }
+            let path = FileSystem.joined(entry.name, in: downloads)
             found.append(
                 JunkItem(
                     ruleID: ruleID,
-                    title: child.lastPathComponent,
+                    title: entry.name,
                     detail: L10n.tr(ruleID == installerRuleID ? "downloads.installer.detail" : "downloads.archive.detail"),
-                    path: child.path,
+                    path: path,
                     category: .downloads,
                     risk: .caution,
                     isDirectory: false

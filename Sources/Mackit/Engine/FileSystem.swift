@@ -41,8 +41,15 @@ enum FileSystem {
     /// Expand `~` and the `${VAR}` toolchain locations `EnvPaths` knows.
     /// Every path entry point — rule targets, glob patterns, CLI size
     /// hints — funnels through here, so callers cannot miss the expansion.
+    ///
+    /// The fast path matters: a traversal opens a directory through
+    /// `FileSystem.url`, and every such path is already absolute with
+    /// neither a tilde nor a `${VAR}` token, so resolution is the identity.
+    /// Sending those straight back keeps `EnvPaths.resolve` — and the
+    /// `expandingTildeInPath` NSString bridge — off the per-directory path.
     static func expand(_ path: String) -> String {
-        EnvPaths.resolve(path)
+        guard path.contains("~") || path.contains("${") else { return path }
+        return EnvPaths.resolve(path)
     }
 
     /// Canonicalize in the realpath sense: resolve all symlinks in the path.

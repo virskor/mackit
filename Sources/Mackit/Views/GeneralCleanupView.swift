@@ -35,8 +35,13 @@ struct GeneralCleanupView: View {
             if vm.phase == .idle && vm.items.isEmpty {
                 startPrompt
             } else {
+                // Lazy: the app-junk row expands to one sub-row per installed
+                // app and the language row one per language, so the row tree
+                // runs into the hundreds — and every scan event re-evaluates
+                // this body (same pattern as the large-file and Homebrew
+                // lists).
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(vm.generalCleanGroups) { group in
                             groupSection(group)
                         }
