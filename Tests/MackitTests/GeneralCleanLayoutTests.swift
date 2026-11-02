@@ -13,6 +13,7 @@ struct GeneralCleanLayoutTests {
         DownloadsScanner.installerRuleID,
         DownloadsScanner.archiveRuleID,
         AppScanner.junkRuleID,
+        LeftoverCacheScanner.ruleID,
     ]
 
     @Test func everyGeneralRuleAppearsInExactlyOneRow() {
@@ -78,7 +79,10 @@ struct GeneralCleanLayoutTests {
         // — not a row buried inside the system group
         #expect(GeneralCleanGroup.appJunk.categories == [.appJunk])
         #expect(!GeneralCleanGroup.system.categories.contains(.appJunk))
-        #expect(GeneralCleanLayout.rows(of: .appJunk).map(\.id) == ["app.junk"])
+        // Two rows: the installed apps' regenerable junk, and the leftovers
+        // of removed apps (opt-in, because no installed app can re-attribute
+        // them).
+        #expect(GeneralCleanLayout.rows(of: .appJunk).map(\.id) == ["app.junk", "app.leftover"])
         #expect(GeneralCleanGroup.allCases.contains(.appJunk))
         // Every group carries at least one row, so no empty section renders
         for group in GeneralCleanGroup.allCases {
@@ -122,14 +126,17 @@ struct GeneralCleanLayoutTests {
     }
 
     /// Every row is pre-checked by its safety level except the ones that opt
-    /// out. Unused language packs are the one such row: removing them is not
+    /// out. Unused language packs are one such row: removing them is not
     /// destructive, but it changes the interface language of every installed
-    /// app at once, so it must be the user's own click.
-    @Test func onlyTheLanguageRowOptsOutOfThePreCheck() {
+    /// app at once, so it must be the user's own click. Leftover caches are
+    /// the other: they belong to no installed app, so nothing can
+    /// re-attribute them and a default "clean everything" must not take them.
+    @Test func onlyTheLanguageAndLeftoverRowsOptOutOfThePreCheck() {
+        let optOut: Set<String> = ["language", "app.leftover"]
         for row in GeneralCleanLayout.rows {
-            if row.id == "language" {
-                #expect(!row.preChecked, "unused language files must not be swept by a default clean")
-                #expect(row.risk == .review, "…while staying a review-level row, not a dangerous one")
+            if optOut.contains(row.id) {
+                #expect(!row.preChecked, "\(row.id) must not be swept by a default clean")
+                #expect(row.risk == .review, "\(row.id) stays a review-level row, not a dangerous one")
             } else {
                 #expect(
                     row.preChecked == (row.risk <= .review),
@@ -142,6 +149,14 @@ struct GeneralCleanLayoutTests {
     /// The catch-all rules that made browser and IDE caches count twice are
     /// gone: nothing may enumerate all of ~/Library/Caches or
     /// ~/Library/Containers wholesale anymore.
+    ///
+    /// The leftover-cache scanner does enumerate those pools wholesale, and
+    /// that is not a regression: it subtracts every claim first (each rule's
+    /// literal target prefix, each installed app's bundle id, app name and
+    /// bundle-id last segment), so the entries it reports are exactly the
+    /// ones no rule and no app owns — the pool-minus-claims design. What this
+    /// test pins is that no *rule* re-introduces the double-counting a
+    /// catch-all caused.
     @Test func noCatchAllRulesRemain() {
         let ids = Set(RulesCatalog.scanRules.map(\.id))
         #expect(!ids.contains("system.user-caches"))

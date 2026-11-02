@@ -182,6 +182,13 @@ struct ItemListView: View {
             Button(L10n.tr("ctx.openInTerminal"), systemImage: "terminal") { vm.openInTerminal(single) }
                 .disabled(single.path.isEmpty)
             Button(L10n.tr("ctx.copyPath"), systemImage: "doc.on.doc") { vm.copyPath(single) }
+            // The ignore list is filled from here rather than from the
+            // settings pane: the user is looking at the very entry they want
+            // gone, and a hand-typed path could match nothing. The rule-level
+            // twin stops the whole rule from running on the next scan.
+            Button(L10n.tr("ctx.addToIgnoreList"), systemImage: "eye.slash") { vm.addIgnoredPath(single.path) }
+                .disabled(single.path.isEmpty)
+            Button(L10n.tr("ctx.ignoreRule"), systemImage: "slash.circle") { vm.addIgnoredRule(single.ruleID) }
             Divider()
             // The uninstall entry points used to live here; uninstalling an
             // app is now the app uninstall tool's own page, with its own

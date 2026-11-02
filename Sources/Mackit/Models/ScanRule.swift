@@ -48,6 +48,27 @@ struct ScanRule: Sendable, Identifiable, Hashable {
             return parent.isEmpty ? url.lastPathComponent : "\(parent)/\(url.lastPathComponent)"
         }
     }
+
+    /// The rule target's literal prefix: the whole path for `children` and
+    /// `directory` targets, and everything before the first `*` for a glob
+    /// (`~/Library/Caches/Google/Chrome*/*/Cache` → `…/Google/Chrome`).
+    ///
+    /// The leftover-cache scanner matches pool entries against every rule's
+    /// prefix to decide which bytes are already claimed, so a rule that digs
+    /// into a shared directory keeps that directory out of the leftover
+    /// pool. Empty when a glob starts with a wildcard; such a rule claims
+    /// nothing by prefix.
+    var targetLiteralPrefix: String {
+        switch target {
+        case .children(let path), .directory(let path):
+            return path
+        case .glob(let pattern):
+            guard let star = pattern.firstIndex(of: "*") else { return pattern }
+            var prefix = String(pattern[pattern.startIndex..<star])
+            while prefix.hasSuffix("/") { prefix.removeLast() }
+            return prefix
+        }
+    }
 }
 
 /// A command-line cleanup rule that invokes the tool's own cleanup command.

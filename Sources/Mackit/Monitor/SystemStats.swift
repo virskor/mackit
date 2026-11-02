@@ -43,8 +43,7 @@ struct SystemStats: Equatable, Sendable {
         }
     }
 
-    /// The temperature at or above which the display warns — Lemon-cleaner's
-    /// settings-pane threshold.
+    /// The temperature at or above which the display warns.
     static let hotTemperature = 70.0
 
     /// The temperature value as the monitoring surfaces show it: whole
@@ -52,8 +51,7 @@ struct SystemStats: Equatable, Sendable {
     ///
     /// The fallback keeps the public signal rather than a placeholder: a
     /// machine whose sensor table answers nothing (or a future OS that
-    /// closes the private path) still gets an honest temperature row. Lemon
-    /// shows "--°C" for a sensor that answers with garbage; this shows the
+    /// closes the private path) still gets an honest temperature row — the
     /// thermal state, which is a real signal.
     var temperatureText: String {
         if let cpuTemperature { return Formatters.degrees(cpuTemperature) }

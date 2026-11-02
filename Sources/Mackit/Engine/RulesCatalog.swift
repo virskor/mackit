@@ -29,6 +29,16 @@ enum RulesCatalog {
             target: .children("~/Library/Developer/Xcode/watchOS DeviceSupport"),
             risk: .review
         ),
+        // Logs collected from connected iOS devices; Xcode re-collects them
+        // on the next connect. Review, not safe: they are diagnostic data the
+        // user may still want, the same level as the device-support rule.
+        // (the path's presence was verified on a real machine.)
+        ScanRule(
+            id: "xcode.device-logs",
+            category: .xcode,
+            target: .children("~/Library/Developer/Xcode/DeviceLogs"),
+            risk: .review
+        ),
         // DocumentationCache holds the downloaded DocC archives and
         // DocumentationIndex their search index; deleting either is the
         // documented fix for broken doc search, and Xcode re-downloads and

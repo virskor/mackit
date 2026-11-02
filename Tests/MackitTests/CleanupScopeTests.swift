@@ -174,8 +174,8 @@ struct CleanupScopeTests {
     }
 
     @Test func generalRowsArePreCheckedUpToReview() {
-        // Lemon's safety model: the general module's safe and review rows
-        // arrive checked — except the rows that opt out (unused language
+        // The general module's safe and review rows arrive checked — except
+        // the rows that opt out (unused language
         // files) — and caution rows never do, independent of the developer
         // feature's auto-select setting (here "none").
         let vm = makeVM()
@@ -525,7 +525,7 @@ struct CleanupScopeTests {
     }
 
     /// Language files group per language, so a single language can be kept
-    /// while the rest is swept — the granularity Lemon's language list has.
+    /// while the rest is swept — per-language granularity.
     @Test func languageSubRowsGroupPerLanguage() {
         let vm = makeVM()
         vm.apply(.discovered([

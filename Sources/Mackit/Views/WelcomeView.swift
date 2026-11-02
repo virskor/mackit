@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The welcome page shown when no scan has been run yet.
 ///
-/// Lemon's layout: the illustration owns the top half, the copy sits beneath
+/// The layout: the illustration owns the top half, the copy sits beneath
 /// it, and the whole screen is one call to action. The previous version led
 /// with a 52pt icon and a system button — a default SwiftUI stack that reads
 /// as scaffolding rather than a product. The hero, copy and button now rise in

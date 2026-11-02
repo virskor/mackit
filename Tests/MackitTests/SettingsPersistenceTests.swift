@@ -64,6 +64,37 @@ struct SettingsPersistenceTests {
         #expect(reread.projectRoots == ["/Users/me/work", "/Users/me/play"], "duplicates and blanks survived the load: \(reread.projectRoots)")
     }
 
+    /// The ignore list has to reach the shared file in both halves: a path
+    /// entry and a rule entry that only lived in memory would come back
+    /// after every relaunch.
+    @Test func ignoreListIsPersisted() {
+        var saved: [String: Any] = [:]
+        let vm = AppViewModel(statsPolling: false)
+        vm.settingsSink = { saved = $0 }
+        vm.addIgnoredPath("/Users/me/Library/Caches/foo")
+        vm.addIgnoredRule("browser.chrome-cache")
+
+        let reread = AppViewModel(statsPolling: false)
+        reread.loadSettings(from: saved)
+
+        #expect(reread.ignoredPaths == ["/Users/me/Library/Caches/foo"])
+        #expect(reread.ignoredRules == ["browser.chrome-cache"])
+    }
+
+    /// Deduplicated on load for the same reason as the project roots: both
+    /// lists are ForEach'd by value in the settings pane, and a repeated row
+    /// is undefined territory for row identity.
+    @Test func duplicateIgnoreListEntriesAreDeduplicatedOnLoad() {
+        let reread = AppViewModel(statsPolling: false)
+        reread.loadSettings(from: [
+            "ignoredPaths": ["/a", "/a", "", "/b"],
+            "ignoredRules": ["xcode.docs", "xcode.docs", ""],
+        ])
+
+        #expect(reread.ignoredPaths == ["/a", "/b"])
+        #expect(reread.ignoredRules == ["xcode.docs"])
+    }
+
     /// The launch-at-login choice has to reach the shared file. The system
     /// registration can go stale on its own — a rebuild replaces the binary its
     /// launch constraint pins — and the persisted choice is what lets the app

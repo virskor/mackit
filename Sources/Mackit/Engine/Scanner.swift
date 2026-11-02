@@ -255,6 +255,9 @@ enum ScanEngine {
         var copy = item
         copy.size = result.size
         copy.modified = result.date
+        // lstat-based identity, so a symlink is identified as itself rather
+        // than as its target — the same entry `removeItem` would act on.
+        copy.nodeIdentity = FileSystem.identity(ofPath: url.path)
         return copy
     }
 

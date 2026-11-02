@@ -50,6 +50,15 @@ struct JunkItem: Identifiable, Hashable, Sendable {
     let abbreviatedPath: String
     /// Precomputed lowercased search text, covering name, description, and path.
     let searchBlob: String
+    /// The entry's vnode identity, read once when the item is measured.
+    ///
+    /// The clean engine re-reads it immediately before the mutation: a path
+    /// that now names a different entry than the one that was measured must
+    /// not be deleted under the size it was shown with (see
+    /// `CleanEngine.remove`). Nil for items built outside the scan (the
+    /// large-file walk, the uninstall tool) and for command items, which
+    /// have no path; those skip the re-check.
+    var nodeIdentity: FileSystem.NodeIdentity?
 
     init(
         ruleID: String,
@@ -67,7 +76,8 @@ struct JunkItem: Identifiable, Hashable, Sendable {
         appKind: AppItemKind? = nil,
         appName: String? = nil,
         holdsLiveAppData: Bool = false,
-        searchExtra: String? = nil
+        searchExtra: String? = nil,
+        nodeIdentity: FileSystem.NodeIdentity? = nil
     ) {
         self.ruleID = ruleID
         self.id = isCommand ? "cli::\(ruleID)" : "\(ruleID)::\(path)"
@@ -89,6 +99,7 @@ struct JunkItem: Identifiable, Hashable, Sendable {
         self.abbreviatedPath = Formatters.abbreviateHome(path)
         let extra = searchExtra.map { "\n\($0)" } ?? ""
         self.searchBlob = "\(title)\n\(detail)\n\(path)\(extra)".lowercased()
+        self.nodeIdentity = nodeIdentity
     }
 
     var displayPath: String {

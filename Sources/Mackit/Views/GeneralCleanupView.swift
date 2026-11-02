@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// The general cleanup module: a Lemon-style page for everyone who is not a
+/// The general cleanup module: a page for everyone who is not a
 /// developer — browser caches, app junk, useless language files, system junk,
 /// Downloads and the Trash.
 ///
 /// Deliberately a separate page rather than more rows in the developer list:
 /// the two audiences share nothing, and mixing them makes each wade through
-/// categories that mean nothing to them. The layout follows Lemon's: before
+/// categories that mean nothing to them. The layout: before
 /// the first scan the whole page is one hero illustration and one call to
 /// action; after it, one big "cleanable files" number with the scan and clean
 /// actions beside it, then groups of rule rows, each row showing its total and
@@ -25,6 +25,11 @@ import SwiftUI
 /// selection, so a remembered selection is never a one-way door.
 struct GeneralCleanupView: View {
     @Environment(AppViewModel.self) private var vm
+
+    /// The row whose disclosure arrow the pointer is over. Hovering tints
+    /// the arrow and fills its background so it reads as a control of its
+    /// own — a bare chevron beside a checkbox invites the wrong click.
+    @State private var hoveredChevronRow: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -251,7 +256,11 @@ struct GeneralCleanupView: View {
         VStack(spacing: 0) {
             rowHeader(rowState)
 
-            if !rowState.subRows.isEmpty {
+            // The sub-rows fold away with the header's disclosure: a language
+            // or app list is long enough to bury every row below it, and the
+            // header keeps the total. Selection is untouched by folding, so
+            // a collapsed row still sweeps everything it holds when checked.
+            if rowState.isExpanded, !rowState.subRows.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(rowState.subRows.enumerated()), id: \.element.id) { index, sub in
                         if index > 0 {
@@ -266,10 +275,20 @@ struct GeneralCleanupView: View {
     }
 
     private func rowHeader(_ rowState: AppViewModel.GeneralRuleRowState) -> some View {
-        Button {
-            vm.setRowSelected(rowState.row, selected: !rowState.isFullySelected)
-        } label: {
-            HStack(spacing: 10) {
+        // Three tappable zones rather than one row-wide button: the checkbox
+        // selects, the disclosure folds, and the rest of the row selects as
+        // it always did. Nesting the disclosure inside the row's button would
+        // make the two controls fight over the same click.
+        //
+        // The zones are separated by dead space on purpose. Aiming at the
+        // disclosure and overshooting onto the row's selection is the one
+        // mis-click here that changes what a clean deletes, so the arrow gets
+        // a hit area far larger than its glyph and the pixels beside it
+        // belong to no control at all.
+        HStack(spacing: 0) {
+            Button {
+                vm.setRowSelected(rowState.row, selected: !rowState.isFullySelected)
+            } label: {
                 Image(systemName: rowState.isFullySelected
                     ? "checkmark.circle.fill"
                     : (rowState.isPartiallySelected ? "minus.circle.fill" : "circle"))
@@ -279,28 +298,71 @@ struct GeneralCleanupView: View {
                     // The checkmark bounces as it is checked — a toggle with no
                     // motion makes the row feel like a label, not a control.
                     .symbolEffect(.bounce, value: rowState.isFullySelected)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 12)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: rowState.row.title)
-                        .font(.system(size: 13, weight: .medium))
-                        .lineLimit(1)
-                    Text(verbatim: rowState.row.note)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+            // Only a grouped row has sub-rows to fold.
+            if !rowState.subRows.isEmpty {
+                // Dead zones: an overshoot from the arrow must hit nothing
+                // rather than the checkbox or the row's selection.
+                Color.clear.frame(width: 6)
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        vm.setGeneralRowExpanded(rowState.row.id, expanded: !rowState.isExpanded)
+                    }
+                } label: {
+                    let isHovered = hoveredChevronRow == rowState.row.id
+                    Image(systemName: rowState.isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(isHovered ? .primary : .secondary)
+                        // The glyph stays small; the frame is the hit area.
+                        .frame(width: 26, height: 28)
+                        .background(
+                            isHovered ? Color.primary.opacity(0.07) : .clear,
+                            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(RowPressStyle())
+                .help(L10n.tr(rowState.isExpanded ? "general.row.collapse" : "general.row.expand"))
+                .accessibilityLabel(L10n.tr(rowState.isExpanded ? "general.row.collapse" : "general.row.expand"))
+                .onHover { inside in
+                    hoveredChevronRow = inside ? rowState.row.id : nil
                 }
 
-                Spacer(minLength: 8)
-
-                trailing(rowState)
+                Color.clear.frame(width: 6)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .contentShape(Rectangle())
+
+            Button {
+                vm.setRowSelected(rowState.row, selected: !rowState.isFullySelected)
+            } label: {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: rowState.row.title)
+                            .font(.system(size: 13, weight: .medium))
+                            .lineLimit(1)
+                        Text(verbatim: rowState.row.note)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    trailing(rowState)
+                }
+                .padding(.leading, 10)
+                .padding(.trailing, 12)
+                .padding(.vertical, 9)
+                .contentShape(Rectangle())
+            }
+            // RowPressStyle fully replaces the style (no .plain underneath): it
+            // draws no chrome of its own, only the press fill.
+            .buttonStyle(RowPressStyle())
         }
-        // RowPressStyle fully replaces the style (no .plain underneath): it
-        // draws no chrome of its own, only the press fill.
-        .buttonStyle(RowPressStyle())
     }
 
     /// One sub-row: a single language ("Tamil · 1.79 MB") or one app's junk.
@@ -348,7 +410,7 @@ struct GeneralCleanupView: View {
         .buttonStyle(RowPressStyle())
     }
 
-    /// The row's right side, one baseline like Lemon's: the total in primary
+    /// The row's right side, one baseline: the total in primary
     /// color, the safety level tinted after it. Rows with nothing found show
     /// the level alone.
     @ViewBuilder

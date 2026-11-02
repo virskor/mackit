@@ -141,6 +141,20 @@ enum CleanEngine {
         // total reclaimed is based on the bytes actually deleted.
         let freed = FileSystem.allocatedSize(of: url)
 
+        // Identity re-check, placed after the walk and immediately before the
+        // mutation: the walk above is the long window in which the entry can
+        // be swapped, and a path that now names a different vnode must not
+        // be deleted under the size it was measured with. The protected-path
+        // check in removeFromDisk compares paths only — this closes the gap
+        // an entry replacement leaves open. Items built outside the scan
+        // (large files, the uninstall tool) carry no identity and skip it.
+        if let expected = item.nodeIdentity, FileSystem.identity(ofPath: url.path) != expected {
+            return CleanOutcome(
+                id: item.id, itemID: item.id, title: item.title, path: item.path,
+                reclaimed: 0, succeeded: false, message: L10n.tr("clean.error.changed")
+            )
+        }
+
         switch await removeFromDisk(url, moveToTrash: moveToTrash) {
         case .trashed:
             return CleanOutcome(

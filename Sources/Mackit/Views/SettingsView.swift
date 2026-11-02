@@ -127,6 +127,8 @@ struct SettingsView: View {
             cleanForm
         case .projects:
             projectForm
+        case .ignoreList:
+            ignoreListForm
         case .menubar:
             menubarForm
         case .about:
@@ -364,6 +366,109 @@ struct SettingsView: View {
         // shares the white rounded card below with the main content, and gray
         // stays only on the section cards.
         .scrollContentBackground(.hidden)
+    }
+
+    /// Ignore list section: the paths and rules the user asked never to see
+    /// again. Both halves are filled from the item context menu — an entry
+    /// is always a path a scan actually produced or a rule the user could
+    /// see and name — so this pane manages the list rather than being the
+    /// only way into it.
+    private var ignoreListForm: some View {
+        @Bindable var vm = vm
+
+        return Form {
+            Section {
+                Text(verbatim: L10n.tr("settings.ignoreList.intro"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } header: {
+                Label(L10n.tr("settings.ignoreList.header"), systemImage: "eye.slash")
+            }
+
+            Section {
+                List {
+                    ForEach(vm.ignoredPaths.sorted(), id: \.self) { path in
+                        HStack {
+                            Image(systemName: "doc")
+                                .foregroundStyle(.secondary)
+                            Text(verbatim: path)
+                                .font(.system(size: 11))
+                                .lineLimit(1)
+                                .truncationMode(.head)
+                            Spacer()
+                            Button(role: .destructive) {
+                                vm.removeIgnoredPath(path)
+                            } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .help(L10n.tr("common.remove"))
+                        }
+                    }
+                }
+                .frame(minHeight: 130)
+                .overlay {
+                    if vm.ignoredPaths.isEmpty {
+                        Text(verbatim: L10n.tr("settings.ignoreList.paths.empty"))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            } header: {
+                Text(verbatim: L10n.tr("settings.ignoreList.paths.header"))
+            }
+
+            Section {
+                List {
+                    ForEach(vm.ignoredRules.sorted(), id: \.self) { ruleID in
+                        HStack {
+                            Image(systemName: "slash.circle")
+                                .foregroundStyle(.secondary)
+                            Text(verbatim: ignoreRuleTitle(ruleID))
+                                .font(.system(size: 11))
+                                .lineLimit(1)
+                                .truncationMode(.head)
+                            Spacer()
+                            Button(role: .destructive) {
+                                vm.removeIgnoredRule(ruleID)
+                            } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .help(L10n.tr("common.remove"))
+                        }
+                    }
+                }
+                .frame(minHeight: 130)
+                .overlay {
+                    if vm.ignoredRules.isEmpty {
+                        Text(verbatim: L10n.tr("settings.ignoreList.rules.empty"))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            } header: {
+                Text(verbatim: L10n.tr("settings.ignoreList.rules.header"))
+            }
+
+            Section {
+                Button(L10n.tr("settings.ignoreList.clearAll"), role: .destructive) {
+                    vm.clearIgnoreList()
+                }
+                .disabled(vm.ignoredPaths.isEmpty && vm.ignoredRules.isEmpty)
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+    }
+
+    /// A rule id's display title: the catalog rule's localized title when
+    /// the catalog has it, the raw id otherwise. The dynamic scanners' ids
+    /// (app junk, leftover caches, downloads, language packs) are not
+    /// catalog rules and have no entry there.
+    private func ignoreRuleTitle(_ ruleID: String) -> String {
+        RulesCatalog.scanRules.first { $0.id == ruleID }?.title ?? ruleID
     }
 
     /// Menu bar section: which monitor items to show in the tray menu.
@@ -645,7 +750,7 @@ struct SettingsView: View {
 /// The settings page's segments. Declaration order is the arrangement order in
 /// the toolbar.
 private enum SettingsTab: String, CaseIterable, Identifiable {
-    case general, clean, projects, menubar, about
+    case general, clean, projects, ignoreList, menubar, about
 
     var id: String { rawValue }
 

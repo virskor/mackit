@@ -81,7 +81,7 @@ struct SMCTemperatureTests {
 
     // MARK: - Intel selection
 
-    /// The first sensor with a plausible value wins, in Lemon's order:
+    /// The first sensor with a plausible value wins, in the declared order:
     /// proximity, then diode, then the rest.
     @Test func intelTakesTheFirstPlausibleSensor() {
         let temperature = SMCTemperature.cpuTemperature(
@@ -96,7 +96,7 @@ struct SMCTemperatureTests {
     }
 
     /// A key that answers 0 or a wild value carries no usable signal: the
-    /// next key is tried, exactly as Lemon's index-cycling read does.
+    /// next key is tried, exactly as the index-cycling read does.
     @Test func intelSkipsImplausibleReadings() {
         #expect(
             SMCTemperature.cpuTemperature(
@@ -205,8 +205,8 @@ struct SMCTemperatureTests {
         #expect(unreadable == nil)
     }
 
-    /// The value is the average of every sensor in range — the GPU sensors
-    /// Lemon's tables include included.
+    /// The value is the average of every sensor in range, the GPU sensors
+    /// included.
     @Test func siliconAveragesTheSensorsInRange() {
         let temperature = SMCTemperature.cpuTemperature(
             isAppleSilicon: true,
@@ -245,10 +245,9 @@ struct SMCTemperatureTests {
     }
 }
 
-/// The display side: the Lemon-style formatting and the fallback the menu
-/// surfaces share.
+/// The display side: the formatting and the fallback the menu surfaces share.
 struct TemperatureDisplayTests {
-    /// Whole degrees with the unit attached — Lemon's status-bar format. A
+    /// Whole degrees with the unit attached — the status-bar format. A
     /// fractional reading would change width with every sample.
     @Test func degreesTruncatesAndCarriesTheUnit() {
         #expect(Formatters.degrees(45.7) == "45°C")

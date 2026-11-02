@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A group on the general cleanup page, following Lemon's grouping: system
-/// junk, app junk, and browsing junk, each a top-level section of the same
+/// A group on the general cleanup page: system junk, app junk, and browsing
+/// junk, each a top-level section of the same
 /// weight — a user who only wants their apps' caches should not have to find
 /// them buried inside the system group.
 enum GeneralCleanGroup: String, CaseIterable, Identifiable, Sendable {
@@ -96,7 +96,7 @@ struct GeneralRuleRow: Identifiable, Sendable {
 
 /// How a row presents its entries below the row header.
 ///
-/// Lemon shows language files one language at a time ("Japanese — 3 apps,
+/// Language files group one language at a time ("Japanese — 3 apps,
 /// 1.2 MB") instead of one undifferentiated total, and app junk per app. A
 /// flat row is one all-or-nothing toggle; a grouped row lets the user keep
 /// one language, or one app's caches, while sweeping the rest — which is also
@@ -113,7 +113,7 @@ enum GeneralSubRowMode: Sendable {
 /// The row layout of the general cleanup page.
 ///
 /// Static rather than derived from the catalog on purpose: the page is a
-/// curated, Lemon-like checklist, and the aggregation (which rules share a
+/// curated checklist, and the aggregation (which rules share a
 /// row, in which order) is presentation knowledge. `GeneralCleanLayoutTests`
 /// asserts the layout stays in sync with the catalog — every general-scoped
 /// rule appears in exactly one row, and no row references a missing rule.
@@ -179,6 +179,19 @@ enum GeneralCleanLayout {
             ruleIDs: [AppScanner.junkRuleID],
             risk: .safe,
             subRowMode: .byApp
+        ),
+        // Opt-in like the language packs, for a different reason: a leftover
+        // cache belongs to no installed app, so nothing can re-attribute it
+        // and the row must not join a default "clean everything".
+        GeneralRuleRow(
+            id: "app.leftover",
+            title: L10n.tr("general.row.leftoverCaches.title"),
+            note: L10n.tr("general.row.leftoverCaches.note"),
+            category: .appJunk,
+            ruleIDs: [LeftoverCacheScanner.ruleID],
+            risk: .review,
+            subRowMode: .flat,
+            preChecked: false
         ),
 
         // browsing junk

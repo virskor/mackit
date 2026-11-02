@@ -55,7 +55,7 @@ private struct SweepArc: View {
         Circle()
             .trim(from: 0.68, to: 0.94)
             .stroke(
-                BrandPalette.lemon.opacity(0.55),
+                BrandPalette.yellow.opacity(0.55),
                 style: StrokeStyle(lineWidth: lineWidth * 0.55, lineCap: .round)
             )
             .frame(width: diameter, height: diameter)

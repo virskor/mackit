@@ -4,8 +4,7 @@ import IOKit
 /// CPU temperature read from the System Management Controller (SMC).
 ///
 /// macOS exposes no public API for a numeric CPU temperature, so this reads
-/// the SMC through IOKit — the same approach Lemon-cleaner takes. Its logic
-/// is followed here; its code is not copied (Lemon's daemon is GPL-2.0).
+/// the SMC through IOKit.
 ///
 /// The path is private but alive: verified on macOS 27 (Apple Silicon M2),
 /// where the AppleSMC service opens and its sensor keys answer — the M2's
@@ -15,18 +14,17 @@ import IOKit
 /// when no key answers at all the read is nil and the caller keeps its
 /// public-API fallback (`ProcessInfo.thermalState`).
 ///
-/// What the number means follows Lemon's definition:
+/// What the number means:
 /// - **Intel**: the first sensor in `TC0P` (proximity), `TC0D` (diode),
 ///   `TC0H` (heatsink), `TC0E`, `TC0F` (filtered), `TCAD` (package) order
 ///   that answers with a plausible value (0 < °C ≤ 110).
 /// - **Apple Silicon**: the average of the chip family's sensor table, the
-///   GPU sensors Lemon includes in the average included.
+///   GPU sensors included.
 ///
 /// Only the Apple Silicon path has been verified against real hardware (an
-/// M2 on macOS 27). The Intel path — key order and sp78 decoding — follows
-/// Lemon's published interface and is covered by unit tests, but no Intel
-/// machine was available to run it on; a wrong assumption there degrades to
-/// nil, exactly like any other unanswered key.
+/// M2 on macOS 27). The Intel path — key order and sp78 decoding — is covered
+/// by unit tests, but no Intel machine was available to run it on; a wrong
+/// assumption there degrades to nil, exactly like any other unanswered key.
 ///
 /// Selection and filtering are a pure function over an injected key reader,
 /// so the logic is unit-testable without an SMC; `readCPU()` is the thin
@@ -115,9 +113,8 @@ enum SMCTemperature {
     // MARK: - Intel
 
     /// SMC keys carrying the CPU temperature, in the order the first
-    /// plausible answer wins. The order is Lemon's: proximity (the air
-    /// around the CPU) first, then the diode (the core itself), the
-    /// heatsink, and the rest.
+    /// plausible answer wins: proximity (the air around the CPU) first, then
+    /// the diode (the core itself), the heatsink, and the rest.
     private static let intelKeys = ["TC0P", "TC0D", "TC0H", "TC0E", "TC0F", "TCAD"]
 
     private static func intelTemperature(readKey: KeyReader) -> Double? {
@@ -135,8 +132,8 @@ enum SMCTemperature {
     // MARK: - Apple Silicon
 
     /// The sensor tables, per chip family — the key lists the community
-    /// reads on each family (Lemon ships the same tables). The GPU sensors
-    /// each family carries are included, as in Lemon's average.
+    /// reads on each family. The GPU sensors each family carries are
+    /// included.
     ///
     /// The early M1 has no usable SMC sensor set of its own and gets its own
     /// shorter table. An unknown family — a chip newer than this build —

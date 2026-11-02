@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The primary action button in Lemon's style: a wide green button with bold
+/// The primary action button: a wide green button with bold
 /// white text, a tinted drop shadow, and a press-scale response.
 ///
 /// `.borderedProminent` was not used: it paints the window's accent color

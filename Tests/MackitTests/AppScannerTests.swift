@@ -520,6 +520,26 @@ struct AppScannerTests {
         #expect(AppScanner.scanAppJunk(roots: [appsDir.path], home: home.path).isEmpty)
     }
 
+    /// An excepted app's cache holds user assets (Spotify's offline
+    /// library), so the cleanup scan must not sweep it. The uninstall tool's
+    /// composition still lists it: removing the app is the user's explicit
+    /// intent to take everything with it.
+    @Test func exceptedAppCacheStaysOutOfTheJunkScanButNotTheUninstallScan() {
+        let appsDir = tempDirectory("scan-excepted")
+        let home = tempDirectory("scan-excepted-home")
+        defer { cleanup(appsDir); cleanup(home) }
+
+        makeApp(at: appsDir, name: "Spotify.app", bundleID: "com.spotify.client", version: "1.2")
+        makeDirectory("Library/Caches/com.spotify.client", under: home)
+
+        #expect(AppScanner.scanAppJunk(roots: [appsDir.path], home: home.path).isEmpty,
+                "an excepted app's cache holds user assets and must not be swept")
+
+        let all = AppScanner.scanApps(roots: [appsDir.path], home: home.path)
+        #expect(all.contains { $0.path.hasSuffix("Library/Caches/com.spotify.client") },
+                "the uninstall tool still lists the cache")
+    }
+
     // MARK: - Clean engine running-app checks
 
     /// The running-app guard is scoped to what deleting it would actually

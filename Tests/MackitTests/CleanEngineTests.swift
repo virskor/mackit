@@ -23,7 +23,8 @@ struct CleanEngineTests {
         appKind: AppItemKind? = nil,
         appName: String? = nil,
         holdsLiveAppData: Bool = false,
-        category: JunkCategory = .system
+        category: JunkCategory = .system,
+        nodeIdentity: FileSystem.NodeIdentity? = nil
     ) -> JunkItem {
         JunkItem(
             ruleID: "test.rule",
@@ -36,7 +37,8 @@ struct CleanEngineTests {
             bundleID: bundleID,
             appKind: appKind,
             appName: appName,
-            holdsLiveAppData: holdsLiveAppData
+            holdsLiveAppData: holdsLiveAppData,
+            nodeIdentity: nodeIdentity
         )
     }
 
@@ -187,6 +189,68 @@ struct CleanEngineTests {
             #expect(reclaimed == expected, "the same space was counted twice: \(reclaimed) vs \(expected)")
             #expect(!FileManager.default.fileExists(atPath: parent.path))
         }
+    }
+
+    // MARK: - Identity re-check
+
+    /// The scan records each entry's vnode identity, and the clean re-reads
+    /// it after the re-measure walk — the long window in which the entry can
+    /// be swapped. A path that now names a different vnode must not be
+    /// deleted under the size it was measured with; the path-only protected
+    /// check cannot see the swap.
+    @Test func swappedEntryIsRefusedInsteadOfDeleted() async throws {
+        let dir = tempDirectory("swapped")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let target = dir.appendingPathComponent("cache", isDirectory: true)
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        try Data("bytes".utf8).write(to: target.appendingPathComponent("a.bin"))
+        let measured = try #require(FileSystem.identity(ofPath: target.path))
+
+        // Swap the entry: remove the measured one and move a different
+        // directory into its place, so the path names a new vnode.
+        let replacement = dir.appendingPathComponent("replacement", isDirectory: true)
+        try FileManager.default.createDirectory(at: replacement, withIntermediateDirectories: true)
+        try FileManager.default.removeItem(at: target)
+        try FileManager.default.moveItem(at: replacement, to: target)
+
+        let (outcomes, reclaimed, failures) = await run(items: [item(target.path, size: 4096, nodeIdentity: measured)])
+
+        #expect(outcomes[0].succeeded == false, "a path that names a different entry must not be deleted")
+        #expect(outcomes[0].message == L10n.tr("clean.error.changed"))
+        #expect(reclaimed == 0)
+        #expect(failures == 1)
+        #expect(FileManager.default.fileExists(atPath: target.path), "the replacement must survive")
+    }
+
+    /// The normal path: the identity still matches, so the entry is deleted.
+    @Test func matchingIdentityDeletesNormally() async throws {
+        let dir = tempDirectory("identity-ok")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let target = dir.appendingPathComponent("cache", isDirectory: true)
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        try Data("bytes".utf8).write(to: target.appendingPathComponent("a.bin"))
+        let identity = try #require(FileSystem.identity(ofPath: target.path))
+
+        let (outcomes, _, failures) = await run(items: [item(target.path, size: 4096, nodeIdentity: identity)])
+
+        #expect(outcomes[0].succeeded)
+        #expect(failures == 0)
+        #expect(!FileManager.default.fileExists(atPath: target.path))
+    }
+
+    /// Items built outside the scan (the large-file walk, the uninstall tool)
+    /// carry no identity and skip the re-check entirely.
+    @Test func itemsWithoutIdentitySkipTheCheck() async throws {
+        let dir = tempDirectory("no-identity")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let target = dir.appendingPathComponent("cache", isDirectory: true)
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+
+        let (outcomes, _, failures) = await run(items: [item(target.path, size: 4096)])
+
+        #expect(outcomes[0].succeeded)
+        #expect(failures == 0)
+        #expect(!FileManager.default.fileExists(atPath: target.path))
     }
 
     // MARK: - Running apps

@@ -42,6 +42,17 @@ enum AppScanner {
     /// be swept without uninstalling anything.
     static let junkRuleID = "app.junk"
 
+    /// Apps whose cache directory holds user assets rather than regenerable
+    /// data: Spotify keeps the user's offline library in its cache, so the
+    /// cleanup scan must not sweep it wholesale. This table is Mackit's
+    /// per-app equivalent of the named exclusion filters in
+    /// `LeftoverCacheScanner.protectedNames`.
+    ///
+    /// The uninstall tool still lists an excepted app's cache — removing the
+    /// app is the user's explicit intent to take everything with it — so the
+    /// filter belongs to `scanAppJunk` only.
+    static let cacheExceptionBundleIDs: Set<String> = ["com.spotify.client"]
+
     // MARK: - Composition entry point
 
     /// Discover apps and generate all entries (one bundle entry per app + several residue entries).
@@ -70,7 +81,14 @@ enum AppScanner {
         // shared report/preference listings are cheap and every app probes them.
         let shared = sharedLibraryIndex(home: home)
         return apps.flatMap { items(for: $0, home: home, index: nil, shared: shared) }
-            .filter { $0.category == .appJunk }
+            .filter { $0.category == .appJunk && !isExceptedCache($0) }
+    }
+
+    /// Whether an app-junk entry is the cache of an app whose cache holds
+    /// user assets (see `cacheExceptionBundleIDs`).
+    private static func isExceptedCache(_ item: JunkItem) -> Bool {
+        guard item.appKind == .residue(.caches), let bundleID = item.bundleID else { return false }
+        return cacheExceptionBundleIDs.contains(bundleID)
     }
 
     /// All entries for a single app: the bundle first, with junk residue

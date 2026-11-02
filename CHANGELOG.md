@@ -9,11 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **CPU temperature, in degrees, on the menu bar, the panel and the desktop stats** — read through the SMC, shown in whole degrees and turned orange from 70°C up, with the thermal-state word kept as the fallback when no sensor answers.
+- **An ignore list keeps chosen entries and rules out of every later scan** — right-click any scan result to ignore that path or its whole rule, manage both lists in the new settings tab, and the choice survives restarts and reaches the tray agent.
+- **Leftover caches of removed apps are now listed for cleaning** — the scan enumerates the shared cache pools once, subtracts every path the static rules and the installed apps already claim, and offers only the unclaimed remainder as an opt-in row.
+- **Xcode's device logs join the cleanup list** — the logs collected from connected devices are re-collected on the next connect, and the rule sits at the same review level as the device-support files.
 
 ### Changed
 
+- **The general cleanup page's long lists fold away** — the unused-language and app-junk rows start collapsed when they carry more than six entries and expand from the disclosure arrow in the row header, with the row's total and selection unchanged by folding.
 - **Scans read each directory once** — the project-junk walk, Downloads scan, app-residue probe and Application Support index now take one bulk listing per directory instead of a stat per entry, and the shared `~/Library` listings, language subtags and merge dedup index are each computed once per scan instead of per app, per localization or per merge batch.
 - **Result pages stop re-doing per-frame work** — the general cleanup page's hundreds of sub-rows render lazily, large-file rows cache their size text, and the treemap skips its re-sort when children already arrive largest-first.
+- **Spotify's cache is no longer swept wholesale** — it holds your offline library rather than regenerable bytes, so it stays out of the app-junk sweep while the uninstall tool still removes it together with the app.
+
+### Fixed
+
+- **A cache directory that changed since the scan is refused instead of deleted** — the clean engine re-reads each item's vnode identity right before removing it, so a path that now names a different directory than the one that was measured fails with a rescan prompt rather than being deleted under its measured size.
 
 ## [1.0.15] - 2026-11-01
 
@@ -175,7 +184,7 @@ A second cleanup feature aimed at everyday Mac users, plus a brand pass across t
 - The general cleanup's row selection can be remembered: when a curation differs from what the next scan would pre-check, the confirmation sheet asks whether to keep it (defaulted on), and later scans pre-check exactly those rows
 - Menu bar memory ranking: a quit button on each running app's row, with the warning drawn by the panel the moment the pointer reaches the controls
 - Settings: a menu bar logo switch
-- Lemon-style brand language across the app: the warm palette, the green call-to-action button with its press-scale response, the shared hero prompt, the gradient scan ring with its sweep arc, and the draw-in success mark — the welcome page and the general module's empty state now share one front-door composition
+- Brand language across the app: the warm palette, the green call-to-action button with its press-scale response, the shared hero prompt, the gradient scan ring with its sweep arc, and the draw-in success mark — the welcome page and the general module's empty state now share one front-door composition
 - `Scripts/build-all.sh`: one-command release pipeline (tag, build, sign, notarize, DMG, appcast, GitHub release)
 
 ### Changed

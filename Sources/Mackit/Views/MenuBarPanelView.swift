@@ -55,8 +55,8 @@ struct MenuBarPanelView: View {
         )
     }
 
-    /// Panel width. Same magnitude as Lemon: fits the "name + size" two columns
-    /// without taking up half the screen.
+    /// Panel width: fits the "name + size" two columns without taking up half
+    /// the screen.
     private let panelWidth: CGFloat = 320
 
     /// Divider between sections, with left/right padding matching the content's.

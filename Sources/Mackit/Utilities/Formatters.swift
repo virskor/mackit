@@ -43,7 +43,7 @@ enum Formatters {
 
     /// CPU temperature in whole degrees Celsius, e.g. "45°C".
     ///
-    /// Lemon-cleaner's status-bar format: the reading is truncated to whole
+    /// The status-bar format: the reading is truncated to whole
     /// degrees and the degree sign and unit ride in the same string. A
     /// fractional reading would change width with every sample — the menu bar
     /// item would jitter — and no user acts on 0.1°C.

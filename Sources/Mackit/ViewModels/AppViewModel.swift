@@ -40,8 +40,8 @@ final class AppViewModel {
     /// The category selected in the sidebar; nil means all.
     var selectedCategory: JunkCategory? = nil
     /// The general cleanup page is selected in the sidebar: the detail area
-    /// switches to the Lemon-style general module and no longer shows the
-    /// developer cleanup content.
+    /// switches to the general module and no longer shows the developer
+    /// cleanup content.
     var showsGeneralCleanup: Bool = false
     /// Which cleanup feature the main window is currently showing. Only
     /// affects what the window browses and cleans; the tray panel always
@@ -183,6 +183,16 @@ final class AppViewModel {
     /// collected.
     var collectCrashLogs: Bool = true
     var projectRoots: [String] = []
+    /// Paths the user asked never to see again, matched against a listed
+    /// item's exact path. Every entry comes from the item context menu, so
+    /// an entry is always a path a scan actually produced — never a
+    /// hand-typed string that could match nothing.
+    var ignoredPaths: Set<String> = []
+    /// Rule ids the user turned off entirely: the rule does not run, so its
+    /// items never appear. Rule-level rather than CleanMyMac's per-category
+    /// matrix — Mackit has one flat item list, and the rule is the unit the
+    /// user sees and can name in the context menu.
+    var ignoredRules: Set<String> = []
     /// Whether the app is registered to launch at login — the user's choice,
     /// persisted in shared settings. The system registration is reconciled
     /// against this (see `LaunchAtLogin.repairIfNeeded`), never trusted as the
@@ -922,6 +932,20 @@ final class AppViewModel {
     /// invalidate the cache by dimension.
     private var itemsRevision = 0
     private var selectionRevision = 0
+    /// The third dimension: a row fold changed. Neither the items nor the
+    /// selection did, but the general page's cached rows carry each row's
+    /// fold state, so the cache has to be invalidated by it.
+    private var generalFoldRevision = 0
+
+    /// The grouped rows the user folded or unfolded by hand, row id →
+    /// expanded. Excluded from Observation like the caches below: the page
+    /// invalidates through `generalFoldRevision`, and a fold that triggered
+    /// observation directly would re-render the page twice per click.
+    ///
+    /// Kept on the view model rather than in the view so switching modules
+    /// — which tears the view down and takes its `@State` with it — does not
+    /// unfold what the user just folded.
+    @ObservationIgnored private var generalRowExpansion: [String: Bool] = [:]
 
     // Cache writes are deliberately excluded from Observation: these are
     // derived data, and the interface invalidates via already-observed
@@ -934,7 +958,7 @@ final class AppViewModel {
     @ObservationIgnored private var visibleCache: (key: VisibleKey, value: [JunkItem])?
     @ObservationIgnored private var categoryCache: (key: Int, value: CategoryStats)?
     @ObservationIgnored private var selectionCache: (key: StatsKey, value: SelectionStats)?
-    @ObservationIgnored private var generalGroupsCache: (key: (Int, Int), value: [GeneralRuleGroupState])?
+    @ObservationIgnored private var generalGroupsCache: (key: (Int, Int, Int), value: [GeneralRuleGroupState])?
 
     /// items changed: both the visible list and category stats are
     /// invalidated.
@@ -1075,6 +1099,9 @@ final class AppViewModel {
         /// The row's entries grouped below the header; empty for a flat row.
         /// Sorted by size, largest first, same as the main list.
         let subRows: [GeneralSubRowState]
+        /// Whether the sub-rows show. The user's own fold always wins;
+        /// otherwise the default rule applies (see `subRowCollapseThreshold`).
+        let isExpanded: Bool
 
         /// All of the row's items are checked. A row with no items has no
         /// items to derive from, so it is checked exactly when it was
@@ -1130,11 +1157,20 @@ final class AppViewModel {
     /// safety badge, so the page reads as the full checklist of what Mackit
     /// checks).
     var generalCleanGroups: [GeneralRuleGroupState] {
-        let key = (itemsRevision, selectionRevision)
+        let key = (itemsRevision, selectionRevision, generalFoldRevision)
         if let cached = generalGroupsCache, cached.key == key { return cached.value }
         let value = buildGeneralGroups()
         generalGroupsCache = (key, value)
         return value
+    }
+
+    /// Records one grouped row's fold state and invalidates the general
+    /// page's cache. Only the fold dimension is dropped: neither the items
+    /// nor the selection changed, so the other caches stay warm.
+    func setGeneralRowExpanded(_ rowID: String, expanded: Bool) {
+        guard generalRowExpansion[rowID] != expanded else { return }
+        generalRowExpansion[rowID] = expanded
+        generalFoldRevision += 1
     }
 
     /// Everything the general module found, selected or not: the big number
@@ -1142,6 +1178,14 @@ final class AppViewModel {
     var generalTotalSize: Int64 {
         generalCleanGroups.reduce(0) { $0 + $1.totalSize }
     }
+
+    /// Above this many sub-rows a grouped row starts folded.
+    ///
+    /// A language list or an app list is long enough to bury every row
+    /// below it — the unused-language row alone can carry a dozen entries —
+    /// while a two- or three-entry list has nothing to hide and folding it
+    /// would only cost a click. The user's own fold always wins from there.
+    static let subRowCollapseThreshold = 6
 
     private func buildGeneralGroups() -> [GeneralRuleGroupState] {
         var byRule: [String: [JunkItem]] = [:]
@@ -1152,6 +1196,7 @@ final class AppViewModel {
             let rows = GeneralCleanLayout.rows(of: group).map { row -> GeneralRuleRowState in
                 let rowItems = row.ruleIDs.flatMap { byRule[$0] ?? [] }
                 let selected = rowItems.filter { selection.contains($0.id) }
+                let subRows = buildSubRows(for: row, items: rowItems)
                 return GeneralRuleRowState(
                     row: row,
                     items: rowItems,
@@ -1159,7 +1204,14 @@ final class AppViewModel {
                     selectedCount: selected.count,
                     selectedSize: selected.reduce(0) { $0 + $1.size },
                     isCheckedByHand: handCheckedGeneralRows.contains(row.id),
-                    subRows: buildSubRows(for: row, items: rowItems)
+                    subRows: subRows,
+                    // The user's own fold wins; otherwise a short list stays
+                    // open and a long one folds (see subRowCollapseThreshold).
+                    // A row with no sub-rows is never expanded: a flat row has
+                    // nothing to fold, and reporting it as expanded would make
+                    // the page render a disclosure for it.
+                    isExpanded: generalRowExpansion[row.id]
+                        ?? (!subRows.isEmpty && subRows.count <= Self.subRowCollapseThreshold)
                 )
             }
             return GeneralRuleGroupState(
@@ -1339,8 +1391,8 @@ final class AppViewModel {
         let task = Task { [weak self] in
             guard let self else { return }
             let stream = ScanEngine.scan(
-                rules: RulesCatalog.scanRules,
-                cliRules: RulesCatalog.cliRules,
+                rules: self.activeScanRules,
+                cliRules: self.activeCLIRules,
                 options: options
             )
             for await event in stream {
@@ -1358,6 +1410,13 @@ final class AppViewModel {
             // project roots can be very large, so they go last.
             if self.includeApps {
                 await self.scanAppJunk()
+                // Leftover caches follow the app junk scan: both probe
+                // ~/Library against the installed apps, and reporting the
+                // unclaimed remainders is the same feature seen from the
+                // other side. The phase re-discovers the apps deliberately
+                // — the two phases stay independent and testable, at the
+                // cost of one shallow /Applications enumeration.
+                await self.scanLeftovers()
             }
             guard !Task.isCancelled else { return }
 
@@ -1951,6 +2010,16 @@ final class AppViewModel {
         var roots = Set<String>()
         projectRoots = (values["projectRoots"] as? [String] ?? [])
             .filter { !$0.isEmpty && roots.insert($0).inserted }
+        // The ignore list, both halves. Deduplicated and emptied of blanks on
+        // load for the same reason as the project roots: the settings lists
+        // are ForEach'd by value, and a repeated entry is undefined territory
+        // for row identity.
+        var seenPaths = Set<String>()
+        ignoredPaths = Set((values["ignoredPaths"] as? [String] ?? [])
+            .filter { !$0.isEmpty && seenPaths.insert($0).inserted })
+        var seenRules = Set<String>()
+        ignoredRules = Set((values["ignoredRules"] as? [String] ?? [])
+            .filter { !$0.isEmpty && seenRules.insert($0).inserted })
         // The three monitoring toggles default to all on: the monitoring
         // section is a feature the user actively asks for, and defaulting
         // to collapsed would turn "added a display" into "added nothing".
@@ -1988,6 +2057,8 @@ final class AppViewModel {
             "includeApps": includeApps,
             "collectCrashLogs": collectCrashLogs,
             "projectRoots": projectRoots,
+            "ignoredPaths": Array(ignoredPaths),
+            "ignoredRules": Array(ignoredRules),
             // nil is stored as an absent key (plists have no null)
             "generalSelectedRows": generalSelectedRows.map { Array($0) } ?? [],
             "showMenuBarCPU": showMenuBarCPU,
@@ -2141,6 +2212,31 @@ final class AppViewModel {
         mergeDiscovered(measured)
     }
 
+    // MARK: - Leftover Cache Scanning
+
+    /// Enumerates cache directories no installed app claims — the leftovers
+    /// of apps that were dragged to the Trash instead of uninstalled — and
+    /// merges the results into the list.
+    ///
+    /// Same detached-task shape as `scanAppJunk`: the pools are directory
+    /// enumerations, which must not run on the main thread.
+    func scanLeftovers(roots: [String] = AppScanner.defaultRoots, home: String = NSHomeDirectory()) async {
+        progressLabel = L10n.tr("scan.leftovers")
+
+        let measured = await Task.detached(priority: .utility) {
+            let discovered = LeftoverCacheScanner.scanLeftoverCaches(roots: roots, home: home)
+            return await ScanEngine.measure(discovered)
+        }.value
+        if Task.isCancelled { return }
+        guard !measured.isEmpty else {
+            MackitLog.scan.info("leftover cache scan: no unclaimed cache directories found")
+            return
+        }
+        MackitLog.scan.info("leftover cache scan: \(measured.count, privacy: .public) unclaimed cache directories")
+
+        mergeDiscovered(measured)
+    }
+
     // MARK: - Language File Scanning
 
     /// Enumerates useless localization directories inside installed apps,
@@ -2187,6 +2283,81 @@ final class AppViewModel {
         mergeDiscovered(measured)
     }
 
+    // MARK: - Ignore List
+
+    /// The static rules this scan runs: ignored rule ids are dropped before
+    /// the engine builds its work units, so an ignored rule costs nothing.
+    ///
+    /// The leftover-cache scanner's claim set deliberately still sees the
+    /// whole catalog (it reads `RulesCatalog.scanRules` itself): ignoring a
+    /// rule must not turn the paths it used to own into leftover candidates.
+    var activeScanRules: [ScanRule] {
+        RulesCatalog.scanRules.filter { !ignoredRules.contains($0.id) }
+    }
+
+    /// The command-line rules this scan runs, filtered the same way.
+    var activeCLIRules: [CLIRule] {
+        RulesCatalog.cliRules.filter { !ignoredRules.contains($0.id) }
+    }
+
+    /// Whether a discovered item is filtered out by the ignore list.
+    ///
+    /// Checked at the single merge funnel every scanner reports through, so
+    /// one check covers the static rules, the app junk and leftover scans,
+    /// the language and Downloads scanners and the project walk alike.
+    func isIgnored(_ item: JunkItem) -> Bool {
+        if !item.path.isEmpty, ignoredPaths.contains(item.path) { return true }
+        return ignoredRules.contains(item.ruleID)
+    }
+
+    /// Adds one path to the ignore list and drops its entry from the
+    /// current list, so the change is visible without a rescan.
+    func addIgnoredPath(_ path: String) {
+        guard !path.isEmpty, ignoredPaths.insert(path).inserted else { return }
+        saveSettings()
+        dropIgnoredItems()
+    }
+
+    func removeIgnoredPath(_ path: String) {
+        guard ignoredPaths.remove(path) != nil else { return }
+        saveSettings()
+    }
+
+    /// Adds one rule id to the ignore list. The rule stops running on the
+    /// next scan; entries already listed are dropped right away.
+    func addIgnoredRule(_ ruleID: String) {
+        guard !ruleID.isEmpty, ignoredRules.insert(ruleID).inserted else { return }
+        saveSettings()
+        dropIgnoredItems()
+    }
+
+    func removeIgnoredRule(_ ruleID: String) {
+        guard ignoredRules.remove(ruleID) != nil else { return }
+        saveSettings()
+    }
+
+    func clearIgnoreList() {
+        guard !ignoredPaths.isEmpty || !ignoredRules.isEmpty else { return }
+        ignoredPaths = []
+        ignoredRules = []
+        saveSettings()
+    }
+
+    /// Drops the now-ignored entries from the current list. The same
+    /// rebuild the clean path uses (see `removeCleanedItems`): a set cannot
+    /// drop one item's id, path and ancestors without knowing every other
+    /// item's, and editing the ignore list is far rarer than a merge batch.
+    private func dropIgnoredItems() {
+        let stale = Set(items.filter(isIgnored).map(\.id))
+        guard !stale.isEmpty else { return }
+        selectionState.discard(stale)
+        items.removeAll { stale.contains($0.id) }
+        listedIndex = ListedPathIndex(items: items)
+        itemsDidChange()
+        selectionDidChange()
+        publishMenuSnapshot()
+    }
+
     /// Merges a batch of new items into the list, deduplicating by id
     /// (shared by project scanning, app junk scanning, and the other
     /// scanners). Visible within the module so tests can drive it directly.
@@ -2211,7 +2382,8 @@ final class AppViewModel {
         // produced, without rescanning the whole list per batch.
         var batchPaths: Set<String> = []
         var unique: [JunkItem] = []
-        for item in fresh where !listedIndex.containsID(item.id) && !item.path.isEmpty {
+        for item in fresh
+        where !listedIndex.containsID(item.id) && !item.path.isEmpty && !isIgnored(item) {
             guard !listedIndex.containsPath(item.path),
                   batchPaths.insert(item.path).inserted else { continue }
             guard !listedIndex.containsPathInside(item.path) else { continue }

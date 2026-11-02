@@ -4,8 +4,8 @@ import SwiftUI
 /// entrance of the hero screens.
 ///
 /// The motion budget is deliberately spent on interactions, not ambient loops:
-/// Lemon's hero is motionless when idle (verified: two screenshots 2.5s apart
-/// differ by zero pixels), and a continuous float loop here costs ~25% CPU —
+/// a motionless idle hero (verified: two screenshots 2.5s apart differ by zero
+/// pixels) is the reference, and a continuous float loop here costs ~25% CPU —
 /// in a hidden-title-bar window every animation frame makes AppKit recompute
 /// the window's draggable regions by walking the whole SwiftUI tree (sampled:
 /// `_resetDragMarginsIfNeeded` → `NSHostingView._regionForOpaqueDescendants`).

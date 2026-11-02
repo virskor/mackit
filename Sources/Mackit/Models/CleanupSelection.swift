@@ -66,8 +66,8 @@ final class CleanupSelection {
     /// Applies the pre-check policy to a batch of newly discovered items.
     /// Returns whether anything moved.
     ///
-    /// The general module follows Lemon's model: the rows the layout marks as
-    /// pre-checked arrive checked — that is safe and review rows, except the
+    /// In the general module the rows the layout marks as pre-checked arrive
+    /// checked — that is safe and review rows, except the
     /// ones that opted out (unused language packs) — or exactly the remembered
     /// rows once the user has saved a selection. The developer feature follows
     /// the user's auto-select setting instead, including "none". Items of

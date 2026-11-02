@@ -66,9 +66,7 @@ struct ScanState: Codable, Equatable {
 /// Uses distributed notifications rather than XPC: commands are only
 /// one-liners like "open window" and "quit", with small-dictionary
 /// payloads; XPC's connection management and interface version
-/// negotiation are pure overhead at this scale. (Tencent Lemon's
-/// LemonMonitor binary likewise shows only traces of
-/// DistributedNotificationCenter, no XPC.)
+/// negotiation are pure overhead at this scale.
 ///
 /// State that needs to survive across launches (settings, pending
 /// commands) goes through shared files; see `SharedStore`.
