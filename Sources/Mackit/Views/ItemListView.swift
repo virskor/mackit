@@ -186,9 +186,15 @@ struct ItemListView: View {
             // settings pane: the user is looking at the very entry they want
             // gone, and a hand-typed path could match nothing. The rule-level
             // twin stops the whole rule from running on the next scan.
-            Button(L10n.tr("ctx.addToIgnoreList"), systemImage: "eye.slash") { vm.addIgnoredPath(single.path) }
+            Button(
+                L10n.tr("ctx.addToIgnoreList"),
+                systemImage: VersionedSymbol.resolve("eye.slash", fallback: "minus.circle")
+            ) { vm.addIgnoredPath(single.path) }
                 .disabled(single.path.isEmpty)
-            Button(L10n.tr("ctx.ignoreRule"), systemImage: "slash.circle") { vm.addIgnoredRule(single.ruleID) }
+            Button(
+                L10n.tr("ctx.ignoreRule"),
+                systemImage: VersionedSymbol.resolve("slash.circle", fallback: "folder.badge.minus")
+            ) { vm.addIgnoredRule(single.ruleID) }
             Divider()
             // The uninstall entry points used to live here; uninstalling an
             // app is now the app uninstall tool's own page, with its own

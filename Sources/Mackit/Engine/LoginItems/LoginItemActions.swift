@@ -70,6 +70,15 @@ enum LoginItemActions {
         guard await launchctl([override, "gui/\(uid)/\(label)"]) != nil else {
             return .failed(L10n.fmt("loginItems.action.failedLabel", label))
         }
+        // The exit status is not the verdict. `launchctl enable/disable`
+        // exits zero for any well-formed label — verified live against a
+        // label that names no service, which returns exit 0 and records
+        // the override anyway — so the recorded state is read back and
+        // compared. A missing record, or one that disagrees with the
+        // requested state, is the failure the exit status cannot see.
+        guard await recordedEnabledState(label: label, uid: uid, launchctl: launchctl) == enabled else {
+            return .failed(L10n.fmt("loginItems.action.failedLabel", label))
+        }
 
         // The session-side change only when the state differs: enabling
         // a loaded service is a no-op, and tearing down an unloaded one
@@ -87,5 +96,17 @@ enum LoginItemActions {
             }
         }
         return .success
+    }
+
+    /// The label's recorded override state — true when enabled — read
+    /// back from launchd's own dump, or nil when the dump carries no
+    /// record for the label at all.
+    private static func recordedEnabledState(
+        label: String,
+        uid: uid_t,
+        launchctl: LaunchctlRun
+    ) async -> Bool? {
+        guard let dump = await launchctl(["print-disabled", "gui/\(uid)"]) else { return nil }
+        return LoginItemScanner.parseDisabledStates(dump)[label]
     }
 }

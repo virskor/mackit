@@ -165,6 +165,10 @@ enum ElevatedHelper {
         var buffer = [UInt8](repeating: 0, count: 1024)
         while true {
             let count = read(fileno(pipe), &buffer, buffer.count)
+            // A read interrupted by a signal is not the end of the
+            // output: retrying is what keeps a truncated pipe from
+            // being mistaken for a completed run.
+            if count < 0 && errno == EINTR { continue }
             if count <= 0 { break }
             chunks.append(contentsOf: buffer[..<count])
         }

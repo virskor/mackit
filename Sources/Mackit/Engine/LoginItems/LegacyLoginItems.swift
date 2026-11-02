@@ -51,13 +51,20 @@ enum LegacyLoginItems {
     private typealias RemoveFn = @convention(c) (
         UnsafeRawPointer, UnsafeRawPointer
     ) -> Int32
-    /// The 10.5-era insert signature. The modern
-    /// `LSSharedFileListItemInsertItemURL` does not exist in the dyld
-    /// cache of current macOS — verified by symbol lookup — while this
-    /// one does, and its behavior (append with the target's own name and
-    /// icon) is exactly what re-adding an entry needs.
+    /// The C entry point for inserting an entry, resolved by `dlsym`
+    /// because importing it pulls in the deprecated declarations. The
+    /// modern `LSSharedFileListItemInsertItemURL` does not exist in the
+    /// dyld cache of current macOS — verified by symbol lookup — while
+    /// this one does, and its behavior (append with the target's own
+    /// name and icon) is exactly what re-adding an entry needs.
+    ///
+    /// Seven parameters, exactly as the SDK header declares them
+    /// (`inPropertiesToClear` last): a typealias that drops the final
+    /// parameter leaves the callee reading whatever the caller happened
+    /// to leave in that argument register, which is undefined behavior
+    /// on every call, not a nil that happens to work.
     private typealias InsertFn = @convention(c) (
-        UnsafeRawPointer, UnsafeRawPointer?, CFString?, UnsafeRawPointer?, CFURL, CFDictionary?
+        UnsafeRawPointer, UnsafeRawPointer?, CFString?, UnsafeRawPointer?, CFURL, CFDictionary?, CFArray?
     ) -> UnsafeRawPointer?
 
     /// `noErr` spelled as a literal: the constant lives in the Carbon
@@ -132,8 +139,9 @@ enum LegacyLoginItems {
         let url = URL(fileURLWithPath: path) as CFURL
         // nil display name and icon: the list shows the target's own
         // name and icon for a nil display name, which is what the entry
-        // had before it was removed.
-        if let inserted = insertFn(list, nil, nil, nil, url, nil) {
+        // had before it was removed. nil properties to set and clear:
+        // the entry carries none of its own.
+        if let inserted = insertFn(list, nil, nil, nil, url, nil, nil) {
             release(inserted)
         }
     }

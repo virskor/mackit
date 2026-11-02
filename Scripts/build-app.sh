@@ -518,6 +518,17 @@ if [ -d "$DSYM" ]; then
     echo "==> dSYM copied to $APP.dSYM (shared by the agent)"
 fi
 
+# The privileged helper is a third binary with its own dSYM. It runs as root,
+# so a crash there is the one users can least diagnose from a log line alone;
+# without its symbol table the daemon's crash reports stay unsymbolicated.
+HELPER_DSYM="$BUILD_DIR/$CONFIG/MackitHelper.dSYM"
+if [ -d "$HELPER_DSYM" ]; then
+    HELPER_DSYM_DEST="$(dirname "$APP")/MackitHelper.dSYM"
+    rm -rf "$HELPER_DSYM_DEST"
+    cp -R "$HELPER_DSYM" "$HELPER_DSYM_DEST"
+    echo "==> dSYM copied to $HELPER_DSYM_DEST"
+fi
+
 echo
 # The braces cannot be omitted: bash 3.2 swallows the non-ASCII bytes following $VAR into the variable name
 echo "Done: ${APP} (version ${VERSION}, build ${BUILD_NUMBER})"

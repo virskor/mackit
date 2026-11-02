@@ -264,12 +264,22 @@ struct GeneralCleanupView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(rowState.subRows.enumerated()), id: \.element.id) { index, sub in
                         if index > 0 {
-                            Divider().padding(.leading, 40)
+                            // Aligned with the sub-row checkboxes below, one
+                            // column in from the parent row's title: the
+                            // divider belongs to the sub-rows it separates.
+                            Divider().padding(.leading, 12)
                         }
                         subRow(sub, of: rowState.row)
                     }
                 }
-                .padding(.leading, 22)
+                // The indent is the hierarchy, not decoration. A grouped
+                // row's title starts at 12 + 18 (checkbox) + 6 + 26 + 6
+                // (the disclosure's dead zones and hit area) = 68, so the
+                // sub-rows sit at 56 + 12 = 68: their checkboxes align
+                // under the parent's own title. A shallower indent puts
+                // the children's titles to the left of the parent's,
+                // which inverts the tree the disclosure is meant to show.
+                .padding(.leading, 56)
             }
         }
     }
@@ -302,6 +312,13 @@ struct GeneralCleanupView: View {
             }
             .buttonStyle(.plain)
             .padding(.leading, 12)
+            // The checkbox stands alone now, outside the button that carries
+            // the row's title, so it needs its own identity: the row's name
+            // and its tri-state, which the glyph alone does not convey.
+            .accessibilityLabel(rowState.row.title)
+            .accessibilityValue(Text(verbatim: L10n.tr(rowState.isFullySelected
+                ? "general.row.checked"
+                : (rowState.isPartiallySelected ? "general.row.partial" : "general.row.unchecked"))))
 
             // Only a grouped row has sub-rows to fold.
             if !rowState.subRows.isEmpty {
@@ -354,7 +371,7 @@ struct GeneralCleanupView: View {
 
                     trailing(rowState)
                 }
-                .padding(.leading, 10)
+                .padding(.leading, rowState.subRows.isEmpty ? 10 : 0)
                 .padding(.trailing, 12)
                 .padding(.vertical, 9)
                 .contentShape(Rectangle())

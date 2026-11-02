@@ -271,7 +271,7 @@ struct LoginItemsView: View {
             switch model.helperState {
             case .installed(let version, let stale):
                 AlertCard(
-                    systemImage: "lock.shield.fill",
+                    systemImage: VersionedSymbol.resolve("lock.shield.fill", fallback: "lock.fill"),
                     // A stale helper still works, but it predates the
                     // running app — the next system toggle replaces it.
                     tint: stale ? .orange : .green,
@@ -285,7 +285,7 @@ struct LoginItemsView: View {
                 )
             case .notInstalled:
                 AlertCard(
-                    systemImage: "lock.shield",
+                    systemImage: VersionedSymbol.resolve("lock.shield", fallback: "lock.fill"),
                     tint: .accentColor,
                     iconSize: 15,
                     message: L10n.tr("loginItems.helper.notInstalled")

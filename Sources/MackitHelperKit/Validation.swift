@@ -14,7 +14,7 @@ public enum SystemTool {
     /// The resolved launchctl path. Cached: the system layout does not
     /// change under a running process, and every scan makes several
     /// launchctl calls.
-    public nonisolated(unsafe) static let launchctlPath: String = {
+    public static let launchctlPath: String = {
         for candidate in ["/usr/bin/launchctl", "/bin/launchctl"] {
             if FileManager.default.fileExists(atPath: candidate) {
                 return candidate
@@ -110,9 +110,92 @@ public enum HelperRequest {
     /// bundle. The root install step refuses to copy itself from
     /// anywhere else: a binary at an arbitrary path claiming to be the
     /// helper has no standing to install itself system-wide.
+    ///
+    /// The suffix test alone is not the trust decision — the install step
+    /// also verifies the containing bundle identifies itself as Mackit
+    /// (see `Installer`), so a copy planted at a matching path under
+    /// `/tmp` is refused rather than elevated.
     public static func isBundledHelperPath(_ path: String) -> Bool {
         path.hasSuffix("/" + HelperIdentity.bundleRelativePath)
     }
+
+    /// Whether `version` is a plausible app version: dot-separated
+    /// alphanumeric components. The value lands in the daemon plist, and
+    /// while the plist is now built by serialization (so no value can
+    /// escape its element), a version that is not a version means the
+    /// caller is not the app — refusing it is the safe direction.
+    public static func isValidVersion(_ version: String) -> Bool {
+        guard !version.isEmpty, version.count <= 64 else { return false }
+        return version.rangeOfCharacter(from: versionCharacters.inverted) == nil
+    }
+
+    private static let versionCharacters = CharacterSet(
+        charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-"
+    )
+
+    /// Longest client requirement accepted. A designated requirement is
+    /// a short requirement-language sentence; anything past this length
+    /// is not one.
+    public static let maxClientRequirementLength = 512
+
+    /// Most authorized clients the daemon plist carries. Each entry got
+    /// there through an administrator-authenticated install, so the
+    /// ceiling only bounds pathological growth; real use is one or two
+    /// installs (a release build beside a development build).
+    public static let maxAuthorizedClients = 8
+
+    /// Whether `requirement` is a plausible code-signing requirement:
+    /// non-empty, bounded, single-line printable text. The requirement
+    /// language uses letters, digits, quotes, spaces and punctuation —
+    /// a control character or a newline has no place in one.
+    public static func isValidClientRequirement(_ requirement: String) -> Bool {
+        guard !requirement.isEmpty, requirement.count <= maxClientRequirementLength else { return false }
+        return requirement.rangeOfCharacter(from: requirementCharacters.inverted) == nil
+    }
+
+    /// Whether `requirements` is a plausible authorized-client list:
+    /// non-empty, within the ceiling, every entry a valid requirement.
+    public static func isValidClientRequirements(_ requirements: [String]) -> Bool {
+        guard !requirements.isEmpty, requirements.count <= maxAuthorizedClients else { return false }
+        return requirements.allSatisfy(isValidClientRequirement)
+    }
+
+    /// The requirement-language expression the daemon enforces: each
+    /// authorized client as a parenthesized alternative, OR-ed
+    /// together. Parenthesizing keeps an alternative's own `and`
+    /// clauses from binding across the `or` — verified live, where a
+    /// client matching only the second alternative is accepted and a
+    /// client matching neither is rejected.
+    public static func joinedClientRequirement(_ requirements: [String]) -> String {
+        requirements.map { "(\($0))" }.joined(separator: " or ")
+    }
+
+    /// The authorized-client list a new install leaves behind: the
+    /// installing app's own requirement added to whatever the previous
+    /// install recorded, deduplicated, oldest-first, capped.
+    ///
+    /// Appending rather than replacing is what keeps two installs from
+    /// evicting each other: a release build in /Applications and a
+    /// development build elsewhere share one daemon, and with a
+    /// single-entry list each install would lock the other out — every
+    /// toggle in the app that did not install last would read as an
+    /// unreachable helper and trigger a reinstall that locked the first
+    /// one out in turn. An entry an install evicts is re-added the
+    /// moment that app reinstalls, so the cap costs a repair, never a
+    /// lockout.
+    public static func authorizedClients(existing: [String], adding requirement: String) -> [String] {
+        var clients = existing
+        clients.removeAll { $0 == requirement }
+        clients.append(requirement)
+        if clients.count > maxAuthorizedClients {
+            clients.removeFirst(clients.count - maxAuthorizedClients)
+        }
+        return clients
+    }
+
+    private static let requirementCharacters = CharacterSet(
+        charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_\"'[]()=<>!/&|*+ ,:;?~^$%@{}"
+    )
 
     /// The commands that enable a system service, or nil when either
     /// component fails validation.

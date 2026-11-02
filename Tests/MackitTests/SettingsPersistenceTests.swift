@@ -50,9 +50,11 @@ struct SettingsPersistenceTests {
     /// an older writer — would put duplicate ids into the settings list's
     /// ForEach, which is undefined territory for row identity.
     @Test func duplicateProjectRootsAreDeduplicatedOnLoad() {
-        var saved: [String: Any] = [:]
         let vm = AppViewModel(statsPolling: false)
-        vm.settingsSink = { saved = $0 }
+        // The sink is redirected even though this test builds its
+        // dictionary by hand: without the redirect, saveSettings would
+        // write the developer's real shared settings file.
+        vm.settingsSink = { _ in }
         vm.projectRoots = ["/Users/me/work", "/Users/me/play"]
         vm.saveSettings()
 

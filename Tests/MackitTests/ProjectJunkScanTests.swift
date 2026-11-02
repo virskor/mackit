@@ -13,10 +13,12 @@ import Testing
 struct ProjectJunkScanTests {
     private let names = ["node_modules", "build", "dist"]
 
-    private func tempDirectory(_ label: String) -> URL {
+    /// The fixture root, created for real: a swallowed error here would
+    /// turn every empty-result assertion below into a vacuous pass.
+    private func tempDirectory(_ label: String) throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("mackit-projscan-\(label)-\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         // The walk canonicalizes its root (realpath), so the expected paths
         // have to be spelled the resolved way (/var → /private/var) or the
         // comparison silently fails on the symlink spelling.
@@ -27,19 +29,19 @@ struct ProjectJunkScanTests {
         try? FileManager.default.removeItem(at: url)
     }
 
-    private func makeDirectory(_ path: String, under root: URL) {
-        try? FileManager.default.createDirectory(
+    private func makeDirectory(_ path: String, under root: URL) throws {
+        try FileManager.default.createDirectory(
             at: root.appendingPathComponent(path),
             withIntermediateDirectories: true
         )
     }
 
     @Test func findsArtifactDirectoriesAndReportsRelativePaths() throws {
-        let root = tempDirectory("basic")
+        let root = try tempDirectory("basic")
         defer { cleanup(root) }
-        makeDirectory("web/node_modules", under: root)
-        makeDirectory("web/build", under: root)
-        makeDirectory("api/dist", under: root)
+        try makeDirectory("web/node_modules", under: root)
+        try makeDirectory("web/build", under: root)
+        try makeDirectory("api/dist", under: root)
 
         let found = ScanEngine.scanProjectJunk(root: root.path, names: names, maxDepth: 8)
 
@@ -59,9 +61,9 @@ struct ProjectJunkScanTests {
     /// stops descending once it has claimed one: an artifact inside an
     /// artifact is not a second item.
     @Test func doesNotDescendIntoAnArtifact() throws {
-        let root = tempDirectory("nested")
+        let root = try tempDirectory("nested")
         defer { cleanup(root) }
-        makeDirectory("web/node_modules/left-pad/build", under: root)
+        try makeDirectory("web/node_modules/left-pad/build", under: root)
 
         let found = ScanEngine.scanProjectJunk(root: root.path, names: names, maxDepth: 8)
 
@@ -72,9 +74,9 @@ struct ProjectJunkScanTests {
     /// Hidden directories are the user's own (`.git`, `.cache`); the walk
     /// skips them rather than surfacing their contents as project junk.
     @Test func skipsHiddenDirectories() throws {
-        let root = tempDirectory("hidden")
+        let root = try tempDirectory("hidden")
         defer { cleanup(root) }
-        makeDirectory(".git/node_modules", under: root)
+        try makeDirectory(".git/node_modules", under: root)
 
         let found = ScanEngine.scanProjectJunk(root: root.path, names: names, maxDepth: 8)
 
@@ -82,9 +84,9 @@ struct ProjectJunkScanTests {
     }
 
     @Test func respectsMaxDepth() throws {
-        let root = tempDirectory("depth")
+        let root = try tempDirectory("depth")
         defer { cleanup(root) }
-        makeDirectory("a/b/c/node_modules", under: root)
+        try makeDirectory("a/b/c/node_modules", under: root)
 
         // The depth in the walk is that of the directory being listed: the
         // root is 0, so the artifact four levels down needs a maxDepth past
@@ -97,11 +99,11 @@ struct ProjectJunkScanTests {
     /// tree of its own: the bulk record reports the entry's own type (VLNK),
     /// so it is neither claimed nor descended into.
     @Test func symlinkedArtifactIsNotClaimed() throws {
-        let root = tempDirectory("symlink")
+        let root = try tempDirectory("symlink")
         defer { cleanup(root) }
-        let target = tempDirectory("symlink-target")
+        let target = try tempDirectory("symlink-target")
         defer { cleanup(target) }
-        makeDirectory("real/node_modules", under: target)
+        try makeDirectory("real/node_modules", under: target)
         try FileManager.default.createSymbolicLink(
             at: root.appendingPathComponent("linked"),
             withDestinationURL: target.appendingPathComponent("real")
@@ -115,10 +117,10 @@ struct ProjectJunkScanTests {
     /// A root that is itself a symlink is resolved first, so the artifacts
     /// are reported under the real directory the bytes live in.
     @Test func symlinkedRootIsResolved() throws {
-        let real = tempDirectory("real-root")
+        let real = try tempDirectory("real-root")
         defer { cleanup(real) }
-        makeDirectory("web/node_modules", under: real)
-        let link = tempDirectory("link-root")
+        try makeDirectory("web/node_modules", under: real)
+        let link = try tempDirectory("link-root")
         defer { cleanup(link) }
         try FileManager.default.createSymbolicLink(
             at: link.appendingPathComponent("project"),

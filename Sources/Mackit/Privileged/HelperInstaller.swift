@@ -22,13 +22,22 @@ enum HelperInstaller {
         guard let bundledPath = ElevatedHelper.bundledHelperPath() else {
             return .failed(L10n.tr("loginItems.helper.notBundled"))
         }
+        // The daemon authenticates its clients against the installing
+        // app's own designated requirement, so the requirement travels
+        // with the install. An app with no readable signature cannot
+        // produce one, and installing a daemon that would refuse every
+        // connection is worse than failing here.
+        guard let clientRequirement = AppSignature.designatedRequirement() else {
+            return .failed(L10n.tr("loginItems.helper.signatureUnreadable"))
+        }
 
         let outcome = ElevatedHelper.run(
             mode: "--install",
-            // The version to record and the source path the root process
+            // The version to record, the source path the root process
             // copies from — the install refuses any source that is not
-            // the bundled helper.
-            arguments: [appVersion(), bundledPath]
+            // the bundled helper — and the client requirement the daemon
+            // enforces.
+            arguments: [appVersion(), bundledPath, clientRequirement]
         )
 
         // The end state is the verdict: a helper that reported FAIL

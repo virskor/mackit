@@ -27,7 +27,7 @@ struct HelperInstallSheet: View {
         VStack(spacing: 0) {
             VStack(spacing: 12) {
                 IconBadge(
-                    systemImage: "lock.shield.fill",
+                    systemImage: VersionedSymbol.resolve("lock.shield.fill", fallback: "lock.fill"),
                     tint: .accentColor,
                     diameter: 56,
                     symbolSize: 24

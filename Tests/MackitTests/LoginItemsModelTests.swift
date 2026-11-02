@@ -39,8 +39,14 @@ struct LoginItemsModelTests {
     /// flip it: the model re-reads the state after a successful install,
     /// and a static "not installed" answer would describe a machine
     /// where the install did nothing.
+    ///
+    /// `scanCounter` is opt-in: the lifecycle contracts below are about
+    /// *how many times* the scan runs, which the canned data alone
+    /// cannot show — a second visit that rescanned would still leave
+    /// `items.count == 1` and pass silently.
     private func makeModel(
         items: [LoginItem],
+        scanCounter: ScanCounter? = nil,
         apply: @escaping (LoginItem, Bool) async -> HelperOutcome = { _, _ in .success },
         helperState: HelperClient.InstalledState = .notInstalled,
         install: @escaping @Sendable () -> ElevatedHelper.Outcome = { .succeeded },
@@ -50,7 +56,10 @@ struct LoginItemsModelTests {
         let recorder = ApplyRecorder()
         let state = HelperStateFake(helperState)
         let model = LoginItemsModel(
-            scan: { items },
+            scan: {
+                scanCounter?.bump()
+                return items
+            },
             apply: { item, enabled in
                 recorder.record(item.id, enabled)
                 return await apply(item, enabled)
@@ -141,28 +150,58 @@ struct LoginItemsModelTests {
         }
     }
 
+    /// Counts how many times the injected scan closure ran.
+    private final class ScanCounter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+
+        func bump() {
+            lock.lock()
+            count += 1
+            lock.unlock()
+        }
+
+        var value: Int {
+            lock.lock()
+            defer { lock.unlock() }
+            return count
+        }
+    }
+
     // MARK: Scan lifecycle
 
     @Test func activateScansOncePerSession() async {
-        let (model, _, _) = makeModel(items: [item("a", label: "com.a", enabled: true)])
+        let counter = ScanCounter()
+        let (model, _, _) = makeModel(
+            items: [item("a", label: "com.a", enabled: true)],
+            scanCounter: counter
+        )
         model.activate()
         await model.waitUntilSettled()
         #expect(model.hasScanned)
         #expect(model.items.count == 1)
         #expect(model.groups.count == 1)
+        #expect(counter.value == 1, "the first visit scans once")
 
         // A second visit is instant: no rescan.
         model.activate()
         await model.waitUntilSettled()
         #expect(model.items.count == 1)
+        #expect(counter.value == 1, "a second visit must not rescan")
     }
 
     @Test func rescanReplacesTheList() async {
-        let (model, _, _) = makeModel(items: [item("a", label: "com.a", enabled: true)])
+        let counter = ScanCounter()
+        let (model, _, _) = makeModel(
+            items: [item("a", label: "com.a", enabled: true)],
+            scanCounter: counter
+        )
         model.activate()
         await model.waitUntilSettled()
+        #expect(counter.value == 1)
         model.rescan()
         await model.waitUntilSettled()
+        #expect(counter.value == 2, "a rescan runs the scan again")
         #expect(model.items.count == 1)
     }
 

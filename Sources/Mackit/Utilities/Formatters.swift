@@ -47,6 +47,11 @@ enum Formatters {
     /// degrees and the degree sign and unit ride in the same string. A
     /// fractional reading would change width with every sample — the menu bar
     /// item would jitter — and no user acts on 0.1°C.
+    ///
+    /// The domain is finite values only: `Int(Double)` traps on NaN and
+    /// on anything outside Int's range, so a caller with an untrusted
+    /// reading must clamp it first. Every current caller passes a
+    /// filtered SMC reading (0…110 °C, NaN excluded by comparison).
     static func degrees(_ celsius: Double) -> String {
         L10n.fmt("format.degrees", Int(celsius))
     }

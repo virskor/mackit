@@ -847,7 +847,6 @@ final class AppViewModel {
     private func dismissLargeFiles() {
         guard showsLargeFiles else { return }
         showsLargeFiles = false
-        showsLoginItems = false
     }
 
     /// Opens the startup-items tool page from the sidebar. Same
@@ -1515,10 +1514,19 @@ final class AppViewModel {
             progressFraction = total > 0 ? Double(completed) / Double(total) : 0
 
         case .discovered(let batch):
-            items.append(contentsOf: batch)
-            listedIndex.insert(contentsOf: batch)
-            applyDefaultSelection(batch)
-            itemsDidChange()
+            // The ignore list applies at the merge point too: the static
+            // and CLI rules stream their batches straight through here,
+            // not through `mergeDiscovered`, so an ignored path owned by
+            // a static rule would otherwise be re-listed by the very
+            // next scan — and by every later batch of a scan already in
+            // flight when the ignore was added.
+            let accepted = batch.filter { !isIgnored($0) }
+            if !accepted.isEmpty {
+                items.append(contentsOf: accepted)
+                listedIndex.insert(contentsOf: accepted)
+                applyDefaultSelection(accepted)
+                itemsDidChange()
+            }
 
         case .finished(let count):
             // Wrapping up is uniformly handled by the end of startScan's

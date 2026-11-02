@@ -45,9 +45,16 @@ struct GeneralRowFoldTests {
         // everything it holds.
         #expect(long?.selectedCount == 8, "folding must not move the selection")
 
-        vm.mergeDiscovered(appJunkItems(["Solo"]))
-        let short = row("app.junk", in: vm)
-        #expect(short?.subRows.count == 9)
+        // The short half needs its own model: merging one more entry
+        // into the folded row above would keep it folded — the row's
+        // fold state is the user's once it exists — so the "stays open"
+        // claim is only meaningful against a list that was never long.
+        let shortVM = AppViewModel(statsPolling: false)
+        shortVM.settingsSink = { _ in }
+        shortVM.mergeDiscovered(appJunkItems(["Solo"]))
+        let short = row("app.junk", in: shortVM)
+        #expect(short?.subRows.count == 1)
+        #expect(short?.isExpanded == true, "a short list has nothing to hide and stays open")
     }
 
     /// The threshold itself: exactly at it a row stays open, one past it folds.

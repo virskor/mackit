@@ -383,14 +383,17 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
-                Label(L10n.tr("settings.ignoreList.header"), systemImage: "eye.slash")
+                Label(
+                    L10n.tr("settings.ignoreList.header"),
+                    systemImage: VersionedSymbol.resolve("eye.slash", fallback: "minus.circle")
+                )
             }
 
             Section {
                 List {
                     ForEach(vm.ignoredPaths.sorted(), id: \.self) { path in
                         HStack {
-                            Image(systemName: "doc")
+                            VersionedSymbolImage(name: "doc", fallback: "doc.fill")
                                 .foregroundStyle(.secondary)
                             Text(verbatim: path)
                                 .font(.system(size: 11))
@@ -423,7 +426,7 @@ struct SettingsView: View {
                 List {
                     ForEach(vm.ignoredRules.sorted(), id: \.self) { ruleID in
                         HStack {
-                            Image(systemName: "slash.circle")
+                            VersionedSymbolImage(name: "slash.circle", fallback: "folder.badge.minus")
                                 .foregroundStyle(.secondary)
                             Text(verbatim: ignoreRuleTitle(ruleID))
                                 .font(.system(size: 11))
@@ -463,12 +466,28 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
     }
 
-    /// A rule id's display title: the catalog rule's localized title when
-    /// the catalog has it, the raw id otherwise. The dynamic scanners' ids
-    /// (app junk, leftover caches, downloads, language packs) are not
-    /// catalog rules and have no entry there.
+    /// A rule id's display title, resolved through every catalog that
+    /// owns ids a user can ignore: the static rules, the CLI rules
+    /// (whose localized titles live under `rule.<id>.title`, not in the
+    /// raw command string), and the dynamic scanners' ids through the
+    /// general page's own row titles — the pane that manages the ignore
+    /// list shows the same name the scan list does. The raw id is the
+    /// last resort, for an id no catalog owns.
     private func ignoreRuleTitle(_ ruleID: String) -> String {
-        RulesCatalog.scanRules.first { $0.id == ruleID }?.title ?? ruleID
+        if let rule = RulesCatalog.scanRules.first(where: { $0.id == ruleID }) {
+            return rule.title
+        }
+        if RulesCatalog.cliRules.contains(where: { $0.id == ruleID }) {
+            return L10n.tr("rule.\(ruleID).title")
+        }
+        if ruleID.hasPrefix("project.") {
+            return L10n.tr("category.projects.title")
+        }
+        if let rowID = GeneralCleanLayout.rowID(forRuleID: ruleID),
+           let row = GeneralCleanLayout.rows.first(where: { $0.id == rowID }) {
+            return row.title
+        }
+        return ruleID
     }
 
     /// Menu bar section: which monitor items to show in the tray menu.

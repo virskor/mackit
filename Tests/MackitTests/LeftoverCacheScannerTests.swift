@@ -101,32 +101,66 @@ struct LeftoverCacheScannerTests {
         }
     }
 
-    /// A rule that targets, digs into, or sits under a pool entry has
+    /// A rule that targets, digs into, or sits above a pool entry has
     /// already claimed those bytes: the pool entry must not surface.
+    ///
+    /// Each relation is isolated in its own scan run — one rule per run
+    /// — because a single rule set cannot separate them: the ancestor
+    /// relation needs a rule above every other pool entry, which would
+    /// claim the positive control too. (An earlier version of this test
+    /// asserted on the dotless `Google` bucket, which never surfaces for
+    /// that reason alone, and on an entry a rule could not have
+    /// excluded — both assertions passed with the rule claims
+    /// disabled.)
     @Test func rulePrefixesClaimTheirPoolEntries() throws {
         let fixture = try makeFixture(label: "rules")
         defer { cleanup(fixture.apps, fixture.home) }
 
         let caches = fixture.home.appendingPathComponent("Library/Caches").path
-        let rules = [
-            // Digs into the Google bucket from below: claims `Google` as its
-            // ancestor, the way the browser rules claim the vendor directory.
-            ScanRule(id: "test.chrome", category: .browser,
-                     target: .glob("\(caches)/Google/Chrome*/*/Cache"), risk: .safe),
-            // Targets a pool entry outright.
-            ScanRule(id: "test.foo", category: .appJunk,
-                     target: .children("\(caches)/com.example.foo"), risk: .safe),
-        ]
+        // The pool-2 entry no rule below touches: the positive control.
+        let containerEntry = fixture.home
+            .appendingPathComponent("Library/Containers/com.gone.app/Data/Library/Caches/com.gone.app").path
+        for name in ["com.gone.target", "com.gone.digger/inner"] {
+            try FileManager.default.createDirectory(atPath: "\(caches)/\(name)", withIntermediateDirectories: true)
+        }
 
-        let found = LeftoverCacheScanner.scanLeftoverCaches(
-            roots: [fixture.apps.path],
-            home: fixture.home.path,
-            rules: rules
-        )
+        func scan(rules: [ScanRule]) -> [String] {
+            paths(of: LeftoverCacheScanner.scanLeftoverCaches(
+                roots: [fixture.apps.path],
+                home: fixture.home.path,
+                rules: rules
+            ))
+        }
 
-        #expect(paths(of: found).contains(caches + "/com.gone.app"), "an unclaimed entry still surfaces")
-        #expect(!paths(of: found).contains(caches + "/Google"), "the vendor bucket is claimed by the rule above it")
-        #expect(!paths(of: found).contains(caches + "/com.example.foo"), "a directly targeted entry is claimed")
+        // The rule targets the entry outright: path == prefix.
+        #expect(!scan(rules: [
+            ScanRule(id: "test.direct", category: .appJunk,
+                     target: .children("\(caches)/com.gone.target"), risk: .safe)
+        ]).contains(caches + "/com.gone.target"), "a rule targeting the entry claims it")
+
+        // The rule digs into the entry: prefix.hasPrefix(path + "/").
+        #expect(!scan(rules: [
+            ScanRule(id: "test.digger", category: .appJunk,
+                     target: .children("\(caches)/com.gone.digger/inner"), risk: .safe)
+        ]).contains(caches + "/com.gone.digger"), "a rule digging into the entry claims it")
+
+        // The rule sits above the entry: path.hasPrefix(prefix + "/").
+        // The only ancestor a pool-1 entry has is the cache root, so
+        // this rule claims every pool-1 entry — the pool-2 entry below
+        // is what keeps the sweep itself honest.
+        #expect(!scan(rules: [
+            ScanRule(id: "test.ancestor", category: .system, target: .children(caches), risk: .safe)
+        ]).contains(caches + "/com.gone.app"), "a rule above the entry claims it")
+
+        // With all three relations armed, the sweep still reports the
+        // one entry no rule touches.
+        #expect(scan(rules: [
+            ScanRule(id: "test.direct", category: .appJunk,
+                     target: .children("\(caches)/com.gone.target"), risk: .safe),
+            ScanRule(id: "test.digger", category: .appJunk,
+                     target: .children("\(caches)/com.gone.digger/inner"), risk: .safe),
+            ScanRule(id: "test.ancestor", category: .system, target: .children(caches), risk: .safe),
+        ]).contains(containerEntry), "an entry no rule touches still surfaces")
     }
 
     /// A glob that starts with a wildcard has no literal prefix and claims
@@ -171,6 +205,43 @@ struct LeftoverCacheScannerTests {
             rules: []
         )
         #expect(!paths(of: found).contains(cache.path), "the last bundle-id segment claims the cache")
+    }
+
+    /// A live app's cache keeps its bundle id as a dot-bounded run in the
+    /// entry name — the helper, updater and team-prefixed container
+    /// spellings — and every one of them is the installed app's, not a
+    /// leftover of a removed one. An app that is *not* installed keeps
+    /// the same spellings unclaimed, which is what keeps the widening
+    /// from swallowing the feature.
+    @Test func suffixedBundleIDSpellingsAreClaimed() throws {
+        let fixture = try makeFixture(label: "suffixed")
+        defer { cleanup(fixture.apps, fixture.home) }
+
+        func makeCache(_ name: String) throws {
+            let url = fixture.home.appendingPathComponent("Library/Caches/\(name)")
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        }
+        // com.example.foo is installed (see makeFixture).
+        try makeCache("com.example.foo.helper")             // bundle id as a prefix
+        try makeCache("com.example.foo.ShipIt")             // bundle id as a prefix, mixed case
+        try makeCache("88L2Q4487U.com.example.foo.IPCHelper") // team-prefixed container spelling
+        // com.gone.app is not installed: the same shapes stay leftovers.
+        try makeCache("com.gone.app.helper")
+
+        let found = LeftoverCacheScanner.scanLeftoverCaches(
+            roots: [fixture.apps.path],
+            home: fixture.home.path,
+            rules: []
+        )
+        let caches = fixture.home.appendingPathComponent("Library/Caches").path
+        #expect(!paths(of: found).contains("\(caches)/com.example.foo.helper"),
+                "an installed app's helper cache is claimed")
+        #expect(!paths(of: found).contains("\(caches)/com.example.foo.ShipIt"),
+                "an installed app's updater cache is claimed")
+        #expect(!paths(of: found).contains("\(caches)/88L2Q4487U.com.example.foo.IPCHelper"),
+                "a team-prefixed container of an installed app is claimed")
+        #expect(paths(of: found).contains("\(caches)/com.gone.app.helper"),
+                "the claim follows the app, not the spelling: an uninstalled app's helper cache still surfaces")
     }
 
     /// The view-model phase: sizes are filled in by the shared measurement

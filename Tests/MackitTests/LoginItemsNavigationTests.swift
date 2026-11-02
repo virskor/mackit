@@ -11,9 +11,32 @@ import Testing
 /// The model is fixture-backed, so nothing here touches a real launchd.
 @MainActor
 struct LoginItemsNavigationTests {
-    private func makeModel(items: [LoginItem] = []) -> LoginItemsModel {
+    /// Counts the model's activations, so "entering the page activates
+    /// the model once" is an assertion about the count rather than
+    /// about a flag a double call could not have changed anyway.
+    private final class ActivationCounter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+
+        func bump() {
+            lock.lock()
+            count += 1
+            lock.unlock()
+        }
+
+        var value: Int {
+            lock.lock()
+            defer { lock.unlock() }
+            return count
+        }
+    }
+
+    private func makeModel(items: [LoginItem] = [], counter: ActivationCounter? = nil) -> LoginItemsModel {
         LoginItemsModel(
-            scan: { items },
+            scan: {
+                counter?.bump()
+                return items
+            },
             apply: { _, _ in .success },
             readHelperState: { .notInstalled },
             installHelper: { .succeeded },
@@ -105,12 +128,15 @@ struct LoginItemsNavigationTests {
         #expect(vm.loginItems.items.count == 1)
     }
 
-    @Test func enteringThePageActivatesTheModelOnce() {
-        let vm = AppViewModel(statsPolling: false, loginItems: makeModel())
+    @Test func enteringThePageActivatesTheModelOnce() async {
+        let counter = ActivationCounter()
+        let vm = AppViewModel(statsPolling: false, loginItems: makeModel(counter: counter))
 
         // A second call to an already-active route does nothing.
         vm.showLoginItems()
         vm.showLoginItems()
         #expect(vm.showsLoginItems)
+        await vm.loginItems.waitUntilSettled()
+        #expect(counter.value == 1, "entering the page activates the model once, not per call")
     }
 }

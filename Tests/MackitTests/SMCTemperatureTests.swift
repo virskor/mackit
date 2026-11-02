@@ -257,8 +257,8 @@ struct TemperatureDisplayTests {
     }
 
     /// A numeric reading shows as degrees; without one the row keeps the
-    /// public thermal-state word — on macOS 27 every SMC read is rejected,
-    /// and the word is the signal that always works.
+    /// public thermal-state word — the signal that always works when no
+    /// sensor answers.
     @Test func temperatureTextFallsBackToTheThermalWord() {
         var stats = SystemStats()
         stats.thermalState = 0 // nominal
@@ -266,8 +266,11 @@ struct TemperatureDisplayTests {
         #expect(stats.temperatureText == "45°C")
         #expect(!stats.temperatureIsHot)
 
-        stats.cpuTemperature = 70
-        #expect(stats.temperatureText == "70°C")
+        // Above the warning threshold: 95°C, between the M2's measured
+        // under-load average (~82°C across its sensor set) and the
+        // chip's throttle point.
+        stats.cpuTemperature = 96
+        #expect(stats.temperatureText == "96°C")
         #expect(stats.temperatureIsHot)
 
         stats.cpuTemperature = nil

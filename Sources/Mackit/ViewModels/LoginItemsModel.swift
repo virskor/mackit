@@ -358,6 +358,11 @@ final class LoginItemsModel {
         Task { [installHelper] in
             let outcome = await Task.detached { installHelper() }.value
             self.isInstallingHelper = false
+            // The sheet's Cancel stays live while the install runs, and a
+            // cancelled change must not be applied once the install
+            // finishes: the captured `pending` is acted on only while it
+            // is still the change being waited on.
+            guard self.pendingChange == pending else { return }
             self.pendingChange = nil
             switch outcome {
             case .succeeded:
@@ -369,7 +374,10 @@ final class LoginItemsModel {
                 self.present(L10n.tr("loginItems.helper.installCancelled"), isError: false)
             case .failed(let message):
                 MackitLog.loginItems.error("privileged helper install failed: \(message, privacy: .public)")
-                self.present(message, isError: true)
+                // The helper's own diagnostic is data, not copy: it rides
+                // inside the localized frame so the sentence the user
+                // reads is translated and the cause is still named.
+                self.present(L10n.fmt("loginItems.helper.installFailed", message), isError: true)
             }
         }
     }
@@ -423,9 +431,12 @@ final class LoginItemsModel {
             self.present(L10n.tr("loginItems.helper.removeCancelled"), isError: false)
             return
         }
-        let message = elevated?.failureMessage
-            ?? outcome.failure
-            ?? L10n.tr("loginItems.helper.removeFailed")
+        // The helper's diagnostic rides inside the localized frame; the
+        // no-detail fallback is a plain key, never a format string read
+        // without its argument (which would show the raw placeholder).
+        let raw = elevated?.failureMessage ?? outcome.failure
+        let message = raw.map { L10n.fmt("loginItems.helper.removeFailed", $0) }
+            ?? L10n.tr("loginItems.helper.removeIncomplete")
         MackitLog.loginItems.error("privileged helper removal failed: \(message, privacy: .public)")
         self.present(message, isError: true)
     }

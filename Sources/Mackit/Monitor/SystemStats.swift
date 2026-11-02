@@ -22,9 +22,11 @@ struct SystemStats: Equatable, Sendable {
     var thermalState: Int = 0
     /// CPU temperature in °C, or nil when the SMC read answered with
     /// nothing usable. Read through the private SMC path (see
-    /// `SMCTemperature`), which answers on macOS 14–27 — verified on a
-    /// macOS 27 Apple Silicon machine, where the M2's sensor table answers
-    /// with `flt `-typed values under load.
+    /// `SMCTemperature`), which answers on this Apple Silicon machine —
+    /// verified on a macOS 27 M2, whose sensor table answers with
+    /// `flt `-typed values under load. Behavior on other OS versions and
+    /// on Intel hardware is unverified; a machine where the path answers
+    /// nothing falls back to the thermal state, never to a blank.
     var cpuTemperature: Double? = nil
 
     /// Used memory fraction, 0...1.
@@ -44,7 +46,15 @@ struct SystemStats: Equatable, Sendable {
     }
 
     /// The temperature at or above which the display warns.
-    static let hotTemperature = 70.0
+    ///
+    /// Chosen against the parts this app runs on: an M2's sensor set
+    /// averages about 82 °C under load and idles in the 60s, so a
+    /// threshold down there would warn during ordinary use; the chip
+    /// throttles near 100 °C. 95 sits between — it marks sustained
+    /// heat, not a busy afternoon. Intel package sensors read far lower
+    /// (proximity, not junction), so the warning is effectively an
+    /// Apple-Silicon signal there.
+    static let hotTemperature = 95.0
 
     /// The temperature value as the monitoring surfaces show it: whole
     /// degrees when the SMC answered, the thermal-state word when it did not.

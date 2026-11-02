@@ -253,7 +253,10 @@ enum LoginItemScanner {
     /// override and is enabled, so it is absent from the result — the
     /// caller applies the default. The value is compared as a whole
     /// token, not by substring: a label containing the word "disabled"
-    /// must not be able to flip its own state.
+    /// must not be able to flip its own state. Only the positive token
+    /// counts as enabled, so a line launchd one day writes in a third
+    /// spelling reads as disabled rather than silently reading every
+    /// service as enabled.
     static func parseDisabledStates(_ output: String?) -> [String: Bool] {
         guard let output else { return [:] }
         var states: [String: Bool] = [:]
@@ -262,7 +265,7 @@ enum LoginItemScanner {
             guard let label = labelFromDisabledLine(line) else { continue }
             let parts = line.split(separator: "=>", maxSplits: 1)
             guard parts.count == 2 else { continue }
-            states[label] = parts[1].trimmingCharacters(in: .whitespaces) != "disabled"
+            states[label] = parts[1].trimmingCharacters(in: .whitespaces) == "enabled"
         }
         return states
     }
@@ -304,14 +307,23 @@ enum LoginItemScanner {
     /// nil. The first `.app` component from the left is the root: a
     /// helper at `Foo.app/Contents/Library/LoginItems/Bar.app` is still
     /// Foo's helper for grouping purposes.
+    ///
+    /// The component is matched with its trailing separator (or the end
+    /// of the path) so a directory named `My.apps` — whose `.app` is the
+    /// start of `apps` — is not mistaken for a bundle root and does not
+    /// swallow the real `helper.app` further right.
     private static func appBundleRoot(of path: String) -> String? {
-        guard let range = path.range(of: ".app") else { return nil }
-        let root = String(path[path.startIndex..<range.upperBound])
-        // The remainder must be a path separator or nothing: a file
-        // literally named "x.appliance" is not a bundle.
-        let remainder = path[range.upperBound...]
-        guard remainder.isEmpty || remainder.hasPrefix("/") else { return nil }
-        return root
+        var searchRange = path.startIndex..<path.endIndex
+        while let range = path.range(of: ".app", range: searchRange) {
+            let remainder = path[range.upperBound...]
+            // The remainder must be a path separator or nothing: a file
+            // literally named "x.appliance" is not a bundle.
+            if remainder.isEmpty || remainder.hasPrefix("/") {
+                return String(path[path.startIndex..<range.upperBound])
+            }
+            searchRange = range.upperBound..<path.endIndex
+        }
+        return nil
     }
 
     /// An app bundle's display name: the file name without its

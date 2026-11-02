@@ -171,8 +171,11 @@ enum SMCTemperature {
 
     /// The average of every sensor that answers with a plausible value.
     /// Below `minTemperature` a sensor is treated as absent rather than as a
-    /// cold reading: an unpopulated slot reads near zero and would drag the
-    /// average down.
+    /// cold reading. Defensive rather than observed: on the machine this was
+    /// verified against, absent keys fail at key-info with the kext's error
+    /// byte instead of answering near zero — but a sensor that *did* answer
+    /// zero would drag the average down silently, and the filter costs
+    /// nothing.
     private static func averageTemperature(keys: [String], readKey: KeyReader) -> Double? {
         var sum = 0.0
         var count = 0
@@ -335,6 +338,10 @@ enum SMCTemperature {
                 &replySize
             )
             guard status == KERN_SUCCESS else { return nil }
+            // The kext reports how much of the reply it filled; a short
+            // write is a malformed answer, and decoding it anyway would
+            // read zeros as data.
+            guard replySize == size_t(Offset.size) else { return nil }
             // The kext answers 0 on success and an error code in its own
             // byte: the call can return a success status while the answer is
             // a refusal.

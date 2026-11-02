@@ -1,5 +1,16 @@
+import Darwin
 import Foundation
 import MackitHelperKit
+import os
+import Security
+
+// MARK: - Logging
+
+/// The daemon's log. Kept deliberately minimal — counts, states and
+/// outcomes only, never file contents or request payloads — and spelled
+/// out here rather than shared with the app: the helper is a separate
+/// executable and `MackitLog` lives in the app target.
+private let helperLog = Logger(subsystem: "cn.mingcui.mackit.helper", category: "daemon")
 
 // MARK: - launchctl execution
 
@@ -23,19 +34,29 @@ enum Launchctl {
     static let executable = SystemTool.launchctlPath
 
     /// A one-line diagnostic from a failed run: the exit status plus
-    /// launchctl's own words, capped so a pathological output cannot
+    /// launchctl's own words, truncated so a pathological output cannot
     /// flood the reply. Only ever carries service labels and system
     /// error text.
     static func describe(_ result: Result) -> String {
-        let detail = result.output.isEmpty ? "" : ": \(result.output)"
+        let detail = result.output.isEmpty ? "" : ": \(truncated(result.output))"
         return "launchctl exited \(result.status)\(detail)"
     }
 
+    /// The longest launchctl excerpt kept in a diagnostic. launchctl's
+    /// own error text is a line or two; anything longer is a dump this
+    /// reply has no business carrying.
+    private static let maxDetailLength = 200
+
+    private static func truncated(_ text: String) -> String {
+        guard text.count > maxDetailLength else { return text }
+        return String(text.prefix(maxDetailLength)) + "…"
+    }
+
     /// Runs the command, returning its exit status and merged
-    /// stdout/stderr. Output is drained only after exit — launchctl's
-    /// chatter is a few lines, far below the pipe buffer, so the
-    /// read-to-EOF-after-wait order cannot deadlock the way an
-    /// unbounded child's would.
+    /// stdout/stderr. The pipe is drained to EOF *before* waiting for
+    /// exit — the order matters: waiting first would deadlock on any
+    /// child that fills the pipe buffer, and launchctl's chatter on a
+    /// failure can exceed it.
     @discardableResult
     static func run(_ command: LaunchctlCommand) -> Result {
         let process = Process()
@@ -104,6 +125,16 @@ final class HelperService: NSObject, MackitHelperProtocol {
         // reaches launchctl, here or anywhere else.
         guard HelperRequest.enableCommands(label: label, plistPath: plistPath) != nil else {
             once.call(false, "invalid label or plist path")
+            return
+        }
+        // The label and the plist must name the same service: an
+        // override recorded for one label while a different daemon is
+        // bootstrapped is a change nobody asked for. Every request the
+        // app makes pairs the label it read out of a plist with that
+        // same plist, so a disagreement means the request is not one
+        // the app built.
+        guard Plist.label(of: plistPath) == label else {
+            once.call(false, "label and plist path name different services")
             return
         }
         // The override must land first: it is the part that survives a
@@ -187,11 +218,61 @@ final class HelperService: NSObject, MackitHelperProtocol {
     }
 }
 
+/// The code-signing requirement this daemon enforces on its clients,
+/// resolved once at startup from the daemon plist the install wrote.
+///
+/// The helper runs as root and its Mach service is reachable by every
+/// local process, so "any process may ask" is not an acceptable trust
+/// boundary: without a requirement, any unprivileged process could
+/// disable arbitrary system daemons as root. The requirements are the
+/// designated requirements of the app installs that have installed the
+/// daemon — each one an identity an administrator authenticated at
+/// install time — so the daemon serves exactly those installs, whatever
+/// signing identity each carries (Developer ID or an ad-hoc development
+/// build).
+///
+/// nil — and therefore a refusal of every connection — when the plist
+/// carries no requirement, or carries one the requirement language
+/// cannot parse. An unparseable requirement must fail closed: passing
+/// it to `setConnectionCodeSigningRequirement` would raise an
+/// exception, and accepting connections without it is the hole being
+/// closed. A daemon in that state is repairable by reinstalling, which
+/// the app detects as an unreachable helper.
+enum ClientRequirement {
+    private static let resolved: String? = {
+        guard let requirements = Plist.authorizedClientRequirements(),
+              HelperRequest.isValidClientRequirements(requirements) else {
+            return nil
+        }
+        let joined = HelperRequest.joinedClientRequirement(requirements)
+        // Parse the joined expression here, once, where a failure is a
+        // refusal rather than an exception inside the XPC machinery.
+        var requirement: SecRequirement?
+        guard SecRequirementCreateWithString(joined as CFString, [], &requirement) == errSecSuccess else {
+            return nil
+        }
+        return joined
+    }()
+
+    /// The requirement to apply to a new connection, or nil when this
+    /// daemon must refuse every connection.
+    static var current: String? { resolved }
+}
+
 /// Keeps the delegate alive for the listener's lifetime — `delegate` is
 /// weak, and a listener whose delegate was collected rejects every
 /// connection.
 final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection newConnection: NSXPCConnection) -> Bool {
+        // The gate when the daemon plist carries no usable requirement:
+        // refuse every connection. With a valid requirement in place
+        // this method is never reached for a non-matching client — the
+        // listener-level requirement (set in the serve mode below)
+        // rejects those before the delegate is consulted.
+        guard ClientRequirement.current != nil else {
+            helperLog.error("refusing XPC connection: no valid client requirements in daemon plist")
+            return false
+        }
         newConnection.exportedInterface = NSXPCInterface(with: MackitHelperProtocol.self)
         newConnection.exportedObject = HelperService()
         newConnection.resume()
@@ -205,16 +286,17 @@ final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
 ///
 /// It copies the bundled helper into `/Library/PrivilegedHelperTools`,
 /// writes the daemon plist (recording the app version it was installed
-/// from), and bootstraps it into the system domain. Progress and
-/// failures are printed as single lines — the app reads this process's
-/// pipe and reports the line to the user, so a failed install names its
-/// cause instead of failing silently.
+/// from and adding the installing app to the authorized-client list its
+/// clients must satisfy), and bootstraps it into the system domain.
+/// Progress and failures are printed as single lines — the app reads
+/// this process's pipe and reports the line to the user, so a failed
+/// install names its cause instead of failing silently.
 enum Installer {
     /// Exit codes the app maps onto user-facing outcomes.
     static let exitSuccess: Int32 = 0
     static let exitFailure: Int32 = 1
 
-    static func install(version: String, sourcePath: String) -> Int32 {
+    static func install(version: String, sourcePath: String, clientRequirement: String) -> Int32 {
         func fail(_ message: String) -> Int32 {
             print("FAIL: \(message)")
             fflush(stdout)
@@ -226,6 +308,22 @@ enum Installer {
         // app's own bundle has standing to install itself system-wide.
         guard HelperRequest.isBundledHelperPath(sourcePath) else {
             return fail("source path is not the bundled helper")
+        }
+        guard isInsideAppBundle(sourcePath) else {
+            return fail("source path is not inside an app bundle")
+        }
+        // The final path component must be the regular file itself, not
+        // a symlink: the copy follows links, so a link aimed at a
+        // root-only file would land its contents in a world-readable
+        // file under /Library.
+        guard isRegularFile(sourcePath) else {
+            return fail("bundled helper is not a regular file")
+        }
+        guard HelperRequest.isValidVersion(version) else {
+            return fail("invalid version")
+        }
+        guard HelperRequest.isValidClientRequirement(clientRequirement) else {
+            return fail("invalid client requirement")
         }
         guard FileManager.default.fileExists(atPath: sourcePath) else {
             return fail("bundled helper not found")
@@ -266,10 +364,34 @@ enum Installer {
         } catch {
             return fail("cannot copy helper: \(error.localizedDescription)")
         }
-        // Root-owned and world-executable: launchd must be able to run it.
-        try? fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: HelperIdentity.installedBinaryPath)
+        // Root-owned and world-executable: launchd must be able to run
+        // it, and the user who happened to be logged in when the install
+        // ran must not be able to rewrite the daemon's code. The copy
+        // preserves the source's owner, so ownership is set explicitly
+        // and verified — a user-writable root daemon is a standing
+        // privilege-escalation invitation.
+        do {
+            try fileManager.setAttributes(
+                [.ownerAccountName: "root", .groupOwnerAccountName: "wheel"],
+                ofItemAtPath: HelperIdentity.installedBinaryPath
+            )
+            try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: HelperIdentity.installedBinaryPath)
+        } catch {
+            try? fileManager.removeItem(atPath: HelperIdentity.installedBinaryPath)
+            return fail("cannot set helper ownership: \(error.localizedDescription)")
+        }
+        guard installedBinaryIsRootOwned() else {
+            try? fileManager.removeItem(atPath: HelperIdentity.installedBinaryPath)
+            return fail("installed helper is not root-owned")
+        }
 
-        guard Plist.write(version: version) else {
+        guard Plist.write(
+            version: version,
+            clientRequirements: HelperRequest.authorizedClients(
+                existing: Plist.authorizedClientRequirements() ?? [],
+                adding: clientRequirement
+            )
+        ) else {
             return fail("cannot write daemon plist")
         }
 
@@ -348,42 +470,53 @@ enum Plist {
         return dict[HelperIdentity.plistVersionKey] as? String
     }
 
-    /// Writes the daemon plist for `version`. The plist is built from a
-    /// fixed template — every value is a constant except the version
-    /// string, which the app passed on the command line and which is
-    /// written as a plist value, never into a command.
-    static func write(version: String) -> Bool {
-        let plist = """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>Label</key>
-            <string>\(HelperIdentity.daemonLabel)</string>
-            <key>ProgramArguments</key>
-            <array>
-                <string>\(HelperIdentity.installedBinaryPath)</string>
-                <string>--serve</string>
-            </array>
-            <key>MachServices</key>
-            <dict>
-                <key>\(HelperIdentity.machServiceName)</key>
-                <true/>
-            </dict>
-            <key>RunAtLoad</key>
-            <true/>
-            <key>\(HelperIdentity.plistVersionKey)</key>
-            <string>\(version)</string>
-        </dict>
-        </plist>
+    /// The authorized-client requirements the installed daemon enforces,
+    /// or nil when the plist carries none.
+    static func authorizedClientRequirements() -> [String]? {
+        guard let dict = NSDictionary(contentsOfFile: HelperIdentity.daemonPlistPath) as? [String: Any] else {
+            return nil
+        }
+        return dict[HelperIdentity.authorizedClientRequirementsKey] as? [String]
+    }
 
-        """
-        // No KeepAlive: the daemon is started at boot and on demand by
-        // launchd when an XPC client connects (the MachServices entry is
-        // what makes it on-demand), and an idle root process that
-        // survives a crash-loop is worse than one that stays down.
+    /// The `Label` a daemon plist declares, or nil when the plist is
+    /// unreadable or carries none. The enable path checks it against the
+    /// label it was asked to override.
+    static func label(of path: String) -> String? {
+        guard let dict = NSDictionary(contentsOfFile: path) as? [String: Any] else {
+            return nil
+        }
+        return dict["Label"] as? String
+    }
+
+    /// Writes the daemon plist for `version` and the authorized-client
+    /// `requirements`.
+    ///
+    /// The plist is built as a dictionary and serialized, never as an
+    /// interpolated string: a value spliced into XML can close its own
+    /// element and open another, which turns a version string into a
+    /// launchd configuration directive (EnvironmentVariables and friends
+    /// are real keys). Serialization makes that structurally impossible
+    /// — every value is a value.
+    static func write(version: String, clientRequirements: [String]) -> Bool {
+        let plist: [String: Any] = [
+            "Label": HelperIdentity.daemonLabel,
+            "ProgramArguments": [HelperIdentity.installedBinaryPath, "--serve"],
+            "MachServices": [HelperIdentity.machServiceName: true],
+            // No KeepAlive: the daemon is started at boot and on demand
+            // by launchd when an XPC client connects (the MachServices
+            // entry is what makes it on-demand), and an idle root process
+            // that survives a crash-loop is worse than one that stays
+            // down.
+            "RunAtLoad": true,
+            HelperIdentity.plistVersionKey: version,
+            HelperIdentity.authorizedClientRequirementsKey: clientRequirements,
+        ]
         do {
-            try plist.write(toFile: HelperIdentity.daemonPlistPath, atomically: true, encoding: .utf8)
+            let data = try PropertyListSerialization.data(
+                fromPropertyList: plist, format: .xml, options: 0
+            )
+            try data.write(to: URL(fileURLWithPath: HelperIdentity.daemonPlistPath), options: .atomic)
             return true
         } catch {
             return false
@@ -391,11 +524,51 @@ enum Plist {
     }
 }
 
+/// The install step's checks on its own source path.
+extension Installer {
+    /// Whether `path` sits inside an app bundle that identifies itself
+    /// as Mackit. The suffix test (`isBundledHelperPath`) alone would
+    /// accept a planted copy at any matching path; the bundle's own
+    /// Info.plist is the part that cannot be faked by dropping a binary
+    /// in /tmp.
+    static func isInsideAppBundle(_ path: String) -> Bool {
+        let marker = "/" + HelperIdentity.bundleRelativePath
+        guard let range = path.range(of: marker, options: .backwards) else { return false }
+        let bundlePath = String(path[path.startIndex..<range.lowerBound])
+        guard !bundlePath.isEmpty else { return false }
+        let infoPath = (bundlePath as NSString).appendingPathComponent("Contents/Info.plist")
+        guard let dict = NSDictionary(contentsOfFile: infoPath) as? [String: Any] else { return false }
+        return dict["CFBundleIdentifier"] as? String == HelperIdentity.appBundleID
+    }
+
+    /// Whether `path` is a regular file, not a symlink or a directory —
+    /// the copy follows links, and a link aimed at a root-only file
+    /// would copy that file's contents into a world-readable location.
+    static func isRegularFile(_ path: String) -> Bool {
+        // lstat, not `attributesOfItem`: the latter follows the link and
+        // reports the *target's* type, which is the one thing here that
+        // must not be trusted.
+        var info = stat()
+        guard lstat(path, &info) == 0 else { return false }
+        return (info.st_mode & S_IFMT) == S_IFREG
+    }
+
+    /// Whether the installed binary is owned by root, read from the
+    /// filesystem rather than assumed. The install verifies it instead
+    /// of trusting the setAttributes call.
+    static func installedBinaryIsRootOwned() -> Bool {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: HelperIdentity.installedBinaryPath) else {
+            return false
+        }
+        return attributes[.ownerAccountName] as? String == "root"
+    }
+}
+
 // MARK: - Entry point
 
-/// `MackitHelper --serve`            — run as the launchd daemon
-/// `MackitHelper --install V SRC`    — run as root by the app's elevation
-/// `MackitHelper --uninstall`        — run as root by the app's elevation
+/// `MackitHelper --serve`                  — run as the launchd daemon
+/// `MackitHelper --install V SRC REQ`      — run as root by the app's elevation
+/// `MackitHelper --uninstall`              — run as root by the app's elevation
 ///
 /// The one-shot flags are located by search, not by position: the
 /// elevation call that launches these modes hands the tool path to the
@@ -411,6 +584,18 @@ if arguments.first == "--serve" {
     let delegate = ListenerDelegate()
     let listener = NSXPCListener(machServiceName: HelperIdentity.machServiceName)
     listener.delegate = delegate
+    // The gate, applied at the listener rather than per connection: a
+    // client whose code signature does not satisfy the requirement is
+    // rejected before the delegate is consulted. The requirement is
+    // resolved once (and pre-parsed) at startup; without a valid one
+    // the listener stays ungated and the delegate refuses every
+    // connection, because a root daemon serving unauthenticated
+    // callers is the state this design exists to prevent.
+    if let requirement = ClientRequirement.current {
+        listener.setConnectionCodeSigningRequirement(requirement)
+    } else {
+        helperLog.error("daemon plist carries no valid client requirements; refusing every connection")
+    }
     listener.resume()
     // The delegate must outlive the assignment: `delegate` is a weak
     // property on the listener, and a released delegate makes the
@@ -425,11 +610,11 @@ if arguments.first == "--serve" {
 
 if let flagIndex = arguments.firstIndex(of: "--install") {
     let parameters = Array(arguments.dropFirst(flagIndex + 1))
-    guard parameters.count == 2 else {
-        print("FAIL: usage: MackitHelper --install <version> <sourcePath>")
+    guard parameters.count == 3 else {
+        print("FAIL: usage: MackitHelper --install <version> <sourcePath> <clientRequirement>")
         exit(Installer.exitFailure)
     }
-    exit(Installer.install(version: parameters[0], sourcePath: parameters[1]))
+    exit(Installer.install(version: parameters[0], sourcePath: parameters[1], clientRequirement: parameters[2]))
 }
 
 // The uninstall mode carries no arguments, so presence is the whole

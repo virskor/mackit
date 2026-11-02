@@ -14,11 +14,13 @@ import Foundation
 ///
 /// Which direction to err in is forced by what the entries are: offering a
 /// live app's cache for deletion is a bug, while a missed leftover is only a
-/// missed cleanup. The matching is therefore at least as wide as
-/// `AppScanner.residuePaths` (exact bundle id, exact app name) plus each
-/// bundle id's last dot-segment, and every item is `.review`: an unclaimed
-/// cache cannot be re-attributed to the app that made it, so the user
-/// decides.
+/// missed cleanup. The matching is therefore wider than
+/// `AppScanner.residuePaths` (exact bundle id, exact app name, last
+/// dot-segment): a pool entry whose name carries an installed app's bundle
+/// id at a dot boundary — prefixed, suffixed or team-prefixed — is claimed
+/// too, because `com.spotify.client.helper` is Spotify's cache and not an
+/// orphan. Every item is `.review`: an unclaimed cache cannot be
+/// re-attributed to the app that made it, so the user decides.
 ///
 /// Known limitation, shared with the residue scan: apps are discovered
 /// under `/Applications` and `~/Applications` only (`AppScanner.defaultRoots`),
@@ -130,6 +132,12 @@ enum LeftoverCacheScanner {
         /// cache directory was created with, while the bundle id's own case
         /// is whatever the developer typed.
         private let appNames: Set<String>
+        /// The installed apps' bundle ids, lowercased, for the
+        /// dot-bounded match in `contains`. An exact-name claim alone
+        /// misses the extremely common suffixed spellings —
+        /// `com.spotify.client.helper` and `com.microsoft.VSCode.ShipIt`
+        /// are caches of installed apps, not leftovers of removed ones.
+        private let bundleIDs: [String]
         /// Every static rule's literal target prefix, expanded but *not*
         /// canonicalized: pool paths are spelled the same way — joined under
         /// the home directory as expanded — and canonicalizing one side only
@@ -139,12 +147,14 @@ enum LeftoverCacheScanner {
 
         init(apps: [InstalledApp], rules: [ScanRule] = RulesCatalog.scanRules) {
             var names = Set<String>()
+            var ids: [String] = []
             for app in apps {
                 // The same guard the residue probes apply to untrusted
                 // Info.plist values (see `AppScanner.isSafeComponent`); here
                 // the name is only matched, never spliced into a path.
                 if AppScanner.isSafeComponent(app.bundleID) {
                     let id = app.bundleID.lowercased()
+                    ids.append(id)
                     names.insert(id)
                     if let last = app.bundleID.split(separator: ".").last {
                         names.insert(last.lowercased())
@@ -155,6 +165,7 @@ enum LeftoverCacheScanner {
                 }
             }
             self.appNames = names
+            self.bundleIDs = ids
             self.rulePrefixes = rules.compactMap { rule -> String? in
                 let prefix = rule.targetLiteralPrefix
                 guard !prefix.isEmpty else { return nil }
@@ -163,8 +174,29 @@ enum LeftoverCacheScanner {
         }
 
         /// Whether an installed app claims this cache name.
+        ///
+        /// The exact match covers the direct spellings; the dot-bounded
+        /// bundle-id relations cover the suffixed and team-prefixed
+        /// spellings the pools are full of:
+        ///
+        /// - `com.spotify.client.helper` — a helper's cache, claimed by
+        ///   the app's own bundle id as a prefix;
+        /// - `88L2Q4487U.com.tencent.WeWorkMac.IPCHelper` — a
+        ///   team-prefixed sandbox container, claimed by the bundle id
+        ///   as a contained segment run.
+        ///
+        /// Claiming too much costs a missed cleanup; claiming too little
+        /// offers a live app's cache for deletion, which is the direction
+        /// this scanner's contract forbids.
         func contains(_ name: String) -> Bool {
-            appNames.contains(name.lowercased())
+            let lower = name.lowercased()
+            if appNames.contains(lower) { return true }
+            for id in bundleIDs {
+                if lower.hasPrefix(id + ".") { return true }
+                if lower.hasSuffix("." + id) { return true }
+                if lower.contains("." + id + ".") { return true }
+            }
+            return false
         }
 
         /// Whether any static rule already covers this path — as the rule's

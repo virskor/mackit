@@ -10,6 +10,12 @@ import Foundation
 /// here first, and the app validates the same rules client-side to fail
 /// fast with a real message instead of a rejected XPC call.
 public enum HelperIdentity {
+    /// The app's bundle identifier. The install step verifies its source
+    /// sits inside a bundle carrying this identifier, so a helper binary
+    /// planted at a matching path outside a real app bundle cannot
+    /// install itself system-wide.
+    public static let appBundleID = "cn.mingcui.mackit"
+
     /// The XPC Mach service name. The daemon registers it in the system
     /// bootstrap namespace via its LaunchDaemons plist; the app reaches it
     /// with `NSXPCConnection(machServiceName:options: .privileged)`.
@@ -38,6 +44,22 @@ public enum HelperIdentity {
     /// stale install is detected by comparing the plist's record against
     /// the running app's version.
     public static let plistVersionKey = "HelperVersion"
+
+    /// The daemon plist key holding the code-signing requirements every
+    /// XPC client must satisfy — an array, because more than one app
+    /// install can share one daemon: a release build in /Applications
+    /// beside a development build elsewhere each install the helper in
+    /// turn, and each appends its own designated requirement when it
+    /// does. A single-entry list would make the two installs evict each
+    /// other — every toggle in the app that did not install last would
+    /// read as an unreachable helper and trigger a reinstall that
+    /// evicts the other one. The daemon joins the array with `or` and
+    /// enforces the joined requirement.
+    ///
+    /// A daemon whose plist carries no valid requirement refuses every
+    /// connection: an unauthenticated root daemon is the one state this
+    /// design must never be in.
+    public static let authorizedClientRequirementsKey = "AuthorizedClientRequirements"
 
     /// The helper's location inside the app bundle. The install step is
     /// launched from exactly here, and the root install refuses any source

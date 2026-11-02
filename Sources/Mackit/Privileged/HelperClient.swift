@@ -135,18 +135,22 @@ enum HelperClient {
             }
             connection.resume()
 
+            // Backstop: a daemon that accepts the connection and then
+            // never replies would otherwise park the caller forever. The
+            // task is cancelled by `finish`, so an answered call does
+            // not leave a timer holding the once-guard for 30 seconds
+            // after the fact.
+            let backstop = Task {
+                try? await Task.sleep(for: .seconds(30))
+                once.finish(.failed(L10n.tr("loginItems.helper.timeout"), unreachable: true))
+            }
+
             let finish: (HelperOutcome) -> Void = { outcome in
+                backstop.cancel()
                 connection.invalidate()
                 once.finish(outcome)
             }
             body(connection, finish)
-
-            // Backstop: a daemon that accepts the connection and then
-            // never replies would otherwise park the caller forever.
-            Task {
-                try? await Task.sleep(for: .seconds(30))
-                once.finish(.failed(L10n.tr("loginItems.helper.timeout"), unreachable: true))
-            }
         }
     }
 

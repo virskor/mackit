@@ -84,6 +84,36 @@ struct IgnoreListTests {
         #expect(vm.isIgnored(command) == true, "the rule is the only handle a command entry has")
     }
 
+    /// The static and CLI rules stream their batches through
+    /// `apply(.discovered)`, not through the merge funnel, so the ignore
+    /// list has to hold there as well — otherwise every path a static
+    /// rule owns comes back on the next scan, and a path ignored while a
+    /// scan is in flight flickers back into the list mid-scan.
+    @Test func ignoredPathIsFilteredAtTheRuleStreamFunnel() {
+        let vm = makeVM()
+        vm.addIgnoredPath("/Users/me/Library/Caches/foo")
+
+        vm.apply(.discovered([
+            item("/Users/me/Library/Caches/foo", ruleID: "xcode.deriveddata"),
+            item("/Users/me/Library/Caches/bar", ruleID: "xcode.deriveddata"),
+        ]))
+
+        #expect(vm.items.map(\.path) == ["/Users/me/Library/Caches/bar"])
+    }
+
+    /// The rule half holds at the rule-stream funnel too.
+    @Test func ignoredRuleIsFilteredAtTheRuleStreamFunnel() {
+        let vm = makeVM()
+        vm.addIgnoredRule("browser.chrome-cache")
+
+        vm.apply(.discovered([
+            item("/Users/me/Library/Caches/Google/Chrome/Default/Cache", ruleID: "browser.chrome-cache"),
+            item("/Users/me/Library/Caches/Firefox", ruleID: "browser.firefox-cache"),
+        ]))
+
+        #expect(vm.items.map(\.ruleID) == ["browser.firefox-cache"])
+    }
+
     /// The static and CLI rules are filtered before the engine builds its
     /// work units, so an ignored rule costs nothing to run.
     @Test func ignoredRulesDropOutOfTheRuleTables() {
