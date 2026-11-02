@@ -90,6 +90,19 @@ struct SidebarView: View {
                     action: { vm.showAppUninstall() }
                 )
                 .help(L10n.tr("sidebar.appUninstall.help"))
+
+                // The startup-items tool sits below the uninstall row: the
+                // two are the housekeeping pair — what to remove, and what
+                // to stop from starting in the first place.
+                row(
+                    icon: .symbol("power"),
+                    tint: .accentColor,
+                    title: L10n.tr("sidebar.loginItems"),
+                    isSelected: vm.showsLoginItems,
+                    isBusy: vm.loginItems.isLoading,
+                    action: { vm.showLoginItems() }
+                )
+                .help(L10n.tr("sidebar.loginItems.help"))
             }
 
             if !vm.developerCategories.isEmpty {
@@ -135,7 +148,7 @@ struct SidebarView: View {
     /// sidebar has one selected item at a time, and switching pages has to
     /// clear the highlight.
     private var itemListIsActive: Bool {
-        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsLargeFiles && !vm.showsAppUninstall
+        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsLargeFiles && !vm.showsAppUninstall && !vm.showsLoginItems
     }
 
     /// One sidebar row: icon, title, and the trailing slot that carries the

@@ -33,6 +33,10 @@ struct AlertCard: View {
     var systemImage: String?
     /// The accent carried by the icon, the fill and the border.
     var tint: Color = .accentColor
+    /// The glyph's point size. Defaults to the size the card shipped
+    /// with; a card whose message is its only line (no title) reads
+    /// better with a larger glyph, so callers can ask for one.
+    var iconSize: CGFloat = 13
     var title: String?
     /// The body copy, localized by the caller like every other component's text.
     let message: String
@@ -46,13 +50,13 @@ struct AlertCard: View {
         HStack(alignment: .top, spacing: 12) {
             if let systemImage {
                 Image(systemName: systemImage)
-                    .font(.system(size: 13))
+                    .font(.system(size: iconSize))
                     .foregroundStyle(tint)
                     // shadcn nudges its 16px icon down half a spacing unit so
                     // it sits on the title's first line; the card's content
                     // starts at the top, so the glyph needs the same nudge.
                     .offset(y: 1)
-                    .frame(width: 16)
+                    .frame(width: iconSize + 3)
             }
 
             VStack(alignment: .leading, spacing: 2) {

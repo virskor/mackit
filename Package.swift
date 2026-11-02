@@ -18,9 +18,38 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
     ],
     targets: [
-        // Only one executable target: the tray agent and the main program
-        // are the same binary, installed in two bundles with the role
-        // distinguished by bundle ID (see MackitApp.isAgent).
+        // The privileged helper's shared vocabulary: the XPC protocol, the
+        // install paths and the request validation both sides enforce. A
+        // library rather than duplicated files because SwiftPM forbids one
+        // source file belonging to two targets, and the validation is the
+        // helper's trust boundary — a second hand-maintained copy is a
+        // second chance to get it wrong.
+        .target(
+            name: "MackitHelperKit",
+            path: "Sources/MackitHelperKit",
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
+        ),
+        // The privileged helper daemon: a root process launchd starts from
+        // /Library/LaunchDaemons, reached over an XPC Mach service, whose
+        // entire command set is launchctl's system-domain service
+        // enable/disable. It links neither Sparkle nor SwiftUI — a root
+        // process carries the smallest possible dependency set — and
+        // build-app.sh embeds it in Contents/Library/PrivilegedHelperTools.
+        .executableTarget(
+            name: "MackitHelper",
+            dependencies: [
+                "MackitHelperKit"
+            ],
+            path: "Sources/MackitHelper",
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
+        ),
+        // Only one executable target for the app itself: the tray agent and
+        // the main program are the same binary, installed in two bundles
+        // with the role distinguished by bundle ID (see MackitApp.isAgent).
         //
         // Why not split it into "a library + two executable targets":
         // SwiftPM forbids one source file belonging to multiple targets,
@@ -39,7 +68,8 @@ let package = Package(
         .executableTarget(
             name: "Mackit",
             dependencies: [
-                "Sparkle"
+                "Sparkle",
+                "MackitHelperKit"
             ],
             path: "Sources/Mackit",
             // Brand mark SVGs (Resources/BrandLogos) are copied as-is by
@@ -64,7 +94,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MackitTests",
-            dependencies: ["Mackit"],
+            dependencies: ["Mackit", "MackitHelperKit"],
             path: "Tests/MackitTests"
         )
     ]

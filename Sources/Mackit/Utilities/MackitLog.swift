@@ -41,6 +41,9 @@ enum MackitLog {
     static let disk = Logger(subsystem: subsystem, category: "disk")
     /// Homebrew manager: installation queries and management actions.
     static let brew = Logger(subsystem: subsystem, category: "brew")
+    /// Login/startup items: scans, launchctl state changes and the
+    /// privileged helper's lifecycle.
+    static let loginItems = Logger(subsystem: subsystem, category: "loginItems")
 
     /// Formats a duration into whole milliseconds, for interpolation in log messages.
     static func duration(_ interval: Duration) -> String {

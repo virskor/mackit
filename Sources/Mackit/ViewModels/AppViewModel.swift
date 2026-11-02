@@ -90,6 +90,10 @@ final class AppViewModel {
     /// are taking up the space", where the disk analysis answers it by
     /// directory tree.
     var showsLargeFiles: Bool = false
+    /// The startup-items tool row is selected in the sidebar: the detail
+    /// area switches to the startup-items page, same embedded-page pattern
+    /// again.
+    var showsLoginItems: Bool = false
 
     /// Row selection set, consistent with the list checkmarks. All of the
     /// state and every rule that decides it live in `CleanupSelection`; this
@@ -125,6 +129,12 @@ final class AppViewModel {
     /// survives page switches, and tests drive the page against a fixture
     /// walk instead of the real disk.
     let largeFiles: LargeFilesModel
+
+    /// State model of the startup-items tool page. Same session-lifetime
+    /// and injectability contract as the other tools: the scanned item
+    /// list survives page switches, and tests drive the page against
+    /// fixture items and a fake privileged helper.
+    let loginItems: LoginItemsModel
 
     /// State model of the crash log list shown in the settings page. Same
     /// injectability contract as the tool models: the settings section lists
@@ -325,11 +335,12 @@ final class AppViewModel {
     /// "emit one event, assert one snapshot" in tests. Visible within the
     /// module so tests can drive it directly; the default value is the
     /// app's startup behavior.
-    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel(), largeFiles: LargeFilesModel = LargeFilesModel(), crashLogs: CrashLogsModel = CrashLogsModel()) {
+    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel(), largeFiles: LargeFilesModel = LargeFilesModel(), loginItems: LoginItemsModel = LoginItemsModel(), crashLogs: CrashLogsModel = CrashLogsModel()) {
         self.diskAnalysis = diskAnalysis
         self.homebrew = homebrew
         self.appUninstall = appUninstall
         self.largeFiles = largeFiles
+        self.loginItems = loginItems
         self.crashLogs = crashLogs
         // A remembered row selection is the one piece of selection state that
         // outlives a process, so the model's user actions route through here
@@ -695,6 +706,7 @@ final class AppViewModel {
         dismissHomebrew()
         dismissAppUninstall()
         dismissLargeFiles()
+        dismissLoginItems()
         hardwareProfile = HardwareSampler.profile()
     }
 
@@ -718,6 +730,7 @@ final class AppViewModel {
         dismissHomebrew()
         dismissAppUninstall()
         dismissLargeFiles()
+        dismissLoginItems()
     }
 
     /// Opens the disk analysis tool page from the sidebar. Same
@@ -733,6 +746,7 @@ final class AppViewModel {
         showsHomebrew = false
         showsAppUninstall = false
         showsLargeFiles = false
+        showsLoginItems = false
         if cleanPhase == .done { dismissCleanResult() }
         diskAnalysis.activate()
     }
@@ -766,6 +780,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         showsAppUninstall = false
         showsLargeFiles = false
+        showsLoginItems = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
         homebrew.activate()
@@ -792,6 +807,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         showsHomebrew = false
         showsLargeFiles = false
+        showsLoginItems = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
         appUninstall.activate()
@@ -818,6 +834,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         showsHomebrew = false
         showsAppUninstall = false
+        showsLoginItems = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
         largeFiles.activate()
@@ -830,6 +847,35 @@ final class AppViewModel {
     private func dismissLargeFiles() {
         guard showsLargeFiles else { return }
         showsLargeFiles = false
+        showsLoginItems = false
+    }
+
+    /// Opens the startup-items tool page from the sidebar. Same
+    /// embedded-page pattern as the other tools: the detail area swaps
+    /// entirely and the main toolbar hides. The first entry scans once;
+    /// coming back to a scanned list is instant.
+    func showLoginItems() {
+        guard !showsLoginItems else { return }
+        showsLoginItems = true
+        selectedCategory = nil
+        showsSettings = false
+        showsHardware = false
+        showsGeneralCleanup = false
+        showsHomebrew = false
+        showsAppUninstall = false
+        showsLargeFiles = false
+        dismissDiskAnalysis()
+        if cleanPhase == .done { dismissCleanResult() }
+        loginItems.activate()
+    }
+
+    /// Leaves the startup-items page. Deliberately does not touch the
+    /// scanned list — same contract as the other tools: the scan belongs
+    /// to the session, not to the page being visible, and an in-flight
+    /// toggle is the model's to finish.
+    private func dismissLoginItems() {
+        guard showsLoginItems else { return }
+        showsLoginItems = false
     }
 
     // MARK: - Memory Release
@@ -1612,6 +1658,7 @@ final class AppViewModel {
         dismissHomebrew()
         dismissAppUninstall()
         dismissLargeFiles()
+        dismissLoginItems()
         if cleanPhase == .done { dismissCleanResult() }
     }
 
@@ -1626,6 +1673,7 @@ final class AppViewModel {
         dismissHomebrew()
         dismissAppUninstall()
         dismissLargeFiles()
+        dismissLoginItems()
         if cleanPhase == .done { dismissCleanResult() }
     }
 

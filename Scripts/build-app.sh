@@ -107,6 +107,17 @@ if [ ! -f "$BINARY" ]; then
     exit 1
 fi
 
+# The privileged helper: a separate executable target, built alongside
+# the app by the same swift build invocation (universal builds compile
+# it for every requested architecture too). It links MackitHelperKit
+# statically and nothing else, so the bundle needs only the Mach-O
+# itself — no framework, no resource bundle.
+HELPER_BINARY="$BUILD_DIR/$CONFIG/MackitHelper"
+if [ ! -f "$HELPER_BINARY" ]; then
+    echo "Cannot find $HELPER_BINARY" >&2
+    exit 1
+fi
+
 echo "==> Generating app icon"
 ICONSET="$BUILD_DIR/AppIcon.iconset"
 ICNS="$BUILD_DIR/AppIcon.icns"
@@ -304,6 +315,15 @@ mkdir -p "$APP/Contents/Frameworks"
 cp -R "$SPARKLE_FRAMEWORK" "$APP/Contents/Frameworks/"
 install_name_tool -add_rpath @executable_path/../Frameworks "$APP/Contents/MacOS/Mackit"
 
+# The privileged helper, in the conventional location for a tool
+# installed alongside a system daemon. The main app only: the tray agent
+# has no startup-items page, and a second copy of a root-installable
+# binary is one more thing to keep signed and current. The install step
+# (HelperInstaller) launches it from exactly this path, and the root
+# install refuses any source path that is not it.
+mkdir -p "$APP/Contents/Library/PrivilegedHelperTools"
+cp "$HELPER_BINARY" "$APP/Contents/Library/PrivilegedHelperTools/MackitHelper"
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -399,6 +419,7 @@ plutil -lint "$APP/Contents/Info.plist" > /dev/null
 # Nested hierarchy (inside out):
 #   Sparkle's XPCServices/*.xpc, Updater.app and Autoupdate
 #   → Sparkle.framework
+#   → main app's privileged helper (a bare Mach-O, signed on its own)
 #   → agent's resource bundle → agent app (it lives inside the main app and
 #     must be signed before the main app)
 #   → main app's resource bundle → main app
@@ -462,7 +483,10 @@ if [ -n "${MACKIT_SIGN_IDENTITY:-}" ]; then
         "$AGENT/Contents/Resources/Mackit_Mackit.bundle"
     sign_nested_sparkle "$AGENT/Contents/Frameworks/Sparkle.framework"
     sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp "$AGENT"
-    # main app: resource bundle → Sparkle nesting → framework → app itself
+    # main app: privileged helper → resource bundle → Sparkle nesting →
+    # framework → app itself
+    sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp \
+        "$APP/Contents/Library/PrivilegedHelperTools/MackitHelper"
     sign_codesign "${SIGN_ARGS[@]}" "$IDENTITY" --options runtime --timestamp \
         "$APP/Contents/Resources/Mackit_Mackit.bundle"
     sign_nested_sparkle "$APP/Contents/Frameworks/Sparkle.framework"
@@ -477,7 +501,8 @@ else
     # distributed build when running Sparkle's XPC validation during development.
     sign_nested_sparkle_adhoc "$AGENT/Contents/Frameworks/Sparkle.framework"
     codesign "${SIGN_ARGS[@]}" - "$AGENT"
-    # main app
+    # main app: privileged helper → resource bundle → Sparkle nesting → app
+    codesign "${SIGN_ARGS[@]}" - "$APP/Contents/Library/PrivilegedHelperTools/MackitHelper"
     codesign "${SIGN_ARGS[@]}" - "$APP/Contents/Resources/Mackit_Mackit.bundle"
     sign_nested_sparkle_adhoc "$APP/Contents/Frameworks/Sparkle.framework"
     codesign "${SIGN_ARGS[@]}" - "$APP"
