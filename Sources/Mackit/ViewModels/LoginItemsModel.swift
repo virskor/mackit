@@ -44,6 +44,21 @@ final class LoginItemsModel {
         }
     }
 
+    /// Which install the confirmation sheet is asking for. The copy
+    /// differs, the flow does not — and the difference is the truth:
+    /// telling the user their helper is "from an old version" when it
+    /// is current but silent sends them looking for a version problem
+    /// that does not exist.
+    enum HelperInstallMode: Equatable, Sendable {
+        /// Nothing is installed yet.
+        case install
+        /// An older helper is in place and is being replaced.
+        case update
+        /// A current helper is in place but its daemon did not answer,
+        /// so this is a repair rather than an upgrade.
+        case repair
+    }
+
     /// A toggle waiting for the privileged helper to be installed — the
     /// change the user asked for, held while the install runs so it can
     /// be applied the moment the helper is in place.
@@ -123,9 +138,13 @@ final class LoginItemsModel {
     private let readHelperState: @Sendable () -> HelperClient.InstalledState
     /// Runs the privileged install. Blocking for as long as the password
     /// dialog is up, so the model runs it detached.
-    private let installHelper: @Sendable () -> HelperInstaller.Outcome
-    /// Removes the helper.
+    private let installHelper: @Sendable () -> ElevatedHelper.Outcome
+    /// Removes the helper through its daemon — no password, when the
+    /// daemon answers.
     private let uninstallHelper: @Sendable () async -> HelperOutcome
+    /// Removes the helper through an elevated one-shot run of the
+    /// bundled helper — the fallback for a daemon that does not answer.
+    private let uninstallHelperElevated: @Sendable () -> ElevatedHelper.Outcome
     /// The running app's version, compared against the installed
     /// helper's recorded one.
     private let appVersion: String
@@ -156,8 +175,9 @@ final class LoginItemsModel {
             await LoginItemActions.setEnabled(item, enabled: enabled)
         },
         readHelperState: @escaping @Sendable () -> HelperClient.InstalledState = HelperClient.installedState,
-        installHelper: @escaping @Sendable () -> HelperInstaller.Outcome = HelperInstaller.install,
+        installHelper: @escaping @Sendable () -> ElevatedHelper.Outcome = HelperInstaller.install,
         uninstallHelper: @escaping @Sendable () async -> HelperOutcome = HelperClient.uninstall,
+        uninstallHelperElevated: @escaping @Sendable () -> ElevatedHelper.Outcome = HelperUninstaller.uninstall,
         appVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0",
         iconForPath: @escaping @MainActor (String) -> NSImage? = { NSWorkspace.shared.icon(forFile: $0) }
     ) {
@@ -166,6 +186,7 @@ final class LoginItemsModel {
         self.readHelperState = readHelperState
         self.installHelper = installHelper
         self.uninstallHelper = uninstallHelper
+        self.uninstallHelperElevated = uninstallHelperElevated
         self.appVersion = appVersion
         self.iconForPath = iconForPath
     }
@@ -224,6 +245,21 @@ final class LoginItemsModel {
     /// section is only worth showing when there is something it manages.
     var hasSystemDaemons: Bool {
         items.contains { $0.kind == .systemDaemon }
+    }
+
+    /// Which install the confirmation sheet is asking for, from the
+    /// helper's on-disk state and whether its daemon answered last time
+    /// it was needed.
+    var installMode: HelperInstallMode {
+        switch helperState {
+        case .notInstalled:
+            return .install
+        case .installed(_, let stale):
+            // A stale helper is replaced whether or not it also stopped
+            // answering; only a current-but-silent daemon is a repair.
+            if stale { return .update }
+            return helperUnreachable ? .repair : .update
+        }
     }
 
     /// The group an item belongs to, for the row's expansion state.
@@ -324,7 +360,7 @@ final class LoginItemsModel {
             self.isInstallingHelper = false
             self.pendingChange = nil
             switch outcome {
-            case .installed:
+            case .succeeded:
                 self.refreshHelperState()
                 self.helperUnreachable = false
                 MackitLog.loginItems.info("privileged helper installed")
@@ -354,20 +390,44 @@ final class LoginItemsModel {
 
     /// Removes the privileged helper: its daemon plist, its binary and
     /// its launchd registration.
+    ///
+    /// The daemon removes its own files when it answers, with no
+    /// password. When it does not answer — a broken install whose daemon
+    /// never came up — the files are root-owned and the removal goes
+    /// through an elevated one-shot run of the bundled helper instead,
+    /// so a broken install can always be taken off the machine.
     func removeHelper() {
         isConfirmingHelperRemoval = false
         isRemovingHelper = true
-        Task { [uninstallHelper] in
+        Task { [uninstallHelper, uninstallHelperElevated] in
             let outcome = await uninstallHelper()
+            let elevated: ElevatedHelper.Outcome? = outcome.unreachable
+                ? await Task.detached { uninstallHelperElevated() }.value
+                : nil
             self.isRemovingHelper = false
-            if outcome.succeeded {
-                self.refreshHelperState()
-                self.present(L10n.tr("loginItems.helper.removed"), isError: false)
-                MackitLog.loginItems.info("privileged helper removed")
-            } else {
-                self.present(outcome.failure ?? L10n.tr("loginItems.helper.removeFailed"), isError: true)
-            }
+            self.presentRemovalOutcome(outcome, elevated: elevated)
         }
+    }
+
+    /// Reports one removal: the daemon's own result, or the elevated
+    /// fallback's when the daemon did not answer.
+    private func presentRemovalOutcome(_ outcome: HelperOutcome, elevated: ElevatedHelper.Outcome?) {
+        if outcome.succeeded || elevated == .succeeded {
+            self.refreshHelperState()
+            self.present(L10n.tr("loginItems.helper.removed"), isError: false)
+            let route = elevated == nil ? "" : " via elevation"
+            MackitLog.loginItems.info("privileged helper removed\(route, privacy: .public)")
+            return
+        }
+        if elevated == .cancelled {
+            self.present(L10n.tr("loginItems.helper.removeCancelled"), isError: false)
+            return
+        }
+        let message = elevated?.failureMessage
+            ?? outcome.failure
+            ?? L10n.tr("loginItems.helper.removeFailed")
+        MackitLog.loginItems.error("privileged helper removal failed: \(message, privacy: .public)")
+        self.present(message, isError: true)
     }
 
     func cancelHelperRemoval() {

@@ -16,7 +16,7 @@ struct LoginItemsNavigationTests {
             scan: { items },
             apply: { _, _ in .success },
             readHelperState: { .notInstalled },
-            installHelper: { .installed },
+            installHelper: { .succeeded },
             uninstallHelper: { .success },
             appVersion: "1.2.3",
             iconForPath: { _ in nil }

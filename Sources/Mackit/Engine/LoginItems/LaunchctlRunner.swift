@@ -45,9 +45,17 @@ enum LaunchctlRunner {
         let errorData = await errorTask.value
 
         guard exitStatus == 0 else {
-            let detail = text(from: errorData)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            MackitLog.loginItems.error("launchctl exited \(exitStatus): \(arguments.joined(separator: " "), privacy: .public), \(detail.prefix(200), privacy: .public)")
+            // A `print` probe's nonzero exit is the answer "not loaded",
+            // not a failure — enabling a service that is not loaded is a
+            // normal outcome, and logging it as an error would put an
+            // error line in the log every time.
+            if arguments.first == "print" {
+                MackitLog.loginItems.debug("launchctl probe exited \(exitStatus): \(arguments.joined(separator: " "), privacy: .public)")
+            } else {
+                let detail = text(from: errorData)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                MackitLog.loginItems.error("launchctl exited \(exitStatus): \(arguments.joined(separator: " "), privacy: .public), \(detail.prefix(200), privacy: .public)")
+            }
             return nil
         }
 

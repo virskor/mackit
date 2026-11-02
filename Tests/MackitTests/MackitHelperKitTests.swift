@@ -148,4 +148,28 @@ struct MackitHelperKitTests {
         #expect(HelperVersion.isStale(installed: "1.2.2", bundled: "1.2.3"))
         #expect(HelperVersion.isStale(installed: "1.3.0", bundled: "1.2.3"))
     }
+
+    // MARK: Install plan
+
+    @Test func theInstallIsSkippedOnlyWhenTheDaemonAnswers() {
+        // Files in place, version current, daemon loaded: a reinstall
+        // would bounce a working daemon for nothing.
+        #expect(HelperInstall.plan(binaryExists: true, versionStale: false, daemonLoaded: true) == .skip)
+    }
+
+    @Test func aDeadDaemonForcesTheInstallEvenAtTheSameVersion() {
+        // The broken-install state: files and version record match, but
+        // the daemon never came up. A version-only check reads this as
+        // "already installed" and skips the bootstrap that would bring
+        // the daemon back — which is what left every toggle failing with
+        // no way out. The loaded check is what makes a reinstall a
+        // repair.
+        #expect(HelperInstall.plan(binaryExists: true, versionStale: false, daemonLoaded: false) == .install)
+    }
+
+    @Test func aMissingBinaryOrStaleVersionForcesTheInstall() {
+        #expect(HelperInstall.plan(binaryExists: false, versionStale: false, daemonLoaded: true) == .install)
+        #expect(HelperInstall.plan(binaryExists: true, versionStale: true, daemonLoaded: true) == .install)
+        #expect(HelperInstall.plan(binaryExists: false, versionStale: true, daemonLoaded: false) == .install)
+    }
 }

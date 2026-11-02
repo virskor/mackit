@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **CPU temperature, in degrees, on the menu bar, the panel and the desktop stats** — read through the SMC, shown in whole degrees and turned orange from 70°C up, with the thermal-state word kept as the fallback when no sensor answers.
-- **A startup-items tool manages what opens at login** — the new page lists every launch agent, launch daemon and legacy login item grouped by app with a switch per entry and a master switch per app, and changing a system service goes through a privileged helper installed on first use behind the standard password prompt.
+- **A startup-items tool manages what opens at login** — the new page lists every launch agent, launch daemon and legacy login item grouped by app with a switch per entry and a master switch per app, and changing a system service goes through the Mackit helper service installed on first use behind the standard password prompt.
 - **An ignore list keeps chosen entries and rules out of every later scan** — right-click any scan result to ignore that path or its whole rule, manage both lists in the new settings tab, and the choice survives restarts and reaches the tray agent.
 - **Leftover caches of removed apps are now listed for cleaning** — the scan enumerates the shared cache pools once, subtracts every path the static rules and the installed apps already claim, and offers only the unclaimed remainder as an opt-in row.
 - **Xcode's device logs join the cleanup list** — the logs collected from connected devices are re-collected on the next connect, and the rule sits at the same review level as the device-support files.

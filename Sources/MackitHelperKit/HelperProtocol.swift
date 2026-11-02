@@ -46,6 +46,41 @@ public enum HelperIdentity {
     public static let bundleRelativePath = "Contents/Library/PrivilegedHelperTools/MackitHelper"
 }
 
+/// Whether a helper install can be skipped, and what to do when it
+/// cannot.
+///
+/// The decision both sides need: the helper's root install step runs it
+/// to choose between reporting "already installed" and doing the work,
+/// and the app reads the same shape when it verifies an install's end
+/// state. Pure, so the rule is pinned by tests rather than left to a
+/// live machine.
+public enum HelperInstall {
+    public enum Plan: Equatable, Sendable {
+        /// The daemon is in place, current and loaded: nothing to do.
+        case skip
+        /// Install or reinstall is needed.
+        case install
+    }
+
+    /// The plan for the on-disk state `binaryExists` / `versionStale` /
+    /// `daemonLoaded` describe.
+    ///
+    /// A skip is safe only when the daemon is actually loaded. Files on
+    /// disk with a dead daemon is the broken-install state — the
+    /// version record matches, so a version-only check reads it as
+    /// "already installed" and skips the bootstrap that would bring the
+    /// daemon back, leaving every toggle failing with no way out. The
+    /// loaded check is what makes the reinstall a repair.
+    public static func plan(
+        binaryExists: Bool,
+        versionStale: Bool,
+        daemonLoaded: Bool
+    ) -> Plan {
+        guard binaryExists, !versionStale, daemonLoaded else { return .install }
+        return .skip
+    }
+}
+
 /// The helper's entire command set.
 ///
 /// Deliberately tiny: the daemon exists to flip launchd's system-domain

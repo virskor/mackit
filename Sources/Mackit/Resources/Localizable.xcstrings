@@ -33973,31 +33973,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "切换系统级服务需要安装特权助手，首次切换时会引导安装"
+            "value": "切换系统级服务需要安装Mackit助手服务，首次切换时会引导安装"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Changing system services requires the privileged helper; the first toggle guides you through installing it"
+            "value": "Changing system services requires the Mackit helper service; the first toggle guides you through installing it"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "切換系統級服務需要安裝特權助手，首次切換時會引導安裝"
+            "value": "切換系統級服務需要安裝Mackit助手服務，首次切換時會引導安裝"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "시스템 서비스를 변경하려면 권한 헬퍼를 설치해야 합니다. 첫 번째 전환 시 설치 과정을 안내합니다"
+            "value": "시스템 서비스를 변경하려면 Mackit 헬퍼 서비스를 설치해야 합니다. 첫 번째 전환 시 설치 과정을 안내합니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "システムサービスを変更するには特権ヘルパーが必要です。最初の切り替えでインストールを案内します"
+            "value": "システムサービスを変更するにはMackitヘルパーサービスが必要です。最初の切り替えでインストールを案内します"
           }
         }
       }
@@ -34007,31 +34007,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "特权助手已安装（%@）"
+            "value": "Mackit助手服务已安装（%@）"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Privileged helper installed (%@)"
+            "value": "Mackit helper service installed (%@)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "特權助手已安裝（%@）"
+            "value": "Mackit助手服務已安裝（%@）"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼 설치됨(%@)"
+            "value": "Mackit 헬퍼 서비스 설치됨(%@)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーをインストール済み（%@）"
+            "value": "Mackitヘルパーサービスをインストール済み（%@）"
           }
         }
       }
@@ -34041,31 +34041,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "特权助手版本过旧（%@），下次切换系统服务时将自动更新"
+            "value": "Mackit助手服务版本过旧（%@），下次切换系统服务时将自动更新"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Privileged helper is outdated (%@); it updates on the next system-service change"
+            "value": "Mackit helper service is outdated (%@); it updates on the next system-service change"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "特權助手版本過舊（%@），下次切換系統服務時將自動更新"
+            "value": "Mackit助手服務版本過舊（%@），下次切換系統服務時將自動更新"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼가 오래되었습니다(%@). 다음 시스템 서비스 변경 시 업데이트됩니다"
+            "value": "Mackit 헬퍼 서비스가 오래되었습니다(%@). 다음 시스템 서비스 변경 시 업데이트됩니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーが古くなっています（%@）。次のシステムサービス変更時に更新されます"
+            "value": "Mackitヘルパーサービスが古くなっています（%@）。次のシステムサービス変更時に更新されます"
           }
         }
       }
@@ -34109,31 +34109,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "安装特权助手"
+            "value": "安装Mackit助手服务"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Install the privileged helper"
+            "value": "Install the Mackit helper service"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "安裝特權助手"
+            "value": "安裝Mackit助手服務"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼 설치"
+            "value": "Mackit 헬퍼 서비스 설치"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーをインストール"
+            "value": "Mackitヘルパーサービスをインストール"
           }
         }
       }
@@ -34177,31 +34177,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "更新特权助手"
+            "value": "更新Mackit助手服务"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update the privileged helper"
+            "value": "Update the Mackit helper service"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "更新特權助手"
+            "value": "更新Mackit助手服務"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼 업데이트"
+            "value": "Mackit 헬퍼 서비스 업데이트"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーを更新"
+            "value": "Mackitヘルパーサービスを更新"
           }
         }
       }
@@ -34211,7 +34211,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已安装的特权助手来自旧版本，需要更新后才能继续，更新将要求输入管理员密码。"
+            "value": "已安装的Mackit助手服务来自旧版本，需要更新后才能继续，更新将要求输入管理员密码。"
           }
         },
         "en": {
@@ -34223,7 +34223,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已安裝的特權助手來自舊版本，需要更新後才能繼續，更新將要求輸入管理員密碼。"
+            "value": "已安裝的Mackit助手服務來自舊版本，需要更新後才能繼續，更新將要求輸入管理員密碼。"
           }
         },
         "ko": {
@@ -34304,6 +34304,108 @@
           "stringUnit": {
             "state": "translated",
             "value": "更新して続行"
+          }
+        }
+      }
+    },
+    "loginItems.helper.repairTitle": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修复Mackit助手服务"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repair the Mackit helper service"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修復Mackit助手服務"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackit 헬퍼 서비스 복구"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackitヘルパーサービスを修復"
+          }
+        }
+      }
+    },
+    "loginItems.helper.repairSummary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装的Mackit助手服务没有响应，需要修复后才能继续，修复将要求输入管理员密码。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The installed Mackit helper service is not responding; repairing it asks for your administrator password."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安裝的Mackit助手服務沒有響應，需要修復後才能繼續，修復將要求輸入管理員密碼。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설치된 Mackit 헬퍼 서비스가 응답하지 않습니다. 계속하려면 복구가 필요하며, 복구 시 관리자 비밀번호를 입력해야 합니다."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インストール済みのMackitヘルパーサービスが応答しません。続行するには修復が必要で、修復時に管理者パスワードの入力が必要です。"
+          }
+        }
+      }
+    },
+    "loginItems.helper.repairAction": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修复并继续"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repair and continue"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修復並繼續"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복구 후 계속"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修復して続行"
           }
         }
       }
@@ -34449,7 +34551,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "之后可随时在本页面移除特权助手"
+            "value": "之后可随时在本页面移除Mackit助手服务"
           }
         },
         "en": {
@@ -34461,7 +34563,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "之後可隨時在本頁面移除特權助手"
+            "value": "之後可隨時在本頁面移除Mackit助手服務"
           }
         },
         "ko": {
@@ -34512,36 +34614,70 @@
         }
       }
     },
-    "loginItems.helper.removed": {
+    "loginItems.helper.removeCancelled": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "特权助手已移除"
+            "value": "已取消移除，未做任何更改"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Privileged helper removed"
+            "value": "Removal cancelled; nothing was changed"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "特權助手已移除"
+            "value": "已取消移除，未做任何更改"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼를 제거했습니다"
+            "value": "Mackit 헬퍼 서비스 제거가 취소되었습니다. 변경된 내용이 없습니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーを削除しました"
+            "value": "Mackitヘルパーサービスの削除をキャンセルしました。変更はありません"
+          }
+        }
+      }
+    },
+    "loginItems.helper.removed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackit助手服务已移除"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackit helper service removed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackit助手服務已移除"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackit 헬퍼 서비스를 제거했습니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackitヘルパーサービスを削除しました"
           }
         }
       }
@@ -34551,31 +34687,65 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除特权助手失败：%@"
+            "value": "移除Mackit助手服务失败：%@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not remove the privileged helper: %@"
+            "value": "Could not remove the Mackit helper service: %@"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除特權助手失敗：%@"
+            "value": "移除Mackit助手服務失敗：%@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼 제거 실패: %@"
+            "value": "Mackit 헬퍼 서비스 제거 실패: %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーの削除に失敗しました: %@"
+            "value": "Mackitヘルパーサービスの削除に失敗しました: %@"
+          }
+        }
+      }
+    },
+    "loginItems.helper.removeIncomplete": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除Mackit助手服务失败：文件未能删除"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not remove the Mackit helper service: the files were not deleted"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除Mackit助手服務失敗：檔案未能刪除"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackit 헬퍼 서비스 제거 실패: 파일이 삭제되지 않았습니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackitヘルパーサービスの削除に失敗しました: ファイルが削除されませんでした"
           }
         }
       }
@@ -34585,31 +34755,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法连接特权助手"
+            "value": "无法连接Mackit助手服务"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cannot reach the privileged helper"
+            "value": "Cannot reach the Mackit helper service"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法連線特權助手"
+            "value": "無法連線Mackit助手服務"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼에 연결할 수 없습니다"
+            "value": "Mackit 헬퍼 서비스에 연결할 수 없습니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーに接続できません"
+            "value": "Mackitヘルパーサービスに接続できません"
           }
         }
       }
@@ -34619,31 +34789,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "与特权助手的连接中断"
+            "value": "与Mackit助手服务的连接中断"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The connection to the privileged helper was lost"
+            "value": "The connection to the Mackit helper service was lost"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "與特權助手的連線中斷"
+            "value": "與Mackit助手服務的連線中斷"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼와의 연결이 끊어졌습니다"
+            "value": "Mackit 헬퍼 서비스와의 연결이 끊어졌습니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーとの接続が切断されました"
+            "value": "Mackitヘルパーサービスとの接続が切断されました"
           }
         }
       }
@@ -34653,31 +34823,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "特权助手响应超时"
+            "value": "Mackit助手服务响应超时"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The privileged helper timed out"
+            "value": "The Mackit helper service timed out"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "特權助手回應逾時"
+            "value": "Mackit助手服務回應逾時"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼의 응답이 시간 초과되었습니다"
+            "value": "Mackit 헬퍼 서비스의 응답이 시간 초과되었습니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーがタイムアウトしました"
+            "value": "Mackitヘルパーサービスがタイムアウトしました"
           }
         }
       }
@@ -34687,31 +34857,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "特权助手操作失败"
+            "value": "Mackit助手服务操作失败"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The privileged helper's action failed"
+            "value": "The Mackit helper service's action failed"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "特權助手操作失敗"
+            "value": "Mackit助手服務操作失敗"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼의 작업이 실패했습니다"
+            "value": "Mackit 헬퍼 서비스의 작업이 실패했습니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーの操作に失敗しました"
+            "value": "Mackitヘルパーサービスの操作に失敗しました"
           }
         }
       }
@@ -34721,31 +34891,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当前不是从完整应用包运行，无法安装特权助手"
+            "value": "当前不是从完整应用包运行，无法安装Mackit助手服务"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app is not running from a full bundle, so the privileged helper cannot be installed"
+            "value": "The app is not running from a full bundle, so the Mackit helper service cannot be installed"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "當前不是從完整應用套件執行，無法安裝特權助手"
+            "value": "當前不是從完整應用套件執行，無法安裝Mackit助手服務"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "전체 앱 번들에서 실행되지 않아 권한 헬퍼를 설치할 수 없습니다"
+            "value": "전체 앱 번들에서 실행되지 않아 Mackit 헬퍼 서비스를 설치할 수 없습니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "完全なアプリバンドルから実行されていないため、特権ヘルパーをインストールできません"
+            "value": "完全なアプリバンドルから実行されていないため、Mackitヘルパーサービスをインストールできません"
           }
         }
       }
@@ -34823,31 +34993,65 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "安装特权助手失败：%@"
+            "value": "安装Mackit助手服务失败：%@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installing the privileged helper failed: %@"
+            "value": "Installing the Mackit helper service failed: %@"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "安裝特權助手失敗：%@"
+            "value": "安裝Mackit助手服務失敗：%@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼 설치 실패: %@"
+            "value": "Mackit 헬퍼 서비스 설치 실패: %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーのインストールに失敗しました: %@"
+            "value": "Mackitヘルパーサービスのインストールに失敗しました: %@"
+          }
+        }
+      }
+    },
+    "loginItems.helper.installIncomplete": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装Mackit助手服务失败：文件未能写入"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installing the Mackit helper service failed: the files were not written"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安裝Mackit助手服務失敗：檔案未能寫入"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackit 헬퍼 서비스 설치 실패: 파일이 기록되지 않았습니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mackitヘルパーサービスのインストールに失敗しました: ファイルが書き込まれませんでした"
           }
         }
       }
@@ -34857,31 +35061,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除特权助手？"
+            "value": "移除Mackit助手服务？"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove the privileged helper?"
+            "value": "Remove the Mackit helper service?"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除特權助手？"
+            "value": "移除Mackit助手服務？"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼를 제거할까요?"
+            "value": "Mackit 헬퍼 서비스를 제거할까요?"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーを削除しますか？"
+            "value": "Mackitヘルパーサービスを削除しますか？"
           }
         }
       }
@@ -34925,31 +35129,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "特权助手已安装但无响应，再次切换将引导重新安装"
+            "value": "Mackit助手服务已安装但无响应，再次切换将引导重新安装"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The privileged helper is installed but not responding; toggling again will guide you through reinstalling it"
+            "value": "The Mackit helper service is installed but not responding; toggling again will guide you through reinstalling it"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "特權助手已安裝但無回應，再次切換將引導重新安裝"
+            "value": "Mackit助手服務已安裝但無回應，再次切換將引導重新安裝"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "권한 헬퍼가 설치되었지만 응답하지 않습니다. 다시 전환하면 재설치 과정을 안내합니다"
+            "value": "Mackit 헬퍼 서비스가 설치되었지만 응답하지 않습니다. 다시 전환하면 재설치 과정을 안내합니다"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "特権ヘルパーはインストール済みですが応答しません。もう一度切り替えると再インストールを案内します"
+            "value": "Mackitヘルパーサービスはインストール済みですが応答しません。もう一度切り替えると再インストールを案内します"
           }
         }
       }

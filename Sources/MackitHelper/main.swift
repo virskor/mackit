@@ -231,11 +231,20 @@ enum Installer {
             return fail("bundled helper not found")
         }
 
-        // Same version already installed: a reinstall would bounce a
-        // working daemon for nothing. Report success; the caller
-        // verifies the end state either way.
+        // Same version already installed *and the daemon is loaded*: a
+        // reinstall would bounce a working daemon for nothing. Report
+        // success; the caller verifies the end state either way. The
+        // loaded check is the whole point — files with a dead daemon is
+        // the broken-install state, and skipping it here is what used to
+        // leave that state unrepairable.
         let binaryInstalled = FileManager.default.fileExists(atPath: HelperIdentity.installedBinaryPath)
-        if binaryInstalled, !HelperVersion.isStale(installed: Plist.installedVersion(), bundled: version) {
+        let daemonLoaded = Launchctl.isLoaded(label: HelperIdentity.daemonLabel)
+        let plan = HelperInstall.plan(
+            binaryExists: binaryInstalled,
+            versionStale: HelperVersion.isStale(installed: Plist.installedVersion(), bundled: version),
+            daemonLoaded: daemonLoaded
+        )
+        if plan == .skip {
             print("OK: already installed")
             fflush(stdout)
             return exitSuccess
@@ -274,6 +283,55 @@ enum Installer {
         }
 
         print("OK: installed \(version)")
+        fflush(stdout)
+        return exitSuccess
+    }
+}
+
+/// Removes the helper's own footprint, run once as root by the app's
+/// elevation call.
+///
+/// This is the path for a daemon that cannot remove itself: the XPC
+/// uninstall needs the daemon alive to answer, and a broken install —
+/// files on disk, daemon never bootstrapped — has nothing to answer.
+/// The files are root-owned either way, so the app elevates a one-shot
+/// run of the bundled helper instead of dead-ending.
+///
+/// It touches exactly the two paths the install writes, and nothing
+/// else: the bootout stops a daemon still running from an older
+/// install, and the removals finish whatever the daemon could not.
+enum Uninstaller {
+    /// Exit codes the app maps onto user-facing outcomes.
+    static let exitSuccess: Int32 = 0
+    static let exitFailure: Int32 = 1
+
+    static func uninstall() -> Int32 {
+        func fail(_ message: String) -> Int32 {
+            print("FAIL: \(message)")
+            fflush(stdout)
+            return exitFailure
+        }
+
+        // Bootout first: a daemon still running from an older install
+        // holds the mach service and would keep answering connections
+        // after the files backing it are gone.
+        _ = Launchctl.run(.bootoutSystem(label: HelperIdentity.daemonLabel))
+
+        let fileManager = FileManager.default
+        let paths = [HelperIdentity.daemonPlistPath, HelperIdentity.installedBinaryPath]
+        for path in paths {
+            // Missing files are the success case — uninstalling twice is
+            // not an error, and a half-removed install is exactly what
+            // this path exists to finish.
+            try? fileManager.removeItem(atPath: path)
+        }
+
+        let leftovers = paths.filter { fileManager.fileExists(atPath: $0) }
+        guard leftovers.isEmpty else {
+            return fail("could not remove \(leftovers.joined(separator: ", "))")
+        }
+
+        print("OK: uninstalled")
         fflush(stdout)
         return exitSuccess
     }
@@ -337,15 +395,16 @@ enum Plist {
 
 /// `MackitHelper --serve`            — run as the launchd daemon
 /// `MackitHelper --install V SRC`    — run as root by the app's elevation
+/// `MackitHelper --uninstall`        — run as root by the app's elevation
 ///
-/// The install flag is located by search, not by position: the elevation
-/// call that launches this mode hands the tool path to the system as the
-/// executable *and* passes the caller's argv array to the tool, and the
-/// system prepends the tool path as argv[0] itself — so the flag lands at
-/// index 0 or 1 depending on whether the caller's array repeats the path.
-/// Finding the flag makes both layouts work. (Verified against the real
-/// elevation: a positional parse saw the tool path at index 1 and failed
-/// with "unknown mode".)
+/// The one-shot flags are located by search, not by position: the
+/// elevation call that launches these modes hands the tool path to the
+/// system as the executable *and* passes the caller's argv array to the
+/// tool, and the system prepends the tool path as argv[0] itself — so a
+/// flag lands at index 0 or 1 depending on whether the caller's array
+/// repeats the path. Finding the flag makes both layouts work.
+/// (Verified against the real elevation: a positional parse saw the
+/// tool path at index 1 and failed with "unknown mode".)
 let arguments = Array(CommandLine.arguments.dropFirst())
 
 if arguments.first == "--serve" {
@@ -371,6 +430,13 @@ if let flagIndex = arguments.firstIndex(of: "--install") {
         exit(Installer.exitFailure)
     }
     exit(Installer.install(version: parameters[0], sourcePath: parameters[1]))
+}
+
+// The uninstall mode carries no arguments, so presence is the whole
+// invocation. It runs the bundled copy — the one the elevation call
+// launches — which is why it can remove the installed one.
+if arguments.contains("--uninstall") {
+    exit(Uninstaller.uninstall())
 }
 
 print("FAIL: unknown mode")

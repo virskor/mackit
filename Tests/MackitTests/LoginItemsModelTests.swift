@@ -43,7 +43,9 @@ struct LoginItemsModelTests {
         items: [LoginItem],
         apply: @escaping (LoginItem, Bool) async -> HelperOutcome = { _, _ in .success },
         helperState: HelperClient.InstalledState = .notInstalled,
-        install: @escaping @Sendable () -> HelperInstaller.Outcome = { .installed }
+        install: @escaping @Sendable () -> ElevatedHelper.Outcome = { .succeeded },
+        uninstall: @escaping @Sendable () async -> HelperOutcome = { .success },
+        uninstallElevated: @escaping @Sendable () -> ElevatedHelper.Outcome = { .succeeded }
     ) -> (LoginItemsModel, ApplyRecorder, HelperStateFake) {
         let recorder = ApplyRecorder()
         let state = HelperStateFake(helperState)
@@ -58,16 +60,28 @@ struct LoginItemsModelTests {
             // records that, exactly as the real install's files would.
             installHelper: {
                 let outcome = install()
-                if case .installed = outcome {
+                if case .succeeded = outcome {
                     state.markInstalled(version: "1.2.3")
                 }
                 return outcome
             },
             uninstallHelper: {
+                let outcome = await uninstall()
                 // The daemon removes its own files as root; the fake
                 // records that, exactly as the real uninstall would.
-                state.markRemoved()
-                return .success
+                if outcome.succeeded {
+                    state.markRemoved()
+                }
+                return outcome
+            },
+            // The elevated fallback removes the root-owned files through
+            // a one-shot root run; the fake records that the same way.
+            uninstallHelperElevated: {
+                let outcome = uninstallElevated()
+                if case .succeeded = outcome {
+                    state.markRemoved()
+                }
+                return outcome
             },
             appVersion: "1.2.3",
             iconForPath: { _ in nil }
@@ -235,7 +249,7 @@ struct LoginItemsModelTests {
         let (model, recorder, _) = makeModel(
             items: [item("d", label: "com.docker.socket", enabled: true, kind: .systemDaemon)],
             helperState: .notInstalled,
-            install: { .installed }
+            install: { .succeeded }
         )
         model.activate()
         await model.waitUntilSettled()
@@ -371,7 +385,7 @@ struct LoginItemsModelTests {
             install: {
                 // The reinstall brings the daemon back.
                 phase.makeReachable()
-                return .installed
+                return .succeeded
             }
         )
         model.activate()
@@ -445,6 +459,125 @@ struct LoginItemsModelTests {
         #expect(!model.helperState.isInstalled)
         #expect(model.notice?.message != nil)
         #expect(model.notice?.isError == false)
+    }
+
+    // MARK: Helper removal when the daemon does not answer
+
+    @Test func anUnreachableHelperIsRemovedThroughElevation() async {
+        // Files on disk, daemon dead: the XPC uninstall cannot run, and
+        // the files are root-owned, so the removal elevates a one-shot
+        // run of the bundled helper — the same password-gated path the
+        // install uses — instead of dead-ending on a lost connection.
+        let (model, _, _) = makeModel(
+            items: [item("d", label: "com.docker.socket", enabled: true, kind: .systemDaemon)],
+            helperState: .installed(version: "1.2.3"),
+            uninstall: { .failed("connection lost", unreachable: true) },
+            uninstallElevated: { .succeeded }
+        )
+        model.activate()
+        await model.waitUntilSettled()
+
+        model.requestHelperRemoval()
+        model.removeHelper()
+        await model.waitUntilSettled()
+
+        #expect(!model.helperState.isInstalled)
+        #expect(model.notice?.isError == false)
+        #expect(!model.isRemovingHelper)
+    }
+
+    @Test func aCancelledElevatedRemovalKeepsTheHelperAndIsNotAnError() async {
+        let (model, _, _) = makeModel(
+            items: [item("d", label: "com.docker.socket", enabled: true, kind: .systemDaemon)],
+            helperState: .installed(version: "1.2.3"),
+            uninstall: { .failed("connection lost", unreachable: true) },
+            uninstallElevated: { .cancelled }
+        )
+        model.activate()
+        await model.waitUntilSettled()
+
+        model.requestHelperRemoval()
+        model.removeHelper()
+        await model.waitUntilSettled()
+
+        // The user dismissed the password dialog: nothing was removed,
+        // and the helper is still there to try again with.
+        #expect(model.helperState.isInstalled)
+        #expect(model.notice?.isError == false)
+    }
+
+    @Test func aFailedElevatedRemovalNamesItsCause() async {
+        let (model, _, _) = makeModel(
+            items: [item("d", label: "com.docker.socket", enabled: true, kind: .systemDaemon)],
+            helperState: .installed(version: "1.2.3"),
+            uninstall: { .failed("connection lost", unreachable: true) },
+            uninstallElevated: { .failed("could not remove /Library/LaunchDaemons/cn.mingcui.mackit.helper.plist") }
+        )
+        model.activate()
+        await model.waitUntilSettled()
+
+        model.requestHelperRemoval()
+        model.removeHelper()
+        await model.waitUntilSettled()
+
+        #expect(model.helperState.isInstalled)
+        #expect(model.notice?.isError == true)
+        #expect(model.notice?.message.contains("could not remove") == true)
+    }
+
+    @Test func aReachableUninstallNeverAsksForAPassword() async {
+        // The daemon answers: the removal goes through it alone. The
+        // elevated fallback exists for the daemon that cannot answer,
+        // and must not fire when it can.
+        let (model, _, _) = makeModel(
+            items: [item("d", label: "com.docker.socket", enabled: true, kind: .systemDaemon)],
+            helperState: .installed(version: "1.2.3"),
+            uninstall: { .success },
+            uninstallElevated: { .failed("elevation must not run") }
+        )
+        model.activate()
+        await model.waitUntilSettled()
+
+        model.requestHelperRemoval()
+        model.removeHelper()
+        await model.waitUntilSettled()
+
+        #expect(!model.helperState.isInstalled)
+        #expect(model.notice?.isError == false)
+    }
+
+    // MARK: Install sheet copy
+
+    @Test func theInstallSheetModeNamesTheActualProblem() async {
+        let daemon = item("d", label: "com.docker.socket", enabled: true, kind: .systemDaemon)
+
+        // Nothing installed: a first install.
+        let (fresh, _, _) = makeModel(items: [daemon])
+        fresh.activate()
+        await fresh.waitUntilSettled()
+        #expect(fresh.installMode == .install)
+
+        // An older helper: an update, whether or not it also answers.
+        let (stale, _, _) = makeModel(items: [daemon], helperState: .installed(version: "1.0.0"))
+        stale.activate()
+        await stale.waitUntilSettled()
+        #expect(stale.installMode == .update)
+
+        // A current helper whose daemon does not answer: a repair. The
+        // copy must not claim a version problem that does not exist —
+        // that is what sent users hunting for an update that was
+        // already installed.
+        let (silent, _, _) = makeModel(
+            items: [daemon],
+            apply: { _, _ in .failed("connection lost", unreachable: true) },
+            helperState: .installed(version: "1.2.3")
+        )
+        silent.activate()
+        await silent.waitUntilSettled()
+        silent.toggle(silent.items[0], enabled: false)
+        await silent.waitUntilSettled()
+        #expect(silent.helperUnreachable)
+        #expect(silent.installMode == .repair)
     }
 
     // MARK: Search and derived state
