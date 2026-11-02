@@ -354,7 +354,13 @@ struct LoginItemsModelTests {
         model.confirmPendingChange()
         await model.waitUntilSettled()
 
-        #expect(model.notice?.message == "launchctl bootstrap: service already bootstrapped")
+        // The helper's diagnostic rides inside the localized frame: the
+        // sentence the user reads is translated, and the cause is still
+        // named inside it.
+        #expect(model.notice?.message == L10n.fmt(
+            "loginItems.helper.installFailed",
+            "launchctl bootstrap: service already bootstrapped"
+        ))
         #expect(model.notice?.isError == true)
         #expect(model.items[0].isEnabled == true)
     }
