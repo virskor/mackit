@@ -124,12 +124,15 @@ struct CleanupScopeTests {
         #expect(vm.developerTotalSize == 150)
         // The tray panel reports the grand total across both features
         #expect(vm.totalSize == 430)
-        // The general page's header reports its own total
+        // The general page's header reports its own total, and the sidebar's
+        // general-cleanup row reports the same pair the "all items" row does
         #expect(vm.generalTotalSize == 280)
+        #expect(vm.generalItemCount == 2)
 
         vm.showGeneralCleanup()
         #expect(vm.developerItemCount == 2, "the sidebar always shows the developer feature")
         #expect(vm.generalTotalSize == 280)
+        #expect(vm.generalItemCount == 2)
     }
 
     @Test func sidebarCategoriesStayOnTheDeveloperFeature() {

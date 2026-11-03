@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Russian, Spanish and French join the interface languages** — every screen is translated in all three, selectable in Settings or followed from the system language, and Russian count phrases follow Russian grammar (1 файл / 2 файла / 5 файлов).
 
+### Changed
+
+- **Each scan result's path now lives inside its name column** — it moved out of its own narrow column, where it truncated to a fraction of its width, into the name column as a third line with the full path on hover, and the category filters moved from the window's sidebar into a draggable rail beside the table.
+
 ## [1.0.16] - 2026-11-02
 
 ### Added

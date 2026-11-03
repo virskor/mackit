@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// Sidebar: category list + storage info + module entries.
+/// Sidebar: the window's destinations — the two cleanup entries and the
+/// tools — plus the storage footer. The developer categories are not here:
+/// they filter the item list, so they sit in that page's own rail (see
+/// CategoryRailView).
 struct SidebarView: View {
     @Environment(AppViewModel.self) private var vm
 
@@ -20,13 +23,18 @@ struct SidebarView: View {
                 .help(L10n.tr("sidebar.allItemsHelp"))
 
                 // The general module sits directly under "all items": the two
-                // are the window's top-level destinations, while the category
-                // rows below only filter the developer list.
+                // are the window's top-level destinations. The category
+                // filters are not among them — they filter the item list, so
+                // they live in that page's own rail (see CategoryRailView).
                 row(
                     icon: .symbol("sparkles"),
                     tint: .orange,
                     title: L10n.tr("sidebar.generalCleanup"),
                     isSelected: vm.showsGeneralCleanup,
+                    // A cleanup destination like "all items", not a tool: it
+                    // reports what its own scan found in the same trailing
+                    // slot, live, the way the "all items" row does.
+                    figures: (count: vm.generalItemCount, size: vm.generalTotalSize),
                     action: { vm.showGeneralCleanup() }
                 )
                 .help(L10n.tr("scope.general.summary"))
@@ -104,25 +112,6 @@ struct SidebarView: View {
                 )
                 .help(L10n.tr("sidebar.loginItems.help"))
             }
-
-            if !vm.developerCategories.isEmpty {
-                Section(L10n.tr("sidebar.categories")) {
-                    ForEach(vm.developerCategories) { category in
-                        row(
-                            icon: category.iconSource,
-                            tint: category.tint,
-                            title: category.title,
-                            isSelected: itemListIsActive && vm.selectedCategory == category,
-                            figures: (
-                                count: vm.categoryCounts[category] ?? 0,
-                                size: vm.categoryTotals[category] ?? 0
-                            ),
-                            action: { vm.selectCategory(category) }
-                        )
-                        .help(category.summary)
-                    }
-                }
-            }
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -151,28 +140,9 @@ struct SidebarView: View {
         !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsLargeFiles && !vm.showsAppUninstall && !vm.showsLoginItems
     }
 
-    /// One sidebar row: icon, title, and the trailing slot that carries the
-    /// figures or the tool's spinner.
-    ///
-    /// Every row is one line at one height. The cleanup rows used to stack the
-    /// item count under the title while the module entries were single-line,
-    /// so the list read as two different controls piled on each other — the
-    /// count now sits beside the size in the trailing slot instead. That slot
-    /// exists on every row whether it is filled or not, so the titles share
-    /// one ragged edge and the rows share one height, which is what makes the
-    /// sidebar read as a list rather than as a draft.
-    ///
-    /// The selection follows what the system's own sidebars do now: a light
-    /// rounded pill inset from the row's edges, with the row's colors left
-    /// alone. An accent-filled row with inverted contents — the treatment the
-    /// system used to use — reads as a pressed button sitting among rows that
-    /// aren't, and a flat tint of the row's own background read as hover.
-    ///
-    /// Rows are Buttons with `listRowBackground` rather than `List(selection:)`:
-    /// tag selection of an optional value doesn't respond to clicks in a
-    /// sidebar List (rows don't react when clicked), and binding the selection
-    /// to the checkbox state would let the table's selection write-back clear
-    /// the user's picks. Button + background is the known-working pattern.
+    /// One sidebar row. The row itself — its single-line height, the trailing
+    /// figures slot, the selection pill — is `NavRowView`, shared with the
+    /// item page's category rail so a row reads the same in either column.
     private func row(
         icon: CategoryIcon.Source,
         tint: Color,
@@ -189,54 +159,14 @@ struct SidebarView: View {
         isBusy: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                CategoryIcon(icon, tint: tint, size: 15, width: 22)
-
-                Text(verbatim: title)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-
-                Spacer(minLength: 4)
-
-                if let figures {
-                    // Fixed rather than flexible: when the sidebar narrows,
-                    // the title is what should give way, never the figures.
-                    HStack(spacing: 6) {
-                        Text(verbatim: L10n.items(figures.count))
-                        Text(verbatim: Formatters.bytes(figures.size))
-                            .fontWeight(.medium)
-                            .monospacedDigit()
-                    }
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                }
-
-                if isBusy {
-                    ProgressView()
-                        .controlSize(.mini)
-                }
-            }
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .listRowBackground(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                // `Color.primary` rather than a hand-mixed white or a fixed
-                // gray: it is black in light mode and white in dark mode, so
-                // one opacity darkens the pill against the light sidebar and
-                // lightens it against the dark one, with the row's own text
-                // keeping its contrast either way. A step above the hover
-                // fills the rest of the app uses (0.06), so a selected row
-                // still reads as more than the one the pointer is over.
-                .fill(isSelected ? Color.primary.opacity(0.08) : .clear)
-                // Inset from the row's edges the way the system's selection
-                // is, so the highlight reads as belonging to the row rather
-                // than as a band across the sidebar.
-                .padding(.horizontal, 8)
+        NavRowView(
+            icon: icon,
+            tint: tint,
+            title: title,
+            isSelected: isSelected,
+            figures: figures,
+            isBusy: isBusy,
+            action: action
         )
     }
 

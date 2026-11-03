@@ -1218,10 +1218,25 @@ final class AppViewModel {
         generalFoldRevision += 1
     }
 
-    /// Everything the general module found, selected or not: the big number
-    /// in the page header.
+    /// Everything the general feature found, selected or not: the big number
+    /// in the page header, and the general-cleanup row's figure in the
+    /// sidebar.
+    ///
+    /// Summed from the category stats rather than from the page's groups on
+    /// purpose. The sidebar reads this on every scan batch, and the groups
+    /// model is the whole page — rows rolled up, sub-rows grouped per
+    /// language and per app — far too much to rebuild for one number. Both
+    /// agree because the layout covers every general-scoped rule (asserted by
+    /// GeneralCleanLayoutTests, and no CLI rule is general-scoped).
     var generalTotalSize: Int64 {
-        generalCleanGroups.reduce(0) { $0 + $1.totalSize }
+        categoryStats.totals.reduce(0) { $0 + ($1.key.scope == .general ? $1.value : 0) }
+    }
+
+    /// Item count of the general feature: the other half of the sidebar's
+    /// general-cleanup row, which reports its totals the same way the "all
+    /// items" row reports the developer feature's.
+    var generalItemCount: Int {
+        categoryStats.counts.reduce(0) { $0 + ($1.key.scope == .general ? $1.value : 0) }
     }
 
     /// Above this many sub-rows a grouped row starts folded.

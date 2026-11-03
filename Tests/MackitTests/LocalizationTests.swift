@@ -46,9 +46,9 @@ struct LocalizationTests {
     @Test func representativeUIKeysResolveFromCatalog() {
         let keys = [
             "common.cancel", "common.done", "common.add", "common.choose", "common.remove",
-            "sidebar.allItems", "sidebar.categories", "sidebar.startupDisk", "sidebar.available",
+            "sidebar.allItems", "sidebar.startupDisk", "sidebar.available",
             "sidebar.settings",
-            "table.name", "table.size", "table.modified", "table.risk", "table.path",
+            "table.name", "table.size", "table.modified", "table.risk",
             "ctx.revealInFinder", "ctx.openInTerminal", "ctx.copyPath", "ctx.moveToTrash",
             "toolbar.rescan", "toolbar.stopScan", "toolbar.sort", "toolbar.safeOnly",
             "share.button", "share.title", "share.intro", "share.message",
@@ -56,6 +56,7 @@ struct LocalizationTests {
             "toolbar.searchPlaceholder", "clean.button", "clean.confirm.title",
             "clean.confirm.cleanNow", "clean.progress.title", "clean.result.done",
             "scan.progress.title", "scan.progress.title.general", "scan.progress.cancel", "scan.enumerating", "scan.finished",
+            "scan.banner.paused",
             "welcome.title", "welcome.start", "menubar.quit", "panel.reclaimable",
             "settings.tab.general", "settings.launchAtLogin", "settings.moveToTrash",
             "settings.autoSelect.none", "settings.autoSelectHint.none",

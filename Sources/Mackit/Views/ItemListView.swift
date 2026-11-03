@@ -129,7 +129,18 @@ struct ItemListView: View {
                     // them is the app uninstall tool's page — so every row
                     // here uses the category symbol.
                     CategoryIcon(category: item.category)
-                    ItemTitleBlock(title: item.title, subtitle: item.detail)
+                    // The path is the third line here rather than a column of
+                    // its own: it belongs to the entry (it names the very
+                    // directory being cleaned), and as a column it was
+                    // truncated to a fraction of its width while the name
+                    // column starved. The freed width goes to this column, so
+                    // the path now shows the most it ever has.
+                    ItemTitleBlock(
+                        title: item.title,
+                        subtitle: item.detail,
+                        tertiary: item.abbreviatedPath,
+                        tertiaryHelp: item.displayPath
+                    )
                 }
             }
 
@@ -152,18 +163,14 @@ struct ItemListView: View {
                 RiskBadge(risk: item.risk)
             }
             .width(74)
-
-            TableColumn(L10n.tr("table.path")) { item in
-                Text(verbatim: item.abbreviatedPath)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.head)
-                    .help(item.displayPath)
-            }
-            .width(min: 140, ideal: 220, max: 360)
         }
         .tableStyle(.inset(alternatesRowBackgrounds: true))
+        // A scan streams entries in and they land in sorted order, so a list
+        // the user has scrolled keeps shifting under the pointer and the entry
+        // being read slides away. The list holds still until the scan lands;
+        // scrolling is not lost, only deferred to the moment the rows stop
+        // moving.
+        .scrollDisabled(vm.phase == .scanning)
         .contextMenu(forSelectionType: String.self) { selected in
             contextMenuItems(for: selected)
         }

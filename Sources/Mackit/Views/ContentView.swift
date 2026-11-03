@@ -5,6 +5,17 @@ struct ContentView: View {
     @Environment(AppViewModel.self) private var vm
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
+    /// The category rail's width, draggable by the divider between it and the
+    /// table. The default is what the widest row needs — a category title
+    /// beside its item count and size — so nothing is truncated until the
+    /// user narrows it on purpose.
+    @State private var railWidth: CGFloat = 270
+
+    /// The widths the rail may be dragged to. The floor keeps every category
+    /// title readable; the ceiling leaves the table its name column even at
+    /// the window's default size.
+    private let railWidthBounds: ClosedRange<CGFloat> = 180...360
+
     /// The card's rounded shape: shared by both background and content clipping,
     /// avoiding a separate radius in each place. A full-bleed page gets a plain
     /// rectangle — with no inset around it, a rounded corner would bite into
@@ -139,8 +150,8 @@ struct ContentView: View {
         // analysis / app uninstall / startup-items rows in the sidebar, or
         // the settings capsule at its foot — the detail area switches
         // entirely to the corresponding embedded page (within the same
-        // window, not a separate window); clicking back or any category
-        // row returns to the cleanable items content.
+        // window, not a separate window); clicking back, or any category row
+        // in the item page's rail, returns to the cleanable items content.
         if vm.showsHardware {
             HardwareView()
         } else if vm.showsSettings {
@@ -168,15 +179,46 @@ struct ContentView: View {
                     // accumulating, making it clearer that things are
                     // "not stuck" than waiting idle on a full-screen
                     // progress ring.
-                    ItemListView()
+                    itemListPage
                 }
             case .idle, .done:
                 if vm.items.isEmpty {
                     WelcomeView()
                 } else {
-                    ItemListView()
+                    itemListPage
                 }
             }
         }
+    }
+
+    /// The cleanable-items page: the category rail beside the table.
+    ///
+    /// The categories filter the table, so they sit next to it rather than in
+    /// the window's sidebar (see CategoryRailView). The rail is a fixed-width
+    /// column and the table takes the rest; the HStack claims the card's
+    /// height so each column fills it and scrolls on its own, instead of the
+    /// two of them sizing to their content and floating in the middle.
+    ///
+    /// The boundary between them is draggable: the width is a preference —
+    /// a long path in the table wants the rail narrow, a long category title
+    /// wants it wide, and the localizations disagree about which is wider.
+    @ViewBuilder
+    private var itemListPage: some View {
+        HStack(spacing: 0) {
+            CategoryRailView()
+                .frame(width: railWidth)
+
+            ColumnResizeDivider(
+                width: $railWidth,
+                bounds: railWidthBounds,
+                // The same rule as the table's frozen scrolling: while a scan
+                // streams entries in, the layout holds still.
+                isDraggable: vm.phase != .scanning
+            )
+
+            ItemListView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

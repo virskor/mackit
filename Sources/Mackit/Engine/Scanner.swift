@@ -187,7 +187,24 @@ enum ScanEngine {
     private static func buildUnits(rules: [ScanRule], cliRules: [CLIRule], options: ScanOptions) -> [ScanUnit] {
         var units: [ScanUnit] = []
 
-        for rule in rules {
+        // The general feature's rules are measured first, the developer
+        // feature's after them.
+        //
+        // Both sidebar rows report live figures, and the rows are only as
+        // live as the rules behind them: measured in catalog order, the
+        // general rules — which sit at the end of the catalog — would not be
+        // reached until the developer stream was nearly done, so the
+        // general-cleanup row would sit at zero for the whole scan and then
+        // pop. Leading with them costs the developer stream the handful of
+        // units the general rules expand to, measured in the same six
+        // concurrent slots.
+        //
+        // Partitioned rather than sorted: `sorted(by:)` is not stable, and
+        // the order within a feature is the catalog's deliberate one.
+        let generalRules = rules.filter { $0.category.scope == .general }
+        let developerRules = rules.filter { $0.category.scope != .general }
+
+        for rule in generalRules + developerRules {
             let urls = urls(for: rule)
             guard !urls.isEmpty else { continue }
             for url in urls {
