@@ -41,9 +41,7 @@ struct CleanSummaryButton: View {
         .disabled(!hasSelection || vm.isBusy)
         .help(hasSelection
             ? L10n.fmt(
-                scopeSelection.count == 1
-                    ? "clean.helpSelected.one"
-                    : "clean.helpSelected.other",
+                L10n.plural("clean.helpSelected", scopeSelection.count),
                 scopeSelection.count
             )
             : L10n.tr("clean.helpNoSelection"))

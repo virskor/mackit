@@ -48,9 +48,7 @@ struct CleanProgressOverlay: View {
 
                     if cleanedCount > 0 {
                         Text(verbatim: L10n.fmt(
-                            cleanedCount == 1
-                                ? "clean.progress.cleaned.one"
-                                : "clean.progress.cleaned.other",
+                            L10n.plural("clean.progress.cleaned", cleanedCount),
                             cleanedCount
                         ))
                         .font(.system(size: 11, weight: .medium))

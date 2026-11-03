@@ -87,9 +87,7 @@ struct ConfirmSheetShell<Notices: View>: View {
             SectionHeader(
                 title: L10n.tr("clean.confirm.list"),
                 trailing: L10n.fmt(
-                    items.count == 1
-                        ? "clean.confirm.listCount.one"
-                        : "clean.confirm.listCount.other",
+                    L10n.plural("clean.confirm.listCount", items.count),
                     items.count
                 )
             )

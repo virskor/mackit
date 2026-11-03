@@ -43,9 +43,7 @@ struct CleanResultCard: View {
                     Text(verbatim: failures.isEmpty
                         ? L10n.tr("clean.result.done")
                         : L10n.fmt(
-                            failures.count == 1
-                                ? "clean.result.doneWithFailures.one"
-                                : "clean.result.doneWithFailures.other",
+                            L10n.plural("clean.result.doneWithFailures", failures.count),
                             failures.count
                         ))
                     .font(.system(size: 18, weight: .bold))

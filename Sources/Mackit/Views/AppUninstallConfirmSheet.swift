@@ -54,13 +54,10 @@ struct AppUninstallConfirmSheet: View {
             // uninstalled; residue file rows don't count — otherwise
             // "About to uninstall 1 app" would show 13.
             summary: L10n.fmt(
-                isUninstall
-                    ? (model.selectedAppCount == 1
-                        ? "apps.confirm.summary.one"
-                        : "apps.confirm.summary.other")
-                    : (items.count == 1
-                        ? "clean.confirm.summary.one"
-                        : "clean.confirm.summary.other"),
+                L10n.plural(
+                    isUninstall ? "apps.confirm.summary" : "clean.confirm.summary",
+                    isUninstall ? model.selectedAppCount : items.count
+                ),
                 isUninstall ? model.selectedAppCount : items.count,
                 Formatters.bytes(model.selectedSize)
             ),
@@ -74,9 +71,7 @@ struct AppUninstallConfirmSheet: View {
                         systemImage: "exclamationmark.triangle.fill",
                         tint: .orange,
                         title: L10n.fmt(
-                            runningApps.count == 1
-                                ? "apps.confirm.running.one"
-                                : "apps.confirm.running.other",
+                            L10n.plural("apps.confirm.running", runningApps.count),
                             runningApps.count
                         ),
                         message: runningApps.joined(separator: ", ")
@@ -167,9 +162,6 @@ struct AppUninstallConfirmSheet: View {
         // The fold indicates the number not yet listed, not the total
         let more = names.count - 3
         guard more > 0 else { return shown }
-        return shown + " " + L10n.fmt(
-            more == 1 ? "apps.confirm.leftoverMore.one" : "apps.confirm.leftoverMore.other",
-            more
-        )
+        return shown + " " + L10n.fmt(L10n.plural("apps.confirm.leftoverMore", more), more)
     }
 }

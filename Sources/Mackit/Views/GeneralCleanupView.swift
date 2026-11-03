@@ -143,9 +143,7 @@ struct GeneralCleanupView: View {
                     }
                     .disabled(vm.isBusy)
                     .help(L10n.fmt(
-                        vm.scopeSelectedItems.count == 1
-                            ? "clean.helpSelected.one"
-                            : "clean.helpSelected.other",
+                        L10n.plural("clean.helpSelected", vm.scopeSelectedItems.count),
                         vm.scopeSelectedItems.count
                     ))
                 }

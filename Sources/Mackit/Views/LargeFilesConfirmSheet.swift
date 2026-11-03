@@ -36,7 +36,7 @@ struct LargeFilesConfirmSheet: View {
             tint: .accentColor,
             title: L10n.tr("largeFiles.confirm.title"),
             summary: L10n.fmt(
-                "largeFiles.confirm.summary.\(items.count == 1 ? "one" : "other")",
+                L10n.plural("largeFiles.confirm.summary", items.count),
                 items.count,
                 Formatters.bytes(model.selectedSize)
             ),

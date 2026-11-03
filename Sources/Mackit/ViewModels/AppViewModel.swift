@@ -1531,7 +1531,7 @@ final class AppViewModel {
         case .finished(let count):
             // Wrapping up is uniformly handled by the end of startScan's
             // task; here we only record the count
-            progressLabel = L10n.fmt(count == 1 ? "scan.foundFinishing.one" : "scan.foundFinishing.other", count)
+            progressLabel = L10n.fmt(L10n.plural("scan.foundFinishing", count), count)
             progressFraction = 1
         }
         // Scan events pour in at a per-work-unit cadence; here they are
@@ -1792,9 +1792,10 @@ final class AppViewModel {
                 ))
             } else {
                 showToast(.error, L10n.fmt(
-                    moved
-                        ? (failures == 1 ? "toast.movedWithFailures.one" : "toast.movedWithFailures.other")
-                        : (failures == 1 ? "toast.reclaimedWithFailures.one" : "toast.reclaimedWithFailures.other"),
+                    L10n.plural(
+                        moved ? "toast.movedWithFailures" : "toast.reclaimedWithFailures",
+                        failures
+                    ),
                     Formatters.bytes(reclaimed), failures
                 ))
             }

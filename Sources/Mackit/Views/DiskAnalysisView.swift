@@ -288,7 +288,7 @@ struct DiskAnalysisView: View {
                         .truncationMode(.middle)
                         .frame(maxWidth: 460)
                     Text(verbatim: L10n.fmt(
-                        "diskAnalysis.scan.count.\(model.scannedDirectories == 1 ? "one" : "other")",
+                        L10n.plural("diskAnalysis.scan.count", model.scannedDirectories),
                         model.scannedDirectories
                     ))
                     .font(.system(size: 11))
@@ -450,11 +450,11 @@ struct DiskAnalysisView: View {
     private func summary(_ entry: DiskEntry) -> some View {
         HStack(spacing: 4) {
             Text(verbatim: L10n.fmt(
-                "diskAnalysis.header.folders.\(entry.folderCount == 1 ? "one" : "other")",
+                L10n.plural("diskAnalysis.header.folders", entry.folderCount),
                 entry.folderCount
             ))
             Text(verbatim: L10n.fmt(
-                "diskAnalysis.header.files.\(entry.fileCount == 1 ? "one" : "other")",
+                L10n.plural("diskAnalysis.header.files", entry.fileCount),
                 entry.fileCount
             ))
             .foregroundStyle(.orange)
@@ -900,7 +900,7 @@ private struct TreemapCanvas: View {
 
     /// "其余 18 项" — the aggregate tile's caption and the popover's title.
     private func otherItemsLabel(_ count: Int) -> String {
-        L10n.fmt("diskAnalysis.others.\(count == 1 ? "one" : "other")", count)
+        L10n.fmt(L10n.plural("diskAnalysis.others", count), count)
     }
 
     private func overflowMembers(_ overflow: TreemapLayout.Overflow) -> [DiskEntry] {

@@ -1,7 +1,7 @@
 import Foundation
 
-/// Interface language. The app bundles five translations (see
-/// `Resources/Localizable.xcstrings`), and the selection is written into the
+/// Interface language. The app's translations live in
+/// `Resources/Localizable.xcstrings`, and the selection is written into the
 /// app domain's `AppleLanguages`—CFBundle's string lookup reads this key,
 /// resolves according to it after relaunch, and Sparkle's update UI and the
 /// system file panels follow it as well.
@@ -24,6 +24,12 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case ko
     /// Japanese.
     case ja
+    /// Russian.
+    case ru
+    /// Spanish.
+    case es
+    /// French.
+    case fr
 
     var id: String { rawValue }
 
@@ -39,6 +45,9 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
         case .zhHant: return "繁體中文"
         case .ko: return "한국어"
         case .ja: return "日本語"
+        case .ru: return "Русский"
+        case .es: return "Español"
+        case .fr: return "Français"
         }
     }
 
@@ -69,8 +78,8 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// The language currently in effect in the process: the `.lproj` chosen by CFBundle
-    /// per `AppleLanguages`. Falls back to `.system` when it does not land on one of the
-    /// five built-in languages.
+    /// per `AppleLanguages`. Falls back to `.system` when it does not land on one of
+    /// the built-in languages.
     static var running: AppLanguage {
         guard let code = Bundle.module.preferredLocalizations.first,
               let language = AppLanguage(rawValue: code)
@@ -89,7 +98,9 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
         for code in languages {
             let normalized = code.lowercased()
             guard normalized.hasPrefix("zh") || normalized.hasPrefix("en")
-                || normalized.hasPrefix("ko") || normalized.hasPrefix("ja") else { continue }
+                || normalized.hasPrefix("ko") || normalized.hasPrefix("ja")
+                || normalized.hasPrefix("ru") || normalized.hasPrefix("es")
+                || normalized.hasPrefix("fr") else { continue }
             // Script subtags take priority over region: "zh-Hans-HK" is Simplified, "zh-Hant-TW" is Traditional.
             if normalized.contains("hans") { return .zhHans }
             if normalized.contains("hant")
@@ -98,10 +109,14 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
                 || normalized.hasSuffix("-mo") {
                 return .zhHant
             }
-            // Korean and Japanese carry no script subtag worth distinguishing, so the
-            // primary subtag decides ("ko-KR" → Korean, "ja-JP" → Japanese).
+            // Korean, Japanese, Russian, Spanish and French carry no script
+            // subtag worth distinguishing, so the primary subtag decides
+            // ("ko-KR" → Korean, "ja-JP" → Japanese, "es-419" → Spanish).
             if normalized.hasPrefix("ko") { return .ko }
             if normalized.hasPrefix("ja") { return .ja }
+            if normalized.hasPrefix("ru") { return .ru }
+            if normalized.hasPrefix("es") { return .es }
+            if normalized.hasPrefix("fr") { return .fr }
             if normalized.hasPrefix("en") { return .en }
             // Bare "zh" and zh-CN / zh-SG: treated as Simplified.
             return .zhHans

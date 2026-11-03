@@ -124,12 +124,7 @@ final class CrashLogsModel {
             // `fmt`, not `tr`: the count is a placeholder in both forms, and
             // a raw `%lld` in a toast is the bug the plural keys' shared
             // layout exists to prevent.
-            lastError = L10n.fmt(
-                failures == 1
-                    ? "settings.crashLogs.deleteAllFailed.one"
-                    : "settings.crashLogs.deleteAllFailed.other",
-                failures
-            )
+            lastError = L10n.fmt(L10n.plural("settings.crashLogs.deleteAllFailed", failures), failures)
         }
     }
 

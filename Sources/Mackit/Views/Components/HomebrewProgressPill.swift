@@ -136,10 +136,10 @@ struct HomebrewProgressPill: View {
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         } else if progress.completed > 0 {
-            let key = progress.completed == 1
-                ? "homebrew.progress.steps.one"
-                : "homebrew.progress.steps.other"
-            Text(verbatim: L10n.fmt(key, progress.completed))
+            Text(verbatim: L10n.fmt(
+                L10n.plural("homebrew.progress.steps", progress.completed),
+                progress.completed
+            ))
                 .font(.system(size: 11))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)

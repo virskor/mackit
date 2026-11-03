@@ -544,13 +544,16 @@ struct LocalizationTests {
         }
     }
 
-    /// The two singular/plural keys must keep the same placeholder layout.
+    /// The plural keys of a family must keep the same placeholder layout.
     ///
-    /// The caller passes arguments in the same order for both forms; if
-    /// `.one` omits a `%lld`, the `%@` before it receives the integer;
-    /// CFString dereferences the integer as an object pointer and the UI
-    /// crashes as soon as it renders (address 0x1). Hence the placeholder
-    /// sequences are compared one by one here.
+    /// The caller passes arguments in the same order for every form; if `.one`
+    /// omits a `%lld`, the `%@` before it receives the integer; CFString
+    /// dereferences the integer as an object pointer and the UI crashes as
+    /// soon as it renders (address 0x1). Hence the placeholder sequences are
+    /// compared one by one across all four forms — `.few` and `.many` are
+    /// selected for Russian, and a language that does not distinguish them
+    /// carries the `.other` spelling, so a mismatch there is invisible in
+    /// English and fatal in Russian.
     @Test func pluralVariantsSharePlaceholderLayout() {
         let pairs = [
             "count.items",
@@ -574,15 +577,55 @@ struct LocalizationTests {
             "diskAnalysis.others",
             "homebrew.result.autoremoved",
             "homebrew.progress.steps",
+            "largeFiles.summary",
+            "largeFiles.scan.directories",
+            "largeFiles.scan.found",
+            "largeFiles.confirm.summary",
             "settings.crashLogs.deleteAllFailed"
         ]
+        let forms = ["one", "few", "many", "other"]
         let placeholder = /%(?:\d+\$)?(?:@|lld)/
         for base in pairs {
-            let one = L10n.tr("\(base).one").matches(of: placeholder).map { String($0.output) }
-            let other = L10n.tr("\(base).other").matches(of: placeholder).map { String($0.output) }
-            #expect(!isFallback(L10n.tr("\(base).one"), key: "\(base).one"), "\(base).one not localized")
-            #expect(!isFallback(L10n.tr("\(base).other"), key: "\(base).other"), "\(base).other not localized")
-            #expect(one == other, "\(base) .one and .other placeholders differ: \(one) vs \(other)")
+            let sequences = forms.map { form in
+                L10n.tr("\(base).\(form)").matches(of: placeholder).map { String($0.output) }
+            }
+            for form in forms {
+                #expect(!isFallback(L10n.tr("\(base).\(form)"), key: "\(base).\(form)"), "\(base).\(form) not localized")
+            }
+            #expect(sequences.allSatisfy { $0 == sequences[0] }, "\(base) forms differ: \(sequences)")
+        }
+    }
+
+    /// The category picker's rules, per language: Russian needs its three
+    /// integer forms, French counts zero with the singular, and every other
+    /// shipped language keeps the one/other split the call sites hand-rolled
+    /// before `L10n.plural` existed.
+    @Test func pluralCategoryFollowsCLDRPerLanguage() {
+        // Russian: the teens and the elevated ones are the traps
+        #expect(L10n.pluralCategory(1, for: .ru) == "one")
+        #expect(L10n.pluralCategory(21, for: .ru) == "one")
+        #expect(L10n.pluralCategory(101, for: .ru) == "one")
+        #expect(L10n.pluralCategory(2, for: .ru) == "few")
+        #expect(L10n.pluralCategory(3, for: .ru) == "few")
+        #expect(L10n.pluralCategory(4, for: .ru) == "few")
+        #expect(L10n.pluralCategory(22, for: .ru) == "few")
+        #expect(L10n.pluralCategory(5, for: .ru) == "many")
+        #expect(L10n.pluralCategory(11, for: .ru) == "many")
+        #expect(L10n.pluralCategory(12, for: .ru) == "many")
+        #expect(L10n.pluralCategory(14, for: .ru) == "many")
+        #expect(L10n.pluralCategory(15, for: .ru) == "many")
+        #expect(L10n.pluralCategory(100, for: .ru) == "many")
+        #expect(L10n.pluralCategory(0, for: .ru) == "many")
+        // French: zero is singular
+        #expect(L10n.pluralCategory(0, for: .fr) == "one")
+        #expect(L10n.pluralCategory(1, for: .fr) == "one")
+        #expect(L10n.pluralCategory(2, for: .fr) == "other")
+        #expect(L10n.pluralCategory(1_000_000, for: .fr) == "other")
+        // Everything else, `.system` included: one only for exactly one
+        for language in [AppLanguage.en, .zhHans, .zhHant, .ko, .ja, .es, .system] {
+            #expect(L10n.pluralCategory(1, for: language) == "one")
+            #expect(L10n.pluralCategory(0, for: language) == "other")
+            #expect(L10n.pluralCategory(2, for: language) == "other")
         }
     }
 

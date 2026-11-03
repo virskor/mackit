@@ -25,9 +25,7 @@ struct WelcomeView: View {
                     Image(systemName: "folder.fill.badge.gearshape")
                         .foregroundStyle(.secondary)
                     Text(verbatim: L10n.fmt(
-                        vm.projectRoots.count == 1
-                            ? "welcome.projectRoots.one"
-                            : "welcome.projectRoots.other",
+                        L10n.plural("welcome.projectRoots", vm.projectRoots.count),
                         vm.projectRoots.count
                     ))
                     .font(.system(size: 11))

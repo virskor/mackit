@@ -62,10 +62,8 @@ struct HomebrewOutcome: Equatable, Sendable {
                 return L10n.tr("homebrew.result.cleanedNone")
             case .autoremove:
                 if let measure, measure > 0 {
-                    let key = measure == 1
-                        ? "homebrew.result.autoremoved.one"
-                        : "homebrew.result.autoremoved.other"
-                    return L10n.fmt(key, measure)
+                    // `measure` counts bytes as Int64; the plural helper counts in Int
+                    return L10n.fmt(L10n.plural("homebrew.result.autoremoved", Int(measure)), measure)
                 }
                 return L10n.tr("homebrew.result.autoremovedNone")
             case .upgradeAll:

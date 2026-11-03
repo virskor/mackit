@@ -53,9 +53,7 @@ struct CleanConfirmationView: View {
             tint: hasCaution ? .red : .accentColor,
             title: L10n.tr("clean.confirm.title"),
             summary: L10n.fmt(
-                items.count == 1
-                    ? "clean.confirm.summary.one"
-                    : "clean.confirm.summary.other",
+                L10n.plural("clean.confirm.summary", items.count),
                 items.count,
                 Formatters.bytes(vm.selectedSize)
             ),

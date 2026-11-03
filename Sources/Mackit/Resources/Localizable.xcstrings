@@ -10270,6 +10270,74 @@
         }
       }
     },
+    "count.items.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 항목"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項目"
+          }
+        }
+      }
+    },
+    "count.items.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 항목"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項目"
+          }
+        }
+      }
+    },
     "count.items.other": {
       "localizations": {
         "zh-Hans": {
@@ -11630,6 +11698,74 @@
         }
       }
     },
+    "toast.movedWithFailures.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@，%lld 项失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved %@, %lld items failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@，%lld 項失敗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 이동 완료, 항목 %lld개 실패"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を移動しました、%lld 件の項目が失敗しました"
+          }
+        }
+      }
+    },
+    "toast.movedWithFailures.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@，%lld 项失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved %@, %lld items failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出 %@，%lld 項失敗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 이동 완료, 항목 %lld개 실패"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を移動しました、%lld 件の項目が失敗しました"
+          }
+        }
+      }
+    },
     "toast.movedWithFailures.other": {
       "localizations": {
         "zh-Hans": {
@@ -12072,6 +12208,74 @@
         }
       }
     },
+    "clean.helpSelected.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理已勾选的 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clean %lld selected items"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理已勾選的 %lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 %lld개 항목 정리"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した%lld項目をクリーンアップ"
+          }
+        }
+      }
+    },
+    "clean.helpSelected.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理已勾选的 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clean %lld selected items"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理已勾選的 %lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 %lld개 항목 정리"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した%lld項目をクリーンアップ"
+          }
+        }
+      }
+    },
     "clean.helpSelected.other": {
       "localizations": {
         "zh-Hans": {
@@ -12322,6 +12526,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Also scanning %lld project directory"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將同時掃描 %lld 個專案目錄"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개의 프로젝트 디렉토리도 함께 스캔합니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld個のプロジェクトディレクトリもスキャンします"
+          }
+        }
+      }
+    },
+    "welcome.projectRoots.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将同时扫描 %lld 个项目目录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also scanning %lld project directories"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將同時掃描 %lld 個專案目錄"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개의 프로젝트 디렉토리도 함께 스캔합니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld個のプロジェクトディレクトリもスキャンします"
+          }
+        }
+      }
+    },
+    "welcome.projectRoots.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将同时扫描 %lld 个项目目录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also scanning %lld project directories"
           }
         },
         "zh-Hant": {
@@ -13636,6 +13908,74 @@
         }
       }
     },
+    "clean.confirm.summary.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即将清理 %lld 个条目，共释放 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About to clean %lld items, freeing %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即將清理 %lld 個項目，共釋放 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개 항목을 정리하면 총 %@ 확보"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld項目をクリーンアップして合計%@を確保"
+          }
+        }
+      }
+    },
+    "clean.confirm.summary.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即将清理 %lld 个条目，共释放 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About to clean %lld items, freeing %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即將清理 %lld 個項目，共釋放 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개 항목을 정리하면 총 %@ 확보"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld項目をクリーンアップして合計%@を確保"
+          }
+        }
+      }
+    },
     "clean.confirm.summary.other": {
       "localizations": {
         "zh-Hans": {
@@ -13716,6 +14056,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld item total"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "총 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合計%lld項目"
+          }
+        }
+      }
+    },
+    "clean.confirm.listCount.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items total"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "총 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合計%lld項目"
+          }
+        }
+      }
+    },
+    "clean.confirm.listCount.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items total"
           }
         },
         "zh-Hant": {
@@ -14180,6 +14588,74 @@
         }
       }
     },
+    "clean.progress.cleaned.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已清理 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items cleaned"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已清理 %lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개 정리됨"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld項目をクリーンアップしました"
+          }
+        }
+      }
+    },
+    "clean.progress.cleaned.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已清理 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items cleaned"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已清理 %lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개 정리됨"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld項目をクリーンアップしました"
+          }
+        }
+      }
+    },
     "clean.progress.cleaned.other": {
       "localizations": {
         "zh-Hans": {
@@ -14260,6 +14736,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cleaning complete, but %lld item failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理完成，但有 %lld 項失敗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정리 완료, %lld개 실패"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリーンアップ完了、%lld項目が失敗しました"
+          }
+        }
+      }
+    },
+    "clean.result.doneWithFailures.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理完成，但有 %lld 项失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cleaning complete, but %lld items failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理完成，但有 %lld 項失敗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정리 완료, %lld개 실패"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリーンアップ完了、%lld項目が失敗しました"
+          }
+        }
+      }
+    },
+    "clean.result.doneWithFailures.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理完成，但有 %lld 项失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cleaning complete, but %lld items failed"
           }
         },
         "zh-Hant": {
@@ -14532,6 +15076,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld item found · %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已發現 %lld 項 · %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 %lld개 발견 · %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "発見した項目 %lld 件 · %@"
+          }
+        }
+      }
+    },
+    "scan.banner.found.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发现 %lld 项 · %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items found · %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已發現 %lld 項 · %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 %lld개 발견 · %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "発見した項目 %lld 件 · %@"
+          }
+        }
+      }
+    },
+    "scan.banner.found.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发现 %lld 项 · %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items found · %@"
           }
         },
         "zh-Hant": {
@@ -14838,6 +15450,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld item found, finishing up…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已發現 %lld 項，正在收尾…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 %lld개 발견, 마무리 중…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "発見した項目 %lld 件、仕上げ中…"
+          }
+        }
+      }
+    },
+    "scan.foundFinishing.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发现 %lld 项，正在收尾…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items found, finishing up…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已發現 %lld 項，正在收尾…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 %lld개 발견, 마무리 중…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "発見した項目 %lld 件、仕上げ中…"
+          }
+        }
+      }
+    },
+    "scan.foundFinishing.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发现 %lld 项，正在收尾…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items found, finishing up…"
           }
         },
         "zh-Hant": {
@@ -15506,6 +16186,74 @@
         }
       }
     },
+    "apps.residueSummary.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个残留文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld leftover files"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個殘留檔案"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잔여 파일 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残りファイル %lld個"
+          }
+        }
+      }
+    },
+    "apps.residueSummary.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个残留文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld leftover files"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個殘留檔案"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잔여 파일 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残りファイル %lld個"
+          }
+        }
+      }
+    },
     "apps.residueSummary.other": {
       "localizations": {
         "zh-Hans": {
@@ -16016,6 +16764,74 @@
         }
       }
     },
+    "apps.confirm.summary.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即将卸载 %lld 个应用并清理其关联文件，共释放 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About to uninstall %lld apps along with their leftover files, freeing %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即將卸載 %lld 個應用程式並清理其關聯檔案，共釋放 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개 앱을 제거하고 관련 파일을 정리하면 총 %@ 확보"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld個のAppをアンインストールし、関連ファイルをクリーンアップして合計%@を確保"
+          }
+        }
+      }
+    },
+    "apps.confirm.summary.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即将卸载 %lld 个应用并清理其关联文件，共释放 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About to uninstall %lld apps along with their leftover files, freeing %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "即將卸載 %lld 個應用程式並清理其關聯檔案，共釋放 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개 앱을 제거하고 관련 파일을 정리하면 총 %@ 확보"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld個のAppをアンインストールし、関連ファイルをクリーンアップして合計%@を確保"
+          }
+        }
+      }
+    },
     "apps.confirm.summary.other": {
       "localizations": {
         "zh-Hans": {
@@ -16062,6 +16878,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld app is running and will be skipped"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %lld 個應用程式正在執行，將被略過"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 중인 앱 %lld개는 건너뜁니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行中のAppが%lld個あり、スキップされます"
+          }
+        }
+      }
+    },
+    "apps.confirm.running.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %lld 个应用正在运行，将被跳过"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld apps are running and will be skipped"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %lld 個應用程式正在執行，將被略過"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 중인 앱 %lld개는 건너뜁니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行中のAppが%lld個あり、スキップされます"
+          }
+        }
+      }
+    },
+    "apps.confirm.running.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %lld 个应用正在运行，将被跳过"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld apps are running and will be skipped"
           }
         },
         "zh-Hant": {
@@ -16254,6 +17138,74 @@
         }
       }
     },
+    "apps.confirm.leftoverMore.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等 %lld 个应用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "and %lld more apps"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等 %lld 個應用程式"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그 외 앱 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "他%lld個のApp"
+          }
+        }
+      }
+    },
+    "apps.confirm.leftoverMore.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等 %lld 个应用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "and %lld more apps"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等 %lld 個應用程式"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그 외 앱 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "他%lld個のApp"
+          }
+        }
+      }
+    },
     "apps.confirm.leftoverMore.other": {
       "localizations": {
         "zh-Hans": {
@@ -16368,6 +17320,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Freed %@, %lld item failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已釋放 %@，%lld 項失敗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 확보 완료, 항목 %lld개 실패"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を確保しました、%lld 件の項目が失敗しました"
+          }
+        }
+      }
+    },
+    "toast.reclaimedWithFailures.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已释放 %@，%lld 项失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freed %@, %lld items failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已釋放 %@，%lld 項失敗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 확보 완료, 항목 %lld개 실패"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を確保しました、%lld 件の項目が失敗しました"
+          }
+        }
+      }
+    },
+    "toast.reclaimedWithFailures.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已释放 %@，%lld 项失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freed %@, %lld items failed"
           }
         },
         "zh-Hant": {
@@ -21830,6 +22850,74 @@
         }
       }
     },
+    "diskAnalysis.header.folders.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld folders"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 檔案夾"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ%lld個"
+          }
+        }
+      }
+    },
+    "diskAnalysis.header.folders.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld folders"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 檔案夾"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ%lld個"
+          }
+        }
+      }
+    },
     "diskAnalysis.header.folders.other": {
       "localizations": {
         "zh-Hans": {
@@ -21876,6 +22964,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld file"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 檔案"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイル%lld個"
+          }
+        }
+      }
+    },
+    "diskAnalysis.header.files.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld files"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 檔案"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイル%lld個"
+          }
+        }
+      }
+    },
+    "diskAnalysis.header.files.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld files"
           }
         },
         "zh-Hant": {
@@ -22284,6 +23440,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld folder measured"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已測量 %lld 個資料夾"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 %lld개 측정"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ%lld個を測定"
+          }
+        }
+      }
+    },
+    "diskAnalysis.scan.count.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已测量 %lld 个文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld folders measured"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已測量 %lld 個資料夾"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 %lld개 측정"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ%lld個を測定"
+          }
+        }
+      }
+    },
+    "diskAnalysis.scan.count.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已测量 %lld 个文件夹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld folders measured"
           }
         },
         "zh-Hant": {
@@ -22896,6 +24120,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld other item"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其餘 %lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기타 %lld개 항목"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その他%lld項目"
+          }
+        }
+      }
+    },
+    "diskAnalysis.others.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其余 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld other items"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其餘 %lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기타 %lld개 항목"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その他%lld項目"
+          }
+        }
+      }
+    },
+    "diskAnalysis.others.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其余 %lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld other items"
           }
         },
         "zh-Hant": {
@@ -24766,6 +26058,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld item"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 항목"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項目"
+          }
+        }
+      }
+    },
+    "homebrew.progress.steps.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 항목"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項目"
+          }
+        }
+      }
+    },
+    "homebrew.progress.steps.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items"
           }
         },
         "zh-Hant": {
@@ -27678,6 +29038,74 @@
         }
       }
     },
+    "homebrew.result.autoremoved.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移除 %lld 个无用依赖"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removed %lld unused dependencies"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移除 %lld 個無用依賴"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불필요한 종속 항목 %lld개를 제거했습니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個の不要な依存関係を削除しました"
+          }
+        }
+      }
+    },
+    "homebrew.result.autoremoved.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移除 %lld 个无用依赖"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removed %lld unused dependencies"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移除 %lld 個無用依賴"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불필요한 종속 항목 %lld개를 제거했습니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個の不要な依存関係を削除しました"
+          }
+        }
+      }
+    },
     "homebrew.result.autoremoved.other": {
       "localizations": {
         "zh-Hans": {
@@ -29106,6 +30534,74 @@
         }
       }
     },
+    "largeFiles.summary.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 个文件 · 共 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld files · %2$@ in total"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個檔案 · 共 %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 %1$lld개 · 총 %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個のファイル · 合計 %2$@"
+          }
+        }
+      }
+    },
+    "largeFiles.summary.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 个文件 · 共 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld files · %2$@ in total"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個檔案 · 共 %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 %1$lld개 · 총 %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個のファイル · 合計 %2$@"
+          }
+        }
+      }
+    },
     "largeFiles.summary.other": {
       "localizations": {
         "zh-Hans": {
@@ -29684,6 +31180,74 @@
         }
       }
     },
+    "largeFiles.scan.directories.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已访问 %lld 个目录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld directories visited"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已訪問 %lld 個目錄"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스캔한 디렉토리 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スキャンしたディレクトリ %lld 件"
+          }
+        }
+      }
+    },
+    "largeFiles.scan.directories.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已访问 %lld 个目录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld directories visited"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已訪問 %lld 個目錄"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스캔한 디렉토리 %lld개"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スキャンしたディレクトリ %lld 件"
+          }
+        }
+      }
+    },
     "largeFiles.scan.directories.other": {
       "localizations": {
         "zh-Hans": {
@@ -29730,6 +31294,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Found %1$lld file · %2$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已找到 %1$lld 個檔案 · 共 %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "찾은 파일 %1$lld개 · 총 %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "発見したファイル %1$lld 個 · 合計 %2$@"
+          }
+        }
+      }
+    },
+    "largeFiles.scan.found.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已找到 %1$lld 个文件 · 共 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Found %1$lld files · %2$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已找到 %1$lld 個檔案 · 共 %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "찾은 파일 %1$lld개 · 총 %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "発見したファイル %1$lld 個 · 合計 %2$@"
+          }
+        }
+      }
+    },
+    "largeFiles.scan.found.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已找到 %1$lld 个文件 · 共 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Found %1$lld files · %2$@"
           }
         },
         "zh-Hant": {
@@ -30138,6 +31770,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$lld file · %2$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個檔案 · 共 %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 %1$lld개 · 총 %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個のファイル · 合計 %2$@"
+          }
+        }
+      }
+    },
+    "largeFiles.confirm.summary.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 个文件 · 共 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld files · %2$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個檔案 · 共 %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 %1$lld개 · 총 %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 個のファイル · 合計 %2$@"
+          }
+        }
+      }
+    },
+    "largeFiles.confirm.summary.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 个文件 · 共 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld files · %2$@"
           }
         },
         "zh-Hant": {
@@ -30716,6 +32416,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld log could not be deleted"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項記錄刪除失敗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그 %lld개를 삭제하지 못했습니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ログ%lld件を削除できませんでした"
+          }
+        }
+      }
+    },
+    "settings.crashLogs.deleteAllFailed.few": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 条日志删除失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld logs could not be deleted"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項記錄刪除失敗"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그 %lld개를 삭제하지 못했습니다"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ログ%lld件を削除できませんでした"
+          }
+        }
+      }
+    },
+    "settings.crashLogs.deleteAllFailed.many": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 条日志删除失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld logs could not be deleted"
           }
         },
         "zh-Hant": {

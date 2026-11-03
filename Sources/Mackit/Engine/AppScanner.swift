@@ -156,8 +156,7 @@ enum AppScanner {
             parts.append(L10n.fmt("apps.version", version))
         }
         if residueCount > 0 {
-            let key = residueCount == 1 ? "apps.residueSummary.one" : "apps.residueSummary.other"
-            parts.append(L10n.fmt(key, residueCount))
+            parts.append(L10n.fmt(L10n.plural("apps.residueSummary", residueCount), residueCount))
         }
         return parts.joined(separator: " · ")
     }

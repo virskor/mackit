@@ -27,7 +27,7 @@ struct ScanBannerView: View {
                 Spacer(minLength: 8)
 
                 Text(verbatim: L10n.fmt(
-                    vm.items.count == 1 ? "scan.banner.found.one" : "scan.banner.found.other",
+                    L10n.plural("scan.banner.found", vm.items.count),
                     vm.items.count, Formatters.bytes(vm.totalSize)
                 ))
                 .font(.system(size: 11, weight: .medium))

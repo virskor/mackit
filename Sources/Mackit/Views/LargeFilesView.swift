@@ -177,7 +177,7 @@ struct LargeFilesView: View {
 
     private var summaryLine: String {
         L10n.fmt(
-            "largeFiles.summary.\(model.files.count == 1 ? "one" : "other")",
+            L10n.plural("largeFiles.summary", model.files.count),
             model.files.count,
             Formatters.bytes(model.totalSize)
         )
@@ -369,7 +369,7 @@ struct LargeFilesView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: L10n.fmt(
-                    "largeFiles.scan.found.\(model.files.count == 1 ? "one" : "other")",
+                    L10n.plural("largeFiles.scan.found", model.files.count),
                     model.files.count,
                     Formatters.bytes(model.totalSize)
                 ))
@@ -378,7 +378,7 @@ struct LargeFilesView: View {
 
                 HStack(spacing: 5) {
                     Text(verbatim: L10n.fmt(
-                        "largeFiles.scan.directories.\(model.scannedDirectories == 1 ? "one" : "other")",
+                        L10n.plural("largeFiles.scan.directories", model.scannedDirectories),
                         model.scannedDirectories
                     ))
                     .font(.system(size: 10))

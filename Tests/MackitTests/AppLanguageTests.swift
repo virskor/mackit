@@ -109,12 +109,16 @@ struct AppLanguageTests {
         // Japanese and Korean are supported now, so the first entry wins
         #expect(AppLanguage.systemPreferred(languages: ["ja-JP", "en-US", "zh-Hans"]) == .ja)
         #expect(AppLanguage.systemPreferred(languages: ["ko-KR", "en-US"]) == .ko)
+        // The three newer languages behave the same
+        #expect(AppLanguage.systemPreferred(languages: ["ru-RU", "en-US"]) == .ru)
+        #expect(AppLanguage.systemPreferred(languages: ["es-ES", "en-US"]) == .es)
+        #expect(AppLanguage.systemPreferred(languages: ["fr-FR", "en-US"]) == .fr)
         // A language the app does not ship is skipped, not fallen back to
-        #expect(AppLanguage.systemPreferred(languages: ["fr-FR", "en-US"]) == .en)
+        #expect(AppLanguage.systemPreferred(languages: ["de-DE", "en-US"]) == .en)
     }
 
     @Test func systemPreferredFallsBackToSourceLanguage() {
-        #expect(AppLanguage.systemPreferred(languages: ["fr-FR", "de-DE"]) == .zhHans)
+        #expect(AppLanguage.systemPreferred(languages: ["de-DE", "it-IT"]) == .zhHans)
         #expect(AppLanguage.systemPreferred(languages: []) == .zhHans)
     }
 
@@ -139,6 +143,9 @@ struct AppLanguageTests {
         #expect(AppLanguage.zhHant.displayName == "繁體中文")
         #expect(AppLanguage.ko.displayName == "한국어")
         #expect(AppLanguage.ja.displayName == "日本語")
+        #expect(AppLanguage.ru.displayName == "Русский")
+        #expect(AppLanguage.es.displayName == "Español")
+        #expect(AppLanguage.fr.displayName == "Français")
     }
 
     // MARK: - Localization key completeness
