@@ -64,6 +64,15 @@ struct ContentToolbarRow: View {
                     // to borrow are gone with the bezel, so the label pins
                     // its own size; the padding stands in for the bezel's.
                     .font(.system(size: 13))
+                    // One line, always — the same contract BrandCTAButton's
+                    // label keeps: a label that wraps when the row runs over
+                    // its width budget grows the capsule's height and drags
+                    // the row out of alignment, and this row's documented
+                    // answer to an over-budget control is a truncated tail
+                    // (see the safe-only toggle below). A translated label
+                    // wider than the budget gets the truncation, not a
+                    // second line.
+                    .lineLimit(1)
                     .foregroundStyle(vm.phase == .scanning ? Color.red : Color.primary)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)

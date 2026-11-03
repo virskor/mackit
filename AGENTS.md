@@ -36,6 +36,7 @@ A change is not complete until `swift build` and `swift test` both pass. Running
 - **Comments explain "why", not "what"** — constraints, trade-offs, and pitfalls are worth writing down; obvious logic does not need a comment
 - **All user-facing strings go through localization** — no user-facing literals in code; use `L10n.tr` / `L10n.fmt` / `L10n.items` and add every string to `Localizable.xcstrings` in all eight languages (zh-Hans / en / zh-Hant / ko / ja / ru / es / fr)
 - **Plural keys (`.one` / `.few` / `.many` / `.other`) must use consistent placeholder layouts** — every form of a family carries the same placeholders in the same order, or the UI crashes on render; the language picks the form (`L10n.plural`), Russian is the one with a real `few` / `many`
+- **Button and menu labels stay short** — a translation runs at roughly the English length; width-constrained rows (the content toolbar) truncate an over-wide label instead of wrapping it, so an over-long translation ships as a cut-off label
 - Logging goes through `MackitLog` (`os.Logger`) — record counts, sizes, durations, and rule IDs only, never file contents
 - New scan rules go in `Engine/RulesCatalog.swift`, following the organization of the existing rules
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:` / `fix:` / `docs:` / `refactor:` / `test:` / `chore:`

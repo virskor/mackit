@@ -18081,19 +18081,19 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Остановить сканирование"
+            "value": "Остановить"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Detener escaneo"
+            "value": "Detener"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arrêter l'analyse"
+            "value": "Arrêter"
           }
         }
       }

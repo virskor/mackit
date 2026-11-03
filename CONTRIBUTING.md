@@ -34,6 +34,7 @@ New features should come with tests — follow the existing organization in `Tes
 - **Comments explain "why", not "what"**: constraints, trade-offs, and pitfalls you've hit are worth writing down; obvious logic doesn't need a comment
 - **All user-facing strings go through localization**: no user-facing literals in code — use `Utilities/L10n.swift` (`L10n.tr` / `L10n.fmt` / `L10n.items`) and add strings to `Sources/Mackit/Resources/Localizable.xcstrings` for all eight languages (zh-Hans / en / zh-Hant / ko / ja / ru / es / fr)
 - **Plural keys (`.one` / `.few` / `.many` / `.other`) must use consistent placeholder layouts** — every form of a family carries the same placeholders in the same order; otherwise `%@` receives an integer and the UI crashes on render
+- **Button and menu labels stay short**: a translation runs at roughly the English length — width-constrained rows like the content toolbar truncate an over-wide label instead of wrapping it, so an over-long translation ships as a cut-off label
 - Logging goes through `Utilities/MackitLog.swift` (`os.Logger`) — record only counts, sizes, durations, and rule IDs, never file contents
 - New scan rules go in `Engine/RulesCatalog.swift`, following the organization of the existing rules
 
