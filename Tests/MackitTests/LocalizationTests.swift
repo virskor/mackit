@@ -5,12 +5,13 @@ import Testing
 
 /// Regression tests for the localization infrastructure.
 ///
-/// The specific English / Traditional Chinese / Korean / Japanese wording is
-/// deliberately not verified here — that is carried by Localizable.xcstrings,
-/// and the test process's language follows the launch environment, so the
-/// languages cannot be covered in one process. What can and must be verified
-/// is: the catalog is actually reachable (lookups do not degrade to keys), all
-/// five translations are present, and placeholders are substituted correctly.
+/// The specific English / Traditional Chinese / Korean / Japanese / Russian /
+/// Spanish / French wording is deliberately not verified here — that is
+/// carried by Localizable.xcstrings, and the test process's language follows
+/// the launch environment, so the languages cannot be covered in one process.
+/// What can and must be verified is: the catalog is actually reachable
+/// (lookups do not degrade to keys), all eight translations are present, and
+/// placeholders are substituted correctly.
 struct LocalizationTests {
     /// On a lookup failure Foundation returns the key verbatim; use this to
     /// detect "not found".
@@ -407,11 +408,11 @@ struct LocalizationTests {
     }
 
     /// After the catalog is compiled there is one .lproj/Localizable.strings
-    /// per language; all five must be present and share the same key set —
+    /// per language; all eight must be present and share the same key set —
     /// a missing translation makes whole parts of the UI fall back to the
     /// source language or to keys.
     @Test func allLocalizationsArePresentAndComplete() throws {
-        let languages = ["zh-Hans", "en", "zh-Hant", "ko", "ja"]
+        let languages = ["zh-Hans", "en", "zh-Hant", "ko", "ja", "ru", "es", "fr"]
         var keySets: [Set<String>] = []
 
         for language in languages {
@@ -427,12 +428,12 @@ struct LocalizationTests {
                 Issue.record("\(language).lproj/Localizable.strings failed to parse")
                 continue
             }
-            #expect(dict.count > 300, "\(language) has only \(dict.count) entries")
+            #expect(dict.count > 1000, "\(language) has only \(dict.count) entries")
             keySets.append(Set(dict.keys))
         }
 
-        #expect(keySets.count == 5)
-        if keySets.count == 5 {
+        #expect(keySets.count == 8)
+        if keySets.count == 8 {
             for (index, language) in languages[1...].enumerated() {
                 #expect(keySets[0] == keySets[index + 1], "the key set of zh-Hans and \(language) differ")
             }

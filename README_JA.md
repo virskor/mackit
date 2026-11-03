@@ -244,13 +244,13 @@ Sources/Mackit/
 ├── Views/                        # SwiftUI: メインウィンドウ、トレイパネル、フローティングバー、設定、ハードウェア、ディスク分析
 │   └── Components/               #   再利用可能なコンポーネント（バッジ、プログレスリング、通知行、フローレイアウト……）
 └── Utilities/
-    ├── AppLanguage.swift         # インターフェイス言語の選択（システム + 5言語、AppleLanguages に書き込み）
+    ├── AppLanguage.swift         # インターフェイス言語の選択（システム + 8言語、AppleLanguages に書き込み）
     ├── MackitLog.swift           # 統一された os.Logger ラッパー
     ├── Formatters.swift          # バイトと時間のフォーマット
     ├── LaunchAtLogin.swift       # ログイン項目の登録（埋め込みの MackitAgent.app を指す）
     └── L10n.swift                # ローカライズの参照（String Catalog）
     Resources/
-    ├── Localizable.xcstrings     # 5言語（zh-Hans / en / zh-Hant / ko / ja）
+    ├── Localizable.xcstrings     # 8言語（zh-Hans / en / zh-Hant / ko / ja / ru / es / fr）
     └── sparkle-blue.png          # ブランドアイコン（App内表示とAppアイコンで共有）
 Scripts/                          # ビルド / パッケージング / アイコン生成スクリプト
 Tests/MackitTests/                # 52個のテストファイル

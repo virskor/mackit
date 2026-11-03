@@ -42,7 +42,7 @@ What Mackit does:
 - **Disk space analysis**: a tool page (sidebar "Tools" section, below the cleanup entries) answering "where did the space go" — breadcrumb drill-down from the startup disk, every folder's recursive size, and a treemap of the selected folder's breakdown
 - **Hardware info**: model, disks, battery and other static information
 - **Native UI**: SwiftUI sidebar + table + toolbar with native context menus, keyboard shortcuts, search and click-to-sort column headers
-- **Localized**: Simplified Chinese / English / Traditional Chinese / Korean / Japanese, follows the system language by default
+- **Localized**: Simplified Chinese / English / Traditional Chinese / Korean / Japanese / Russian / Spanish / French, follows the system language by default
 - **Safety rails**: built-in protected-path list; system directories and the keychain are always refused
 
 ## Screenshot
@@ -188,7 +188,7 @@ The floor is the compile target macOS 14: no source uses APIs above 14.0 (`swift
 
 ### Localization
 
-All user-facing strings live in `Sources/Mackit/Resources/Localizable.xcstrings` (String Catalog), with Simplified Chinese as the source language plus English, Traditional Chinese, Korean and Japanese translations. No user-facing literals appear in code; everything goes through `Utilities/L10n.swift`:
+All user-facing strings live in `Sources/Mackit/Resources/Localizable.xcstrings` (String Catalog), with Simplified Chinese as the source language plus English, Traditional Chinese, Korean, Japanese, Russian, Spanish and French translations. No user-facing literals appear in code; everything goes through `Utilities/L10n.swift`:
 
 ```swift
 Text(verbatim: L10n.tr("toolbar.rescan"))                 // static string
@@ -198,7 +198,7 @@ Text(verbatim: L10n.items(count))                         // "N items", plural h
 
 To add a language: translate it in the catalog (open it in Xcode, click `+` at the bottom left), then register it — an `AppLanguage` case with its endonym and system-preference matching in `Utilities/AppLanguage.swift`, the language in both `CFBundleLocalizations` arrays in `Scripts/build-app.sh`, and, once it ships in the UI, its primary subtag in `LanguageFileScanner.isWhitelisted` so the language-pack rule keeps it. New strings are added as keys in the catalog; `LocalizationTests` in the test suite checks key completeness and placeholder consistency against the call sites.
 
-Interface language selection lives in `Utilities/AppLanguage.swift`: "Follow system" plus five languages, stored in UserDefaults under `appLanguage` and mirrored into the app domain's `AppleLanguages` — CFBundle's string lookup reads that key, so it takes effect after a restart (Sparkle's update UI and system file panels follow too). Why a restart instead of an in-process switch: scan result titles and descriptions are frozen in the current language when created, so an in-process refresh would only produce a mixed-language list (see the source comments for details).
+Interface language selection lives in `Utilities/AppLanguage.swift`: "Follow system" plus eight languages, stored in UserDefaults under `appLanguage` and mirrored into the app domain's `AppleLanguages` — CFBundle's string lookup reads that key, so it takes effect after a restart (Sparkle's update UI and system file panels follow too). Why a restart instead of an in-process switch: scan result titles and descriptions are frozen in the current language when created, so an in-process refresh would only produce a mixed-language list (see the source comments for details).
 
 The two plural keys (`.one` / `.other`) must keep the same placeholder layout — `.one` needs `%lld` too, with only the noun made singular; otherwise `%@` receives an integer and the UI crashes on first render.
 
@@ -242,13 +242,13 @@ Sources/Mackit/
 ├── Views/                        # SwiftUI: main window, tray panel, overlay, settings, hardware, disk analysis
 │   └── Components/               #   reusable components (badges, progress ring, notice rows, flow layout…)
 └── Utilities/
-    ├── AppLanguage.swift         # interface language selection (system + five languages, writes AppleLanguages)
+    ├── AppLanguage.swift         # interface language selection (system + eight languages, writes AppleLanguages)
     ├── MackitLog.swift           # unified os.Logger wrapper
     ├── Formatters.swift          # byte and time formatting
     ├── LaunchAtLogin.swift       # login item registration (points at the embedded MackitAgent.app)
     └── L10n.swift                # localization lookup (String Catalog)
     Resources/
-    ├── Localizable.xcstrings     # five languages (zh-Hans / en / zh-Hant / ko / ja)
+    ├── Localizable.xcstrings     # eight languages (zh-Hans / en / zh-Hant / ko / ja / ru / es / fr)
     └── sparkle-blue.png          # brand icon (shared by in-app display and the app icon)
 Scripts/                          # build / packaging / icon generation scripts
 Tests/MackitTests/                # 52 test files

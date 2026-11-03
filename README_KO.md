@@ -244,13 +244,13 @@ Sources/Mackit/
 ├── Views/                        # SwiftUI: 메인 창, 메뉴 막대 패널, 오버레이, 설정, 하드웨어, 디스크 분석
 │   └── Components/               #   재사용 가능한 컴포넌트(배지, 진행 링, 안내 행, 흐름 레이아웃…)
 └── Utilities/
-    ├── AppLanguage.swift         # 인터페이스 언어 선택(시스템 + 5개 언어, AppleLanguages 기록)
+    ├── AppLanguage.swift         # 인터페이스 언어 선택(시스템 + 8개 언어, AppleLanguages 기록)
     ├── MackitLog.swift           # 통합 os.Logger 래퍼
     ├── Formatters.swift          # 바이트와 시간 서식
     ├── LaunchAtLogin.swift       # 로그인 항목 등록(내장된 MackitAgent.app을 가리킴)
     └── L10n.swift                # 현지화 조회(String Catalog)
     Resources/
-    ├── Localizable.xcstrings     # 5개 언어(zh-Hans / en / zh-Hant / ko / ja)
+    ├── Localizable.xcstrings     # 8개 언어(zh-Hans / en / zh-Hant / ko / ja / ru / es / fr)
     └── sparkle-blue.png          # 브랜드 아이콘(앱 내 표시와 앱 아이콘 공용)
 Scripts/                          # 빌드 / 패키징 / 아이콘 생성 스크립트
 Tests/MackitTests/                # 52개 테스트 파일

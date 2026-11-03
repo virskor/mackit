@@ -201,7 +201,7 @@ Text(verbatim: L10n.items(count))                         // "N 項"，複數已
 
 新增語言：先在 catalog 中翻譯（在 Xcode 中打開，點左下角 `+`），再完成註冊——`Utilities/AppLanguage.swift` 中新增枚舉項（自帶文字名與系統語言匹配）、`Scripts/build-app.sh` 兩處 `CFBundleLocalizations` 中加入該語言；該語言隨介面發布後，還要把主子 tag 加入 `LanguageFileScanner.isWhitelisted`，語言包清理規則才會保留它。新字串以鍵的形式加入 catalog；測試套件中的 `LocalizationTests` 會對照調用點檢查鍵完整性與佔位符一致性。
 
-介面語言選擇在 `Utilities/AppLanguage.swift`："跟隨系統"外加五種語言，存於 UserDefaults 的 `appLanguage`，並鏡像進 App 域的 `AppleLanguages`——CFBundle 的字串查找讀這個鍵，因此重啟後生效（Sparkle 的更新介面與系統文件面板也隨之切換）。為什麼是重啟而不是程序內切換：掃描結果的標題與描述在創建時即以當前語言定稿，程序內重新整理只會得到一份中英混雜的列表（詳見原始碼註釋）。
+介面語言選擇在 `Utilities/AppLanguage.swift`："跟隨系統"外加八種語言，存於 UserDefaults 的 `appLanguage`，並鏡像進 App 域的 `AppleLanguages`——CFBundle 的字串查找讀這個鍵，因此重啟後生效（Sparkle 的更新介面與系統文件面板也隨之切換）。為什麼是重啟而不是程序內切換：掃描結果的標題與描述在創建時即以當前語言定稿，程序內重新整理只會得到一份中英混雜的列表（詳見原始碼註釋）。
 
 兩個複數鍵（`.one` / `.other`）必須保持相同的佔位符布局——`.one` 也要有 `%lld`，只把名詞換成單數形式；否則 `%@` 會收到整數，介面首次渲染即崩潰。
 
@@ -245,13 +245,13 @@ Sources/Mackit/
 ├── Views/                        # SwiftUI：主視窗、托盤面板、懸浮條、設定、硬體、磁碟分析
 │   └── Components/               #   可複用組件（徽章、進度環、提示行、流式布局……）
 └── Utilities/
-    ├── AppLanguage.swift         # 介面語言選擇（系統 + 五種語言，寫 AppleLanguages）
+    ├── AppLanguage.swift         # 介面語言選擇（系統 + 八種語言，寫 AppleLanguages）
     ├── MackitLog.swift           # 統一 os.Logger 封裝
     ├── Formatters.swift          # 字節與時間格式化
     ├── LaunchAtLogin.swift       # 登錄項註冊（指向內建的 MackitAgent.app）
     └── L10n.swift                # 本地化查找（String Catalog）
     Resources/
-    ├── Localizable.xcstrings     # 五種語言（zh-Hans / en / zh-Hant / ko / ja）
+    ├── Localizable.xcstrings     # 八種語言（zh-Hans / en / zh-Hant / ko / ja / ru / es / fr）
     └── sparkle-blue.png          # 品牌圖示（App 內展示與應用圖示共用）
 Scripts/                          # 建置 / 打包 / 圖示生成腳本
 Tests/MackitTests/                # 52 個測試文件

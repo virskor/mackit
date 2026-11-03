@@ -17,9 +17,9 @@ import Foundation
 /// inside it invalidates the seal and can stop a hardened-runtime app from
 /// launching at all).
 ///
-/// Beyond that, five languages are always kept per bundle: `Base` and `en`
-/// (the universal fallbacks), every Chinese variant plus `ko` and `ja`
-/// (Mackit's own UI languages), the languages the system can select —
+/// Beyond that, eight languages are always kept per bundle: `Base` and `en`
+/// (the universal fallbacks), every Chinese variant, `ko`, `ja`, `ru`, `es`
+/// and `fr` (Mackit's own UI languages), the languages the system can select —
 /// including the one a single app was given — and the bundle's development
 /// region. And a bundle is never stripped of its *last* localization — with
 /// nothing left to fall back to, an app that loads a resource by name
@@ -29,9 +29,10 @@ enum LanguageFileScanner {
     static let ruleID = "language.lproj"
 
     /// Languages always kept: English, the unlocalized `Base` fallback every
-    /// bundle carries, and Chinese, Korean and Japanese in any variant
-    /// (`zh-Hans`, `zh-Hant`, `zh-TW`, `zh-Hans-CN`, `ko-KR`, `ja-JP`, …) —
-    /// the five UI languages Mackit itself ships.
+    /// bundle carries, and Chinese, Korean, Japanese, Russian, Spanish and
+    /// French in any variant (`zh-Hans`, `zh-Hant`, `zh-TW`, `zh-Hans-CN`,
+    /// `ko-KR`, `ja-JP`, `ru-RU`, `es-419`, `fr-CA`, …) — the UI languages
+    /// Mackit itself ships.
     ///
     /// The keep-set is the whole shipped set, not just the language currently
     /// selected: whoever runs Mackit reads at least one of them, and stripping
@@ -45,7 +46,7 @@ enum LanguageFileScanner {
     /// leaving nothing else for the app to fall back to.
     static func isWhitelisted(_ language: String) -> Bool {
         switch primarySubtag(language) {
-        case "en", "zh", "ko", "ja", "base": return true
+        case "en", "zh", "ko", "ja", "ru", "es", "fr", "base": return true
         default: return false
         }
     }

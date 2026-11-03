@@ -263,6 +263,9 @@ cat > "$AGENT/Contents/Info.plist" <<PLIST
         <string>zh-Hant</string>
         <string>ko</string>
         <string>ja</string>
+        <string>ru</string>
+        <string>es</string>
+        <string>fr</string>
     </array>
     <key>CFBundleName</key>
     <string>Mackit Agent</string>
@@ -350,6 +353,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
         <string>zh-Hant</string>
         <string>ko</string>
         <string>ja</string>
+        <string>ru</string>
+        <string>es</string>
+        <string>fr</string>
     </array>
     <key>CFBundleName</key>
     <string>Mackit</string>

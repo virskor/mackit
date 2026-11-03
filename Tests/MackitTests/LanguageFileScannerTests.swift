@@ -62,8 +62,15 @@ struct LanguageFileScannerTests {
         #expect(LanguageFileScanner.isWhitelisted("ko-KR"))
         #expect(LanguageFileScanner.isWhitelisted("ja"))
         #expect(LanguageFileScanner.isWhitelisted("ja-JP"))
-        #expect(!LanguageFileScanner.isWhitelisted("fr"))
+        // Russian, Spanish and French are shipped UI languages as well
+        #expect(LanguageFileScanner.isWhitelisted("ru"))
+        #expect(LanguageFileScanner.isWhitelisted("ru-RU"))
+        #expect(LanguageFileScanner.isWhitelisted("es"))
+        #expect(LanguageFileScanner.isWhitelisted("es-419"))
+        #expect(LanguageFileScanner.isWhitelisted("fr"))
+        #expect(LanguageFileScanner.isWhitelisted("fr-CA"))
         #expect(!LanguageFileScanner.isWhitelisted("de"))
+        #expect(!LanguageFileScanner.isWhitelisted("it"))
         #expect(!LanguageFileScanner.isWhitelisted("English"))
         // Separator and case are normalized: a directory spelled the way
         // Info.plist values are is still Chinese
@@ -71,7 +78,7 @@ struct LanguageFileScannerTests {
         #expect(LanguageFileScanner.isWhitelisted("base"))
     }
 
-    /// The five UI languages Mackit ships are kept even on a machine whose
+    /// The UI languages Mackit ships are kept even on a machine whose
     /// system language is none of them: whoever runs Mackit reads at least one
     /// of them, so stripping the rest out of every other app would hit them.
     @Test func shippedUILanguagesSurviveOnAnySystem() throws {
@@ -79,10 +86,10 @@ struct LanguageFileScannerTests {
             .appendingPathComponent("mackit-lproj-shipped-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["en", "zh-Hant", "ko-KR", "ja_JP", "fr"])
+                    languages: ["en", "zh-Hant", "ko-KR", "ja_JP", "ru", "es", "fr", "de"])
 
         let found = scan(at: root, preferredLanguages: ["en"])
-        #expect(Set(found.map(\.title)) == ["fr.lproj"], "only a language nobody reads may go: \(found.map(\.title))")
+        #expect(Set(found.map(\.title)) == ["de.lproj"], "only a language nobody reads may go: \(found.map(\.title))")
     }
 
     @Test func findsRemovableLanguageDirectories() throws {
@@ -90,12 +97,12 @@ struct LanguageFileScannerTests {
             .appendingPathComponent("mackit-lproj-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["en", "zh-Hans", "Base", "ja", "ko", "fr", "de"])
+                    languages: ["en", "zh-Hans", "Base", "ja", "ko", "it", "de"])
 
         let found = scan(at: root)
 
         let titles = Set(found.map(\.title))
-        #expect(titles == ["fr.lproj", "de.lproj"])
+        #expect(titles == ["it.lproj", "de.lproj"])
         for item in found {
             #expect(item.ruleID == "language.lproj")
             #expect(item.category == .language)
@@ -110,15 +117,15 @@ struct LanguageFileScannerTests {
             .appendingPathComponent("mackit-lproj-skip-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try makeApp(at: root, name: "Safari", bundleID: "com.apple.Safari",
-                    languages: ["en", "fr", "de"])
+                    languages: ["en", "it", "de"])
         // A directory that is not a bundle: no Info.plist, no bundle ID
         try FileManager.default.createDirectory(
-            at: root.appendingPathComponent("Broken.app/Contents/Resources/fr.lproj", isDirectory: true),
+            at: root.appendingPathComponent("Broken.app/Contents/Resources/it.lproj", isDirectory: true),
             withIntermediateDirectories: true
         )
         // Plain directories are ignored as well
         try FileManager.default.createDirectory(
-            at: root.appendingPathComponent("fr.lproj", isDirectory: true),
+            at: root.appendingPathComponent("it.lproj", isDirectory: true),
             withIntermediateDirectories: true
         )
 
@@ -144,7 +151,7 @@ struct LanguageFileScannerTests {
         let real = base.appendingPathComponent("Applications", isDirectory: true)
         try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
         try makeApp(at: real, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["en", "ja", "ko", "fr", "de"])
+                    languages: ["en", "ja", "ko", "it", "de"])
         try FileManager.default.createSymbolicLink(
             at: base.appendingPathComponent("AppsLink"),
             withDestinationURL: real
@@ -153,7 +160,7 @@ struct LanguageFileScannerTests {
         let found = scan(at: base.appendingPathComponent("AppsLink"))
 
         #expect(found.count == 2, "a linked Applications root produced \(found.count) entries: \(found.map(\.title))")
-        #expect(Set(found.map(\.title)) == ["de.lproj", "fr.lproj"], "English and the shipped UI languages are kept")
+        #expect(Set(found.map(\.title)) == ["de.lproj", "it.lproj"], "English and the shipped UI languages are kept")
         #expect(found.allSatisfy { $0.detail.contains("Foo") })
     }
 
@@ -162,9 +169,9 @@ struct LanguageFileScannerTests {
             .appendingPathComponent("mackit-lproj-sort-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try makeApp(at: root, name: "Alpha", bundleID: "com.example.alpha",
-                    languages: ["en", "ja", "ko", "fr", "de"])
+                    languages: ["en", "ja", "ko", "it", "de"])
         try makeApp(at: root, name: "Beta", bundleID: "com.example.beta",
-                    languages: ["en", "fr"])
+                    languages: ["en", "it"])
 
         let found = scan(at: root)
         #expect(found.count == 3)
@@ -173,7 +180,7 @@ struct LanguageFileScannerTests {
         #expect(found[0].detail.contains("Alpha"))
         #expect(found[1].detail.contains("Alpha"))
         #expect(found[2].detail.contains("Beta"))
-        #expect(found.map(\.title) == ["de.lproj", "fr.lproj", "fr.lproj"])
+        #expect(found.map(\.title) == ["de.lproj", "it.lproj", "it.lproj"])
     }
 
     // MARK: - Safety
@@ -210,15 +217,15 @@ struct LanguageFileScannerTests {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mackit-lproj-applang-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        // French and Portuguese are neither shipped by Mackit nor system
-        // languages here, so only the per-app override keeps French
+        // Italian is neither shipped by Mackit nor a system language here,
+        // so only the per-app override keeps it
         try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["en", "fr", "pt"])
+                    languages: ["en", "it", "pt"])
 
         let found = LanguageFileScanner.scanLanguageFiles(
             roots: [root.path],
             preferredLanguages: ["zh-Hans"],
-            appLanguages: { _ in ["fr-FR"] }
+            appLanguages: { _ in ["it-IT"] }
         )
         #expect(Set(found.map(\.title)) == ["pt.lproj"], "the app's own language is in use, not unused")
     }
@@ -237,25 +244,25 @@ struct LanguageFileScannerTests {
             .appendingPathComponent("mackit-lproj-system-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["en", "Base", "ja", "ko", "fr"])
+                    languages: ["en", "Base", "ja", "ko", "it"])
 
         // The system can select Japanese and Korean: neither may be removed,
         // while a language nobody reads still may
         let found = scan(at: root, preferredLanguages: ["ja-JP", "ko-KR", "en-US"])
-        #expect(Set(found.map(\.title)) == ["fr.lproj"], "system languages must never be cleaned: \(found.map(\.title))")
+        #expect(Set(found.map(\.title)) == ["it.lproj"], "system languages must never be cleaned: \(found.map(\.title))")
     }
 
     /// A region or script subtag says nothing about which language an
-    /// interface ends up in, so "pt-BR" must protect "pt" and "fr_FR" must
-    /// protect "fr" — bundle authors spell localizations both ways.
+    /// interface ends up in, so "pt-BR" must protect "pt" and "it_IT" must
+    /// protect "it" — bundle authors spell localizations both ways.
     @Test func languageMatchingIgnoresRegionAndSeparator() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mackit-lproj-region-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["en", "pt", "fr", "de"])
+                    languages: ["en", "pt", "it", "de"])
 
-        let found = scan(at: root, preferredLanguages: ["pt-BR", "fr_FR"])
+        let found = scan(at: root, preferredLanguages: ["pt-BR", "it_IT"])
         #expect(Set(found.map(\.title)) == ["de.lproj"], "region / underscore spellings must also match by primary language")
     }
 
@@ -281,17 +288,17 @@ struct LanguageFileScannerTests {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mackit-lproj-last-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        // A French-only bundle with no English and no Base
+        // An Italian-only bundle with no English and no Base
         try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["fr"])
+                    languages: ["it"])
 
         let found = scan(at: root, preferredLanguages: ["en"])
         #expect(found.isEmpty, "an app's language packs must not all be deleted")
 
-        // The same bundle with an English fallback may lose French
+        // The same bundle with an English fallback may lose Italian
         try makeApp(at: root, name: "Bar", bundleID: "com.example.bar",
-                    languages: ["fr", "en"])
-        #expect(Set(scan(at: root, preferredLanguages: ["en"]).map(\.title)) == ["fr.lproj"])
+                    languages: ["it", "en"])
+        #expect(Set(scan(at: root, preferredLanguages: ["en"]).map(\.title)) == ["it.lproj"])
     }
 
     /// Only whole `.lproj` directories are ever offered: deleting files
@@ -303,18 +310,18 @@ struct LanguageFileScannerTests {
             .appendingPathComponent("mackit-lproj-whole-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["en", "fr", "de"])
+                    languages: ["en", "it", "de"])
         // Files sitting next to the localizations are never touched, and a
         // nested resource inside a removable pack is not listed on its own
         let resources = root.appendingPathComponent("Foo.app/Contents/Resources", isDirectory: true)
         try Data("x".utf8).write(to: resources.appendingPathComponent("Assets.car"))
         try FileManager.default.createDirectory(
-            at: resources.appendingPathComponent("fr.lproj/Localizable.strings", isDirectory: true),
+            at: resources.appendingPathComponent("it.lproj/Localizable.strings", isDirectory: true),
             withIntermediateDirectories: true
         )
 
         let found = scan(at: root, preferredLanguages: ["en"])
-        #expect(Set(found.map(\.title)) == ["de.lproj", "fr.lproj"])
+        #expect(Set(found.map(\.title)) == ["de.lproj", "it.lproj"])
         #expect(found.allSatisfy { $0.path.hasSuffix(".lproj") }, "only whole language pack directories can be deleted")
         #expect(found.allSatisfy { $0.isDirectory })
     }
@@ -327,7 +334,7 @@ struct LanguageFileScannerTests {
             .appendingPathComponent("mackit-lproj-identity-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try makeApp(at: root, name: "Foo", bundleID: "com.example.foo",
-                    languages: ["en", "fr"])
+                    languages: ["en", "it"])
 
         let found = scan(at: root, preferredLanguages: ["en"])
         #expect(found.count == 1)
@@ -355,7 +362,7 @@ struct LanguageFileScannerTests {
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
         try data.write(to: app.appendingPathComponent("Contents/Info.plist"))
-        for language in ["en", "fr"] {
+        for language in ["en", "it"] {
             try FileManager.default.createDirectory(
                 at: resources.appendingPathComponent("\(language).lproj", isDirectory: true),
                 withIntermediateDirectories: true

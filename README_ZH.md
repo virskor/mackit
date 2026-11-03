@@ -201,7 +201,7 @@ Text(verbatim: L10n.items(count))                         // "N 项"，复数已
 
 新增语言：先在 catalog 中翻译（在 Xcode 中打开，点左下角 `+`），再完成注册——`Utilities/AppLanguage.swift` 中新增枚举项（自带文字名与系统语言匹配）、`Scripts/build-app.sh` 两处 `CFBundleLocalizations` 中加入该语言；该语言随界面发布后，还要把主子 tag 加入 `LanguageFileScanner.isWhitelisted`，语言包清理规则才会保留它。新字符串以键的形式加入 catalog；测试套件中的 `LocalizationTests` 会对照调用点检查键完整性与占位符一致性。
 
-界面语言选择在 `Utilities/AppLanguage.swift`："跟随系统"外加五种语言，存于 UserDefaults 的 `appLanguage`，并镜像进 App 域的 `AppleLanguages`——CFBundle 的字符串查找读这个键，因此重启后生效（Sparkle 的更新界面与系统文件面板也随之切换）。为什么是重启而不是进程内切换：扫描结果的标题与描述在创建时即以当前语言定稿，进程内刷新只会得到一份中英混杂的列表（详见源码注释）。
+界面语言选择在 `Utilities/AppLanguage.swift`："跟随系统"外加八种语言，存于 UserDefaults 的 `appLanguage`，并镜像进 App 域的 `AppleLanguages`——CFBundle 的字符串查找读这个键，因此重启后生效（Sparkle 的更新界面与系统文件面板也随之切换）。为什么是重启而不是进程内切换：扫描结果的标题与描述在创建时即以当前语言定稿，进程内刷新只会得到一份中英混杂的列表（详见源码注释）。
 
 两个复数键（`.one` / `.other`）必须保持相同的占位符布局——`.one` 也要有 `%lld`，只把名词换成单数形式；否则 `%@` 会收到整数，界面首次渲染即崩溃。
 
@@ -245,13 +245,13 @@ Sources/Mackit/
 ├── Views/                        # SwiftUI：主窗口、托盘面板、悬浮条、设置、硬件、磁盘分析
 │   └── Components/               #   可复用组件（徽章、进度环、提示行、流式布局……）
 └── Utilities/
-    ├── AppLanguage.swift         # 界面语言选择（系统 + 五种语言，写 AppleLanguages）
+    ├── AppLanguage.swift         # 界面语言选择（系统 + 八种语言，写 AppleLanguages）
     ├── MackitLog.swift           # 统一 os.Logger 封装
     ├── Formatters.swift          # 字节与时间格式化
     ├── LaunchAtLogin.swift       # 登录项注册（指向内置的 MackitAgent.app）
     └── L10n.swift                # 本地化查找（String Catalog）
     Resources/
-    ├── Localizable.xcstrings     # 五种语言（zh-Hans / en / zh-Hant / ko / ja）
+    ├── Localizable.xcstrings     # 八种语言（zh-Hans / en / zh-Hant / ko / ja / ru / es / fr）
     └── sparkle-blue.png          # 品牌图标（App 内展示与应用图标共用）
 Scripts/                          # 构建 / 打包 / 图标生成脚本
 Tests/MackitTests/                # 52 个测试文件

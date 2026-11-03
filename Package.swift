@@ -80,12 +80,11 @@ let package = Package(
             ],
             resources: [
                 // String Catalog: source language zh-Hans, plus en,
-                // zh-Hant, ko and ja. At build time it is compiled into
-                // *.lproj
-                // inside Mackit_Mackit.bundle, which build-app.sh then
-                // copies into the Resources of both .apps—the main window
-                // and the tray panel both look up the same copy of the
-                // strings.
+                // zh-Hant, ko, ja, ru, es and fr. At build time it is
+                // compiled into *.lproj inside Mackit_Mackit.bundle, which
+                // build-app.sh then copies into the Resources of both
+                // .apps—the main window and the tray panel both look up the
+                // same copy of the strings.
                 .process("Resources")
             ],
             swiftSettings: [
