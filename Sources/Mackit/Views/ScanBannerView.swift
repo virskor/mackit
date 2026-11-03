@@ -17,7 +17,7 @@ struct ScanBannerView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
                         Text(L10n.tr(vm.cleanupScope.scanProgressTitleKey))
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(Theme.Typography.subheadlineEmphasis)
 
                         // The restriction is stated here rather than left to be
                         // discovered: a scroll that silently does nothing reads
@@ -28,7 +28,7 @@ struct ScanBannerView: View {
                     }
 
                     Text(verbatim: vm.progressLabel)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -40,7 +40,7 @@ struct ScanBannerView: View {
                     L10n.plural("scan.banner.found", vm.items.count),
                     vm.items.count, Formatters.bytes(vm.totalSize)
                 ))
-                .font(.system(size: 11, weight: .medium))
+                .font(Theme.Typography.footnoteMedium)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
                 .contentTransition(.numericText())
@@ -62,10 +62,10 @@ struct ScanBannerView: View {
     /// Capsule treatment follows RiskBadge, the app's other small state tag.
     private var pausedChip: some View {
         Text(verbatim: L10n.tr("scan.banner.paused"))
-            .font(.system(size: 10, weight: .medium))
+            .font(Theme.Typography.captionMedium)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(Color.primary.opacity(0.08), in: Capsule())
+            .background(Theme.Palette.surfaceHover, in: Capsule())
     }
 }

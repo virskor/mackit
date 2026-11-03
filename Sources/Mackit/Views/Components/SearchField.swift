@@ -27,10 +27,10 @@ struct SearchField: View {
         /// The Homebrew panes' list filters: 12pt text, tighter chrome.
         case list
 
-        var fontSize: CGFloat {
+        var font: Font {
             switch self {
-            case .toolbar: 13
-            case .list: 12
+            case .toolbar: Theme.Typography.body
+            case .list: Theme.Typography.subheadline
             }
         }
 
@@ -59,8 +59,8 @@ struct SearchField: View {
         /// keeps matching the safe-only switch's fill.
         var fallbackFill: AnyShapeStyle {
             switch self {
-            case .toolbar: AnyShapeStyle(.quaternary.opacity(0.45))
-            case .list: AnyShapeStyle(Color.primary.opacity(0.06))
+            case .toolbar: Theme.Palette.surfaceControl
+            case .list: AnyShapeStyle(Theme.Palette.surfaceHover)
             }
         }
     }
@@ -88,15 +88,15 @@ struct SearchField: View {
         ) {
             HStack(spacing: variant.spacing) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
 
                 TextField(text: $text) {
                     Text(verbatim: placeholder)
-                        .font(.system(size: variant.fontSize))
+                        .font(variant.font)
                 }
                 .textFieldStyle(.plain)
-                .font(.system(size: variant.fontSize))
+                .font(variant.font)
 
                 trailing
             }
@@ -125,7 +125,7 @@ struct SearchField: View {
             text = ""
         } label: {
             Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)

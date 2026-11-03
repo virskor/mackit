@@ -131,6 +131,13 @@ struct MackitApp: App {
         Window("Mackit", id: "main") {
             MainWindowRootView()
                 .environment(vm)
+                // The appearance choice is deliberately NOT
+                // `.preferredColorScheme` here: that modifier sets an
+                // appearance on the hosting window and never takes it back,
+                // so a window pinned dark stays dark once the user picks
+                // "auto". The choice is installed on the process instead —
+                // see `AppAppearance.apply`, called from the delegate at
+                // launch and from the settings page on every change.
         }
         .defaultSize(width: 980, height: 660)
         // The title bar no longer holds anything (the control strip has
@@ -276,6 +283,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // the records directory.
         CrashCollector.applyStoredPreference()
         CrashLogStore.prune()
+        // The appearance has to be in place before the first window is
+        // drawn, and the view model that holds it is installed later (the
+        // main window root view installs it in its own onAppear), so the
+        // recorded choice is read straight from shared settings here. A
+        // `.system` choice is a no-op, and it is what an unreadable or
+        // absent value falls back to.
+        AppAppearance.stored().apply()
 
         if AppIdentity.currentProcessIsAgent {
             MackitLog.ui.info("tray agent started")

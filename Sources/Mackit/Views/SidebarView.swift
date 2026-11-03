@@ -14,7 +14,7 @@ struct SidebarView: View {
             Section {
                 row(
                     icon: .symbol("square.stack.3d.up"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     title: L10n.tr("sidebar.allItems"),
                     isSelected: itemListIsActive && vm.selectedCategory == nil,
                     figures: (count: vm.developerItemCount, size: vm.developerTotalSize),
@@ -28,7 +28,7 @@ struct SidebarView: View {
                 // they live in that page's own rail (see CategoryRailView).
                 row(
                     icon: .symbol("sparkles"),
-                    tint: .orange,
+                    tint: Theme.Palette.warning,
                     title: L10n.tr("sidebar.generalCleanup"),
                     isSelected: vm.showsGeneralCleanup,
                     // A cleanup destination like "all items", not a tool: it
@@ -49,7 +49,7 @@ struct SidebarView: View {
             Section(L10n.tr("sidebar.tools")) {
                 row(
                     icon: .symbol("chart.pie"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     title: L10n.tr("sidebar.diskAnalysis"),
                     isSelected: vm.showsDiskAnalysis,
                     isBusy: vm.diskAnalysis.isScanning,
@@ -63,7 +63,7 @@ struct SidebarView: View {
                 // they are one click apart in either direction.
                 row(
                     icon: .symbol("scalemass.fill"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     title: L10n.tr("sidebar.largeFiles"),
                     isSelected: vm.showsLargeFiles,
                     isBusy: vm.largeFiles.isScanning,
@@ -73,7 +73,7 @@ struct SidebarView: View {
 
                 row(
                     icon: .symbol("shippingbox"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     title: L10n.tr("sidebar.homebrew"),
                     isSelected: vm.showsHomebrew,
                     isBusy: vm.homebrew.isLoading,
@@ -83,7 +83,7 @@ struct SidebarView: View {
 
                 row(
                     icon: .symbol("cpu"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     title: L10n.tr("hw.title"),
                     isSelected: vm.showsHardware,
                     action: { vm.showHardware() }
@@ -91,7 +91,7 @@ struct SidebarView: View {
 
                 row(
                     icon: .symbol("square.grid.2x2.fill"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     title: L10n.tr("sidebar.appUninstall"),
                     isSelected: vm.showsAppUninstall,
                     isBusy: vm.appUninstall.isLoading,
@@ -104,7 +104,7 @@ struct SidebarView: View {
                 // to stop from starting in the first place.
                 row(
                     icon: .symbol("power"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     title: L10n.tr("sidebar.loginItems"),
                     isSelected: vm.showsLoginItems,
                     isBusy: vm.loginItems.isLoading,
@@ -188,7 +188,7 @@ struct SidebarView: View {
                 Text(verbatim: L10n.fmt(
                     "sidebar.totalCapacity", Formatters.bytes(vm.volumeUsage.total)
                 ))
-                .font(.system(size: 10))
+                .font(Theme.Typography.caption)
                 .foregroundStyle(.tertiary)
 
                 // The settings capsule closes the footer on the left, the
@@ -250,8 +250,8 @@ struct SidebarView: View {
     /// The higher the usage ratio, the more alarming the color.
     private var usageTint: Color {
         let fraction = vm.volumeUsage.usedFraction
-        if fraction > 0.9 { return .red }
-        if fraction > 0.75 { return .orange }
-        return .accentColor
+        if fraction > 0.9 { return Theme.Palette.danger }
+        if fraction > 0.75 { return Theme.Palette.warning }
+        return Theme.Palette.info
     }
 }

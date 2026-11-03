@@ -29,10 +29,10 @@ struct FooterCapsule<Content: View>: View {
 
     var body: some View {
         content
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(isActive ? Color.accentColor : Color.secondary)
+            .font(Theme.Typography.footnoteEmphasis)
+            .foregroundStyle(isActive ? Theme.Palette.info : Theme.Palette.labelSecondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Capsule().fill(Color.accentColor.opacity(isActive ? 0.22 : 0.12)))
+            .background(Capsule().fill(isActive ? Theme.Palette.accentActive : Theme.Palette.accentResting))
     }
 }

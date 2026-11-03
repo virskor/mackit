@@ -20,14 +20,14 @@ struct LoginItemEntryRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: item.kind.symbolName)
-                .font(.system(size: 15))
-                .foregroundStyle(item.kind == .systemDaemon ? Color.accentColor : .secondary)
+                .font(Theme.Typography.title3)
+                .foregroundStyle(item.kind == .systemDaemon ? Theme.Palette.info : .secondary)
                 .frame(width: 18)
                 .help(L10n.tr(item.kind.labelKey))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: item.label)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .lineLimit(1)
                     .truncationMode(.middle)
 
@@ -36,7 +36,7 @@ struct LoginItemEntryRow: View {
                 // lives, which is what a user verifying a surprise entry
                 // looks for.
                 Text(verbatim: item.plistPath ?? item.targetPath ?? "")
-                    .font(.system(size: 10))
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.head)
@@ -51,7 +51,7 @@ struct LoginItemEntryRow: View {
 
             Button(action: onReveal) {
                 Image(systemName: "arrow.up.forward.app")
-                    .font(.system(size: 13))
+                    .font(Theme.Typography.body)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -75,7 +75,7 @@ struct LoginItemEntryRow: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.12)) {
+            withAnimation(.easeOut(duration: Theme.Motion.stateChange)) {
                 isHovered = hovering
             }
         }

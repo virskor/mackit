@@ -42,20 +42,20 @@ struct HomebrewProgressPill: View {
             // in the state icon and the fallback hairline instead.
             style: .regular,
             interactive: true,
-            outline: .rounded(cornerRadius: 12),
+            outline: .rounded(cornerRadius: Theme.Radius.lg),
             fallback: .material(.regularMaterial),
             // Only the result state wears a hairline: a colored edge on a
             // running plate would read as a failure while brew is simply
             // still working.
             fallbackHairline: outcomeHairline,
-            fallbackShadow: (color: .black.opacity(0.16), radius: 14, y: 5)
+            fallbackShadow: Theme.Elevation.plate
         ) {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 8) {
                     stateIcon
 
                     Text(verbatim: title)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(Theme.Typography.subheadlineMedium)
                         .lineLimit(1)
                         .truncationMode(.tail)
 
@@ -91,7 +91,7 @@ struct HomebrewProgressPill: View {
                             .monospacedDigit()
                     }
                 }
-                .font(.system(size: 10))
+                .font(Theme.Typography.caption)
                 .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 14)
@@ -102,7 +102,8 @@ struct HomebrewProgressPill: View {
 
     private var outcomeHairline: (color: Color, width: CGFloat)? {
         guard let outcome else { return nil }
-        return ((outcome.succeeded ? Color.green : Color.red).opacity(0.35), 1)
+        return ((outcome.succeeded ? Theme.Palette.success : Theme.Palette.danger)
+            .opacity(Theme.Elevation.hairlineStrength), Theme.Elevation.outlineWidth)
     }
 
     @ViewBuilder
@@ -113,12 +114,12 @@ struct HomebrewProgressPill: View {
                 .frame(width: 14, height: 14)
         } else if let outcome, outcome.succeeded {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.green)
+                .font(Theme.Typography.subheadlineEmphasis)
+                .foregroundStyle(Theme.Palette.success)
         } else {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.red)
+                .font(Theme.Typography.subheadlineEmphasis)
+                .foregroundStyle(Theme.Palette.danger)
         }
     }
 
@@ -132,7 +133,7 @@ struct HomebrewProgressPill: View {
     private var countLabel: some View {
         if let total = progress.total, total > 0 {
             Text(verbatim: L10n.fmt("homebrew.progress.count", progress.completed, total))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         } else if progress.completed > 0 {
@@ -140,7 +141,7 @@ struct HomebrewProgressPill: View {
                 L10n.plural("homebrew.progress.steps", progress.completed),
                 progress.completed
             ))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         }
@@ -159,7 +160,7 @@ struct HomebrewProgressPill: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Text(verbatim: L10n.tr("homebrew.progress.logTitle"))
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.Typography.bodyEmphasis)
 
                 Spacer(minLength: 8)
 
@@ -183,7 +184,7 @@ struct HomebrewProgressPill: View {
                     Text(verbatim: progress.log.isEmpty
                         ? L10n.tr("homebrew.progress.logEmpty")
                         : progress.log.joined(separator: "\n"))
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(Theme.Typography.monospacedFootnote)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(14)

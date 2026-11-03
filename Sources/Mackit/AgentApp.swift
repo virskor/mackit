@@ -36,6 +36,13 @@ struct MackitAgentApp: App {
         MenuBarExtra {
             MenuBarPanelView()
                 .environment(vm)
+                // The appearance is not applied from here — see
+                // `MackitApp`'s Window for why `preferredColorScheme`
+                // cannot be taken back to "follow the system". The agent
+                // installs the stored choice in
+                // `applicationDidFinishLaunching` and re-installs it on the
+                // settings-changed broadcast, so the panel this view is
+                // hosted in is already tinted by the time it opens.
         } label: {
             // vm must be injected explicitly: the label closure does not
             // inherit the App's environment, so

@@ -114,7 +114,7 @@ struct ContentView: View {
         // it is painted only below 26, where the window backdrop is the plain
         // window background color and there is no glass to preserve yet.
         .legacyBackdrop {
-            Color(nsColor: .windowBackgroundColor).ignoresSafeArea()
+            Theme.Palette.windowBackground.ignoresSafeArea()
         }
     }
 

@@ -15,11 +15,11 @@ struct TerminalCommandRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "terminal")
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
 
             Text(verbatim: command)
-                .font(.system(size: 11, design: .monospaced))
+                .font(Theme.Typography.monospacedFootnote)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .textSelection(.enabled)
@@ -30,7 +30,7 @@ struct TerminalCommandRow: View {
                 vm.copyToClipboard(command)
             } label: {
                 Image(systemName: "doc.on.doc")
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
             }
             .buttonStyle(.borderless)
             .help(L10n.tr("homebrew.action.copy"))
@@ -41,8 +41,8 @@ struct TerminalCommandRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(Color.primary.opacity(0.06))
+            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                .fill(Theme.Palette.surfaceHover)
         )
     }
 }

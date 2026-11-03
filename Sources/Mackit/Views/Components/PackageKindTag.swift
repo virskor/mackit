@@ -8,7 +8,7 @@ struct PackageKindTag: View {
 
     var body: some View {
         Text(verbatim: kind.tagTitle)
-            .font(.system(size: 9, weight: .semibold))
-            .foregroundStyle(kind == .formula ? .orange : .blue)
+            .font(Theme.Typography.microEmphasis)
+            .foregroundStyle(kind == .formula ? Theme.Palette.warning : Theme.Palette.link)
     }
 }

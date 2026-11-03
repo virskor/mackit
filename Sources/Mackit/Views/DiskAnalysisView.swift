@@ -50,7 +50,7 @@ struct DiskAnalysisView: View {
                 results
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
     }
 
     // MARK: - Title & toolbar
@@ -64,7 +64,7 @@ struct DiskAnalysisView: View {
             Formatters.compactBytes(model.volumeUsage.available),
             Formatters.compactBytes(model.volumeUsage.total)
         ))
-        .font(.system(size: 13, weight: .medium))
+        .font(Theme.Typography.bodyMedium)
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, 14)
         .padding(.bottom, 10)
@@ -100,7 +100,7 @@ struct DiskAnalysisView: View {
                 Label(model.homeName, systemImage: "house")
             }
             .buttonStyle(.plain)
-            .font(.system(size: 12))
+            .font(Theme.Typography.subheadline)
             .disabled(model.currentPath == model.homePath)
             .help(L10n.tr("diskAnalysis.goToHome.help"))
 
@@ -122,7 +122,7 @@ struct DiskAnalysisView: View {
                 set: { model.visualizationMode = $0 }
             )) {
                 Text(verbatim: L10n.tr("diskAnalysis.visualization"))
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
             }
             .toggleStyle(.switch)
             .controlSize(.small)
@@ -150,17 +150,17 @@ struct DiskAnalysisView: View {
         Button(action: action) {
             GlassSurface(
                 interactive: true,
-                outline: .rounded(cornerRadius: 7),
+                outline: .rounded(cornerRadius: Theme.Radius.sm),
                 // A disabled chevron carries no surface at all, on either
                 // side of the availability line — glass included.
                 usesGlass: enabled,
                 fallback: .fill(AnyShapeStyle(
-                    enabled ? Color.primary.opacity(0.07) : Color.clear
+                    enabled ? Theme.Palette.surfaceHover : Color.clear
                 ))
             ) {
                 Image(systemName: symbol)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(enabled ? Color.primary : Color.secondary)
+                    .font(Theme.Typography.subheadlineEmphasis)
+                    .foregroundStyle(enabled ? Color.primary : Theme.Palette.labelSecondary)
                     .opacity(enabled ? 1 : 0.45)
                     .frame(width: 30, height: 26)
                     .contentShape(Rectangle())
@@ -179,7 +179,7 @@ struct DiskAnalysisView: View {
             ForEach(Array(model.breadcrumb.enumerated()), id: \.element.id) { index, entry in
                 if index > 0 {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(Theme.Typography.microEmphasis)
                         .foregroundStyle(.tertiary)
                 }
                 if index == model.breadcrumb.count - 1 {
@@ -206,7 +206,7 @@ struct DiskAnalysisView: View {
                     .frame(width: 14, height: 14)
             }
             Text(verbatim: entry.name)
-                .font(.system(size: 12, weight: weight))
+                .font(Theme.Typography.subheadline.weight(weight))
                 .lineLimit(1)
         }
         .truncationMode(.middle)
@@ -261,7 +261,7 @@ struct DiskAnalysisView: View {
                 if let fraction = model.scanFraction {
                     ProgressRing(progress: fraction, diameter: 108, lineWidth: 9) {
                         Text(verbatim: Formatters.percent(fraction))
-                            .font(.system(size: 22, weight: .semibold, design: .rounded))
+                            .font(Theme.Typography.statHero)
                             .monospacedDigit()
                             .contentTransition(.numericText())
                     }
@@ -270,7 +270,7 @@ struct DiskAnalysisView: View {
                 } else {
                     ProgressRing(progress: 0, diameter: 108, lineWidth: 9, isActive: true) {
                         Text(verbatim: "\(model.scannedDirectories)")
-                            .font(.system(size: 22, weight: .semibold, design: .rounded))
+                            .font(Theme.Typography.statHero)
                             .monospacedDigit()
                             .contentTransition(.numericText())
                     }
@@ -280,9 +280,9 @@ struct DiskAnalysisView: View {
 
                 VStack(spacing: 6) {
                     Text(L10n.tr("diskAnalysis.scan.title"))
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(Theme.Typography.title3Emphasis)
                     Text(verbatim: L10n.fmt("diskAnalysis.scan.current", model.scanCurrentPath))
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -291,16 +291,16 @@ struct DiskAnalysisView: View {
                         L10n.plural("diskAnalysis.scan.count", model.scannedDirectories),
                         model.scannedDirectories
                     ))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.tertiary)
                     .monospacedDigit()
                     Text(verbatim: L10n.fmt("diskAnalysis.scan.elapsed", Formatters.clock(model.scanElapsed)))
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.tertiary)
                         .monospacedDigit()
                     if let remaining = model.scanRemaining {
                         Text(verbatim: L10n.fmt("diskAnalysis.scan.remaining", Formatters.clock(remaining)))
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.tertiary)
                             .monospacedDigit()
                     }
@@ -308,7 +308,7 @@ struct DiskAnalysisView: View {
 
                 Button(L10n.tr("scan.progress.cancel")) { model.cancelScan() }
                     .buttonStyle(.link)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
             }
 
             Spacer(minLength: 24)
@@ -349,7 +349,7 @@ struct DiskAnalysisView: View {
                     ForEach(model.children) { entry in
                         entryRow(entry)
                             .listRowBackground(
-                                model.selectedID == entry.id ? Color.accentColor.opacity(0.15) : Color.clear
+                                model.selectedID == entry.id ? Theme.Palette.accentSelected : Color.clear
                             )
                             .listRowSeparator(.hidden)
                     }
@@ -367,7 +367,7 @@ struct DiskAnalysisView: View {
         HeroPromptView(
             systemImage: "internaldrive",
             brandIcon: false,
-            tint: Color(nsColor: .tertiaryLabelColor),
+            tint: Theme.Palette.labelTertiary,
             diameter: 28,
             symbolSize: 28,
             fillOpacity: 0,
@@ -391,7 +391,7 @@ struct DiskAnalysisView: View {
         HeroPromptView(
             systemImage: unreadable ? "lock.fill" : "folder",
             brandIcon: false,
-            tint: Color(nsColor: .tertiaryLabelColor),
+            tint: Theme.Palette.labelTertiary,
             diameter: 28,
             symbolSize: 28,
             fillOpacity: 0,
@@ -416,7 +416,7 @@ struct DiskAnalysisView: View {
         let model = vm.diskAnalysis
         return HStack(spacing: 10) {
             Text(verbatim: model.selectedEntry?.name ?? model.breadcrumb.last?.name ?? "")
-                .font(.system(size: 13, weight: .semibold))
+                .font(Theme.Typography.bodyEmphasis)
                 .lineLimit(1)
 
             if let entry = model.selectedEntry {
@@ -424,15 +424,15 @@ struct DiskAnalysisView: View {
                 // says so rather than claiming "0 folders 0 files".
                 if entry.isUnreadable {
                     Label(L10n.tr("diskAnalysis.unreadable"), systemImage: "lock.fill")
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                 } else if entry.isSkipped {
                     Label(L10n.tr("diskAnalysis.skipped"), systemImage: "hand.raised")
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                 } else if entry.isTruncated {
                     Label(L10n.tr("diskAnalysis.truncated"), systemImage: "questionmark.folder")
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                 } else {
                     summary(entry)
@@ -457,10 +457,10 @@ struct DiskAnalysisView: View {
                 L10n.plural("diskAnalysis.header.files", entry.fileCount),
                 entry.fileCount
             ))
-            .foregroundStyle(.orange)
+            .foregroundStyle(Theme.Palette.warning)
             Text(verbatim: L10n.fmt("diskAnalysis.header.total", Formatters.compactBytes(entry.size)))
         }
-        .font(.system(size: 11))
+        .font(Theme.Typography.footnote)
         .monospacedDigit()
     }
 
@@ -534,7 +534,7 @@ struct DiskAnalysisView: View {
         HeroPromptView(
             systemImage: icon,
             brandIcon: false,
-            tint: Color(nsColor: .tertiaryLabelColor),
+            tint: Theme.Palette.labelTertiary,
             diameter: 28,
             symbolSize: 28,
             fillOpacity: 0,
@@ -556,7 +556,7 @@ struct DiskAnalysisView: View {
                         Text(verbatim: L10n.tr("permission.openSettings"))
                     }
                     .buttonStyle(.link)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .help(L10n.tr("permission.openSettings.help"))
                 }
             }
@@ -577,7 +577,7 @@ struct DiskAnalysisView: View {
             }
             Spacer()
         }
-        .font(.system(size: 12))
+        .font(Theme.Typography.subheadline)
         .padding(.horizontal, 16)
         .padding(.top, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -608,25 +608,25 @@ struct DiskAnalysisView: View {
                     .frame(width: 16, height: 16)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(verbatim: entry.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(Theme.Typography.bodyMedium)
                         .lineLimit(1)
                     if entry.isDirectory {
                         if entry.isUnreadable {
                             // Never "0 项": a denied folder enumerates empty,
                             // and claiming zero items would be a lie.
                             Label(L10n.tr("diskAnalysis.unreadable"), systemImage: "lock.fill")
-                                .font(.system(size: 11))
+                                .font(Theme.Typography.footnote)
                                 .foregroundStyle(.secondary)
                         } else if entry.isSkipped {
                             // Deliberately not measured — see scanFolder.
                             Label(L10n.tr("diskAnalysis.skipped"), systemImage: "hand.raised")
-                                .font(.system(size: 11))
+                                .font(Theme.Typography.footnote)
                                 .foregroundStyle(.secondary)
                         } else {
                             // Known even past the depth budget: the level is
                             // enumerated, only its nodes are not retained.
                             Text(verbatim: L10n.items(entry.itemCount))
-                                .font(.system(size: 11))
+                                .font(Theme.Typography.footnote)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -635,12 +635,12 @@ struct DiskAnalysisView: View {
                 Text(verbatim: entry.isSkipped || entry.isUnreadable
                     ? L10n.tr("diskAnalysis.sizeNotMeasured")
                     : Formatters.compactBytes(entry.size))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(Theme.Typography.footnoteMedium)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                 if entry.isDirectory {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(Theme.Typography.captionEmphasis)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -730,7 +730,7 @@ private struct TreemapView: View {
             )
         }
         .padding(10)
-        .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Theme.Palette.surfaceCard, in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
     }
@@ -852,14 +852,14 @@ private struct TreemapCanvas: View {
         let y = rect.minY > 52 ? rect.minY - 30 : rect.maxY + 30
 
         return GlassSurface(
-            outline: .rounded(cornerRadius: 7),
+            outline: .rounded(cornerRadius: Theme.Radius.sm),
             fallback: .material(.thickMaterial),
-            fallbackHairline: (color: .primary.opacity(0.1), width: 1),
-            fallbackShadow: (color: .black.opacity(0.16), radius: 7, y: 2)
+            fallbackHairline: (color: Theme.Palette.hairline, width: Theme.Elevation.outlineWidth),
+            fallbackShadow: Theme.Elevation.label
         ) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: entry.name)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Theme.Typography.subheadlineMedium)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text(verbatim: L10n.fmt(
@@ -867,7 +867,7 @@ private struct TreemapCanvas: View {
                     Formatters.compactBytes(entry.size),
                     Formatters.percent(share(of: entry))
                 ))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             }
@@ -917,9 +917,9 @@ private struct TreemapCanvas: View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Text(verbatim: otherItemsLabel(members.count))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Theme.Typography.subheadlineMedium)
                 Text(verbatim: Formatters.compactBytes(overflow.size))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                 Spacer(minLength: 0)
@@ -986,23 +986,23 @@ private struct TreemapOverflowRow: View {
                     .frame(width: 16, height: 16)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(verbatim: entry.name)
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.subheadline)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if entry.isDirectory {
                         Text(verbatim: L10n.items(entry.itemCount))
-                            .font(.system(size: 10))
+                            .font(Theme.Typography.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 6)
                 Text(verbatim: Formatters.compactBytes(entry.size))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                 if entry.isDirectory {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(Theme.Typography.microEmphasis)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -1014,8 +1014,8 @@ private struct TreemapOverflowRow: View {
             .frame(minHeight: 30)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                isHovered ? Color.primary.opacity(0.08) : Color.clear,
-                in: RoundedRectangle(cornerRadius: 5, style: .continuous)
+                isHovered ? Theme.Palette.surfaceHover : Color.clear,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
             )
             .contentShape(Rectangle())
         }
@@ -1063,19 +1063,19 @@ private struct TreemapTile: View {
             // with a "p" under it — while a framed Text truncates once and
             // stops.
             let textWidth = max(0, geometry.size.width - TreemapLabel.inset)
-            let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+            let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
 
             ZStack {
                 shape.fill(fill)
                 if isSelected {
-                    shape.strokeBorder(Color.accentColor, lineWidth: 1.5)
+                    shape.strokeBorder(Theme.Palette.info, lineWidth: Theme.Elevation.accentOutlineWidth)
                 }
             }
             .padding(2)
             .overlay {
                 label(for: room, width: textWidth)
             }
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
         }
         .onHover { inside in
             isHovered = inside
@@ -1112,9 +1112,9 @@ private struct TreemapTile: View {
     /// How much label fits — the rule itself lives in `TreemapLabel`, next to
     /// the fold threshold it has to agree with.
     private var fill: Color {
-        if isSelected { return Color.accentColor.opacity(0.18) }
-        if isHovered { return Color.primary.opacity(0.12) }
-        return Color.primary.opacity(0.07)
+        if isSelected { return Theme.Palette.accentSelected }
+        if isHovered { return Theme.Palette.surfaceActive }
+        return Theme.Palette.surfaceHover
     }
 
     @ViewBuilder
@@ -1126,7 +1126,7 @@ private struct TreemapTile: View {
                     .resizable()
                     .frame(width: 22, height: 22)
                 Text(verbatim: entry.name)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Theme.Typography.subheadlineMedium)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 // No spaces around the separator: with them this line needs
@@ -1139,7 +1139,7 @@ private struct TreemapTile: View {
                     Formatters.compactBytes(entry.size),
                     Formatters.percent(share)
                 ))
-                    .font(.system(size: 10))
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -1147,7 +1147,7 @@ private struct TreemapTile: View {
             .frame(width: width)
         case .name:
             Text(verbatim: entry.name)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(width: width)
@@ -1172,12 +1172,12 @@ private struct TreemapOverflowTile: View {
     @State private var isHovered = false
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
         return ZStack {
-            shape.fill(isHovered ? Color.primary.opacity(0.11) : Color.primary.opacity(0.05))
+            shape.fill(isHovered ? Theme.Palette.surfaceHover : Theme.Palette.surfaceResting)
             shape.strokeBorder(
-                Color.primary.opacity(isHovered ? 0.3 : 0.2),
-                style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+                isHovered ? Theme.Palette.borderHover : Theme.Palette.border,
+                style: StrokeStyle(lineWidth: Theme.Elevation.outlineWidth, dash: [3, 3])
             )
         }
         .padding(2)
@@ -1208,13 +1208,13 @@ private struct TreemapOverflowTile: View {
         if rect.width >= 92, rect.height >= 54 {
             VStack(spacing: 3) {
                 Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 15))
+                    .font(Theme.Typography.title3)
                     .foregroundStyle(.secondary)
                 Text(verbatim: title)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(Theme.Typography.footnoteMedium)
                     .lineLimit(1)
                 Text(verbatim: Formatters.compactBytes(totalSize))
-                    .font(.system(size: 10))
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
@@ -1225,7 +1225,7 @@ private struct TreemapOverflowTile: View {
             // not, and truncating it to "18 other i…" is worse than wrapping it
             // in a tile that is a hundred points tall.
             Text(verbatim: title)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .lineLimit(rect.height >= 40 ? 2 : 1)
                 .truncationMode(.tail)
                 .multilineTextAlignment(.center)

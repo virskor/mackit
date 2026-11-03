@@ -38,7 +38,7 @@ struct PermissionsSection: View {
     var body: some View {
         Section {
             Text(verbatim: L10n.tr("settings.permissions.intro"))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -81,16 +81,16 @@ struct PermissionsSection: View {
 
         return HStack(alignment: .top, spacing: 10) {
             Image(systemName: surface.symbol)
-                .font(.system(size: 14))
+                .font(Theme.Typography.callout)
                 .foregroundStyle(.secondary)
                 .frame(width: 22)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(verbatim: surface.name)
-                    .font(.system(size: 13))
+                    .font(Theme.Typography.body)
 
                 Text(verbatim: surface.what)
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -98,7 +98,7 @@ struct PermissionsSection: View {
                 // row has nothing to add, and the pill already said the rest.
                 if let hint = surface.hint(for: status) {
                     Text(verbatim: hint)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(hintTint(for: status))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -135,7 +135,7 @@ struct PermissionsSection: View {
                     Text(verbatim: L10n.tr("permissions.action.request"))
                 }
                 .buttonStyle(.link)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .controlSize(.small)
                 .help(L10n.tr("permissions.action.request.help"))
 
@@ -146,7 +146,7 @@ struct PermissionsSection: View {
                     Text(verbatim: L10n.tr("permission.openSettings"))
                 }
                 .buttonStyle(.link)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .controlSize(.small)
                 .help(L10n.tr("permission.openSettings.help"))
 
@@ -176,7 +176,7 @@ struct PermissionsSection: View {
     /// broken. Deliberately not the badge's tint — a granted row's green
     /// capsule next to a gray explanation line would shout the wrong thing.
     private func hintTint(for status: PermissionStatus) -> Color {
-        status == .notGranted || status == .notRequested ? .orange : .secondary
+        status == .notGranted || status == .notRequested ? Theme.Palette.warning : Theme.Palette.labelSecondary
     }
 
     // MARK: - Probing

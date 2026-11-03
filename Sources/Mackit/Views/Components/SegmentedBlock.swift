@@ -32,22 +32,22 @@ struct SegmentedBlock<Item: Hashable>: View {
                     selection = item
                 } label: {
                     Text(verbatim: title(item))
-                        .font(.system(size: 12, weight: selection == item ? .semibold : .regular))
-                        .foregroundStyle(selection == item ? Color.white : Color.primary)
+                        .font(Theme.Typography.subheadline.weight(selection == item ? .semibold : .regular))
+                        .foregroundStyle(selection == item ? Theme.Palette.onColor : Color.primary)
                         .lineLimit(1)
                         .modifier(SegmentSizing(fills: width == .equal))
                         .padding(.vertical, 4)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .background(selection == item ? Color.accentColor : Color.clear)
+                .background(selection == item ? Theme.Palette.info : Color.clear)
                 // The hairline rides the segment's leading edge rather than
                 // sitting beside it as a view of its own — see the note on
                 // the stack's fixed height below.
                 .overlay(alignment: .leading) {
                     if index > 0 {
                         Rectangle()
-                            .fill(Color.primary.opacity(0.12))
+                            .fill(Theme.Palette.hairline)
                             .frame(width: 0.5)
                     }
                 }
@@ -64,9 +64,9 @@ struct SegmentedBlock<Item: Hashable>: View {
         // `.content` width also refuses the offered width, so the control
         // hugs its labels instead of stretching with the card.
         .fixedSize(horizontal: width == .content, vertical: false)
-        .background(Color.primary.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        .animation(.easeOut(duration: 0.12), value: selection)
+        .background(Theme.Palette.surfaceHover)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+        .animation(.easeOut(duration: Theme.Motion.stateChange), value: selection)
     }
 
     /// How the segments share the control's width.

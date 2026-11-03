@@ -16,21 +16,21 @@ struct NoticeRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(tint)
 
             VStack(alignment: .leading, spacing: 2) {
                 if let title {
                     // What the caller passes in is already a localized result; verbatim avoids looking it up again as a key
                     Text(verbatim: title)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.Typography.subheadlineEmphasis)
                 }
                 // No `.fixedSize(vertical:)` here: same hazard as AlertCard —
                 // it makes the hosting page size its content region to the
                 // laid-out rows instead of the card, and the oversized page
                 // is then centered and clipped by macOS 26+.
                 Text(verbatim: message)
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
 
@@ -39,7 +39,7 @@ struct NoticeRow: View {
             if let action {
                 Button(action: action.handler) {
                     Text(verbatim: action.title)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                 }
                 .controlSize(.small)
                 .fixedSize()

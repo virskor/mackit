@@ -29,15 +29,15 @@ struct MenuPill<Label: View, Content: View>: View {
                 label
 
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(Theme.Typography.pillLabel)
                     .foregroundStyle(.secondary)
             }
-            .font(.system(size: 12))
+            .font(Theme.Typography.subheadline)
             .lineLimit(1)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Color.primary.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .background(Theme.Palette.surfaceHover)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
         }
         .menuStyle(.borderlessButton)
         // The label carries its own chevron; the platform's indicator would

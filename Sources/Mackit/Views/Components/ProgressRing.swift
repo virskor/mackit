@@ -19,7 +19,7 @@ struct ProgressRing<Center: View>: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.primary.opacity(0.08), lineWidth: lineWidth)
+                .stroke(Theme.Palette.surfaceHover, lineWidth: lineWidth)
                 .frame(width: diameter, height: diameter)
 
             Circle()
@@ -28,7 +28,7 @@ struct ProgressRing<Center: View>: View {
                     // Angular rather than linear: a ring's gradient should
                     // wrap around the track, not cut across it.
                     AngularGradient(
-                        colors: [BrandPalette.amber, BrandPalette.deepOrange, BrandPalette.amber],
+                        colors: [Theme.Brand.amber, Theme.Brand.deepOrange, Theme.Brand.amber],
                         center: .center
                     ),
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
@@ -55,7 +55,7 @@ private struct SweepArc: View {
         Circle()
             .trim(from: 0.68, to: 0.94)
             .stroke(
-                BrandPalette.yellow.opacity(0.55),
+                Theme.Brand.yellow.opacity(0.55),
                 style: StrokeStyle(lineWidth: lineWidth * 0.55, lineCap: .round)
             )
             .frame(width: diameter, height: diameter)

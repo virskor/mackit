@@ -6,20 +6,20 @@ struct RiskBadge: View {
 
     var body: some View {
         Label(risk.title, systemImage: risk.symbol)
-            .font(.system(size: 10, weight: .medium))
+            .font(Theme.Typography.captionMedium)
             .labelStyle(.titleAndIcon)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(tint.opacity(0.14), in: Capsule())
+            .background(tint.opacity(Theme.Palette.Tint.badge), in: Capsule())
             .foregroundStyle(tint)
             .help(risk.hint)
     }
 
     private var tint: Color {
         switch risk {
-        case .safe: return .green
-        case .review: return .orange
-        case .caution: return .red
+        case .safe: return Theme.Palette.success
+        case .review: return Theme.Palette.warning
+        case .caution: return Theme.Palette.danger
         }
     }
 }

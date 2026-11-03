@@ -40,7 +40,7 @@ struct HomebrewView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
         .overlay(alignment: .bottomTrailing) {
             // The pill's visibility is the model's, not this view's: it goes
             // up on the turn an action starts and survives the view being
@@ -73,17 +73,17 @@ struct HomebrewView: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: L10n.tr("homebrew.title"))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.bodyMedium)
                     .foregroundStyle(.secondary)
 
                 if let snapshot = model.snapshot {
                     Text(verbatim: headerLine(snapshot))
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 } else if model.isLoading {
                     Text(verbatim: L10n.tr("homebrew.loading"))
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -215,19 +215,19 @@ struct HomebrewView: View {
                 if !snapshot.detailsAvailable {
                     Spacer(minLength: 4)
                     Label(L10n.tr("homebrew.detail.degraded"), systemImage: "exclamationmark.triangle")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.orange)
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Palette.warning)
                         .help(L10n.tr("homebrew.detail.degradedHelp"))
                 }
                 if !snapshot.isUsable {
                     Spacer(minLength: 4)
                     Label(L10n.tr("homebrew.snapshot.unusable"), systemImage: "exclamationmark.triangle")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.red)
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Palette.danger)
                 }
                 Spacer(minLength: 0)
             }
-            .font(.system(size: 11))
+            .font(Theme.Typography.footnote)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 28)
             .padding(.bottom, 12)
@@ -261,7 +261,7 @@ struct HomebrewView: View {
         if let outcome = model.outcome {
             NoticeRow(
                 systemImage: outcome.succeeded ? "checkmark.circle" : "exclamationmark.triangle",
-                tint: outcome.succeeded ? .green : .red,
+                tint: outcome.succeeded ? Theme.Palette.success : Theme.Palette.danger,
                 message: outcome.message
             )
             .padding(.horizontal, 28)
@@ -301,21 +301,21 @@ struct HomebrewView: View {
         VStack(spacing: 12) {
             Spacer()
             Image(systemName: "shippingbox")
-                .font(.system(size: 44))
+                .font(Theme.Typography.brandGlyph)
                 .foregroundStyle(.secondary)
 
             Text(verbatim: L10n.tr("homebrew.notInstalled.title"))
-                .font(.system(size: 17, weight: .semibold))
+                .font(Theme.Typography.emptyStateTitle)
 
             Text(verbatim: L10n.tr("homebrew.notInstalled.explain"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 380)
 
             VStack(spacing: 8) {
                 Text(verbatim: L10n.tr("homebrew.notInstalled.commandCaption"))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Theme.Typography.subheadlineMedium)
                     .foregroundStyle(.secondary)
 
                 TerminalCommandRow(command: Self.brewInstallCommand)
@@ -348,7 +348,7 @@ struct HomebrewView: View {
                 Label(L10n.tr("homebrew.notInstalled.action"), systemImage: "globe")
             }
             .buttonStyle(.link)
-            .font(.system(size: 12))
+            .font(Theme.Typography.subheadline)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

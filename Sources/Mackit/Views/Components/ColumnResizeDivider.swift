@@ -45,7 +45,7 @@ struct ColumnResizeDivider: View {
 
     private var line: some View {
         Rectangle()
-            .fill(Color(nsColor: .separatorColor))
+            .fill(Theme.Palette.separator)
             .frame(width: 1)
             // The line is 1pt wide; the grab area is not. A 1pt hit target is
             // a pixel-hunt, so the frame widens around the line — the extra

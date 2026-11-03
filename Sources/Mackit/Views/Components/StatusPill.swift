@@ -26,20 +26,20 @@ struct StatusPill: View {
 
     private var tint: Color {
         switch status {
-        case .allEnabled: return .green
-        case .partial: return .orange
+        case .allEnabled: return Theme.Palette.success
+        case .partial: return Theme.Palette.warning
         case .allDisabled: return .secondary
         }
     }
 
     var body: some View {
         Text(verbatim: text)
-            .font(.system(size: 10, weight: .medium))
+            .font(Theme.Typography.captionMedium)
             .foregroundStyle(tint)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(
-                Capsule().fill(tint.opacity(0.14))
+                Capsule().fill(tint.opacity(Theme.Palette.Tint.badge))
             )
             .fixedSize()
     }

@@ -22,7 +22,7 @@ struct ConfirmSheetShell<Notices: View>: View {
     /// The badge's symbol; callers pick the warning glyph when the selection
     /// holds caution-level entries.
     let systemImage: String
-    var tint: Color = .accentColor
+    var tint: Color = Theme.Palette.info
     /// The sheet's headline.
     let title: String
     /// The line under the title: what is about to happen, counted and sized.
@@ -38,7 +38,7 @@ struct ConfirmSheetShell<Notices: View>: View {
     /// The risk and method notices, each carrying its own top padding.
     @ViewBuilder var notices: () -> Notices
     let confirmTitle: String
-    var confirmTint: Color = .accentColor
+    var confirmTint: Color = Theme.Palette.info
     let onConfirm: () -> Void
     let onCancel: () -> Void
 
@@ -60,7 +60,7 @@ struct ConfirmSheetShell<Notices: View>: View {
                 .padding(.bottom, 20)
         }
         .frame(width: 560, height: 600)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
     }
 
     private var titleArea: some View {
@@ -74,9 +74,9 @@ struct ConfirmSheetShell<Notices: View>: View {
 
             VStack(spacing: 5) {
                 Text(verbatim: title)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(Theme.Typography.sheetTitle)
                 Text(verbatim: summary)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
             }
         }

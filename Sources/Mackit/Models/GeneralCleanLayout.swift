@@ -15,6 +15,12 @@ enum GeneralCleanGroup: String, CaseIterable, Identifiable, Sendable {
         L10n.tr("general.group.\(rawValue)")
     }
 
+    /// The group's identity color, mirroring `JunkCategory.tint`: the general
+    /// cleanup page's three sections are the same system / app-junk /
+    /// browser categories the scan rules carry, so they take the same hues.
+    ///
+    /// Not a `Theme.Palette` token for the same reason — see the note on
+    /// `JunkCategory.tint`.
     var tint: Color {
         switch self {
         case .system: return .orange

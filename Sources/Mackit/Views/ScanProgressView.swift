@@ -15,7 +15,7 @@ struct ScanProgressView: View {
             VStack(spacing: 22) {
                 ProgressRing(progress: vm.progressFraction, diameter: 108, lineWidth: 9, isActive: true) {
                     Text(verbatim: Formatters.percent(vm.progressFraction))
-                        .font(.system(size: 22, weight: .semibold, design: .rounded))
+                        .font(Theme.Typography.statHero)
                         .monospacedDigit()
                         .contentTransition(.numericText())
                 }
@@ -24,9 +24,9 @@ struct ScanProgressView: View {
 
                 VStack(spacing: 6) {
                     Text(L10n.tr(vm.cleanupScope.scanProgressTitleKey))
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(Theme.Typography.title3Emphasis)
                     Text(verbatim: vm.progressLabel)
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -38,7 +38,7 @@ struct ScanProgressView: View {
                 // here (it is always 0 when this page appears).
                 Button(L10n.tr("scan.progress.cancel")) { vm.cancelScan() }
                     .buttonStyle(.link)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
             }
 
             Spacer(minLength: 24)

@@ -33,7 +33,7 @@ struct LargeFilesConfirmSheet: View {
     var body: some View {
         ConfirmSheetShell(
             systemImage: "doc.fill",
-            tint: .accentColor,
+            tint: Theme.Palette.info,
             title: L10n.tr("largeFiles.confirm.title"),
             summary: L10n.fmt(
                 L10n.plural("largeFiles.confirm.summary", items.count),
@@ -46,7 +46,7 @@ struct LargeFilesConfirmSheet: View {
                 // what these files might be, and what losing them would mean.
                 NoticeRow(
                     systemImage: "exclamationmark.circle.fill",
-                    tint: .orange,
+                    tint: Theme.Palette.warning,
                     title: L10n.tr("clean.confirm.reviewTitle"),
                     message: L10n.tr("largeFiles.confirm.reviewMessage")
                 )
@@ -67,7 +67,7 @@ struct LargeFilesConfirmSheet: View {
             confirmTitle: useTrash
                 ? L10n.tr("largeFiles.confirm.action.trash")
                 : L10n.tr("largeFiles.confirm.action.delete"),
-            confirmTint: useTrash ? .accentColor : .red,
+            confirmTint: useTrash ? Theme.Palette.info : Theme.Palette.danger,
             onConfirm: { model.beginClean(moveToTrash: useTrash) },
             onCancel: { model.cancelConfirmation() }
         )

@@ -47,25 +47,25 @@ struct SharePanel: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 6) {
                 Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.Typography.bodyEmphasis)
                     .accessibilityHidden(true)
                 Text(verbatim: L10n.fmt("share.title", "Mackit"))
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(Theme.Typography.calloutEmphasis)
             }
 
             Text(verbatim: L10n.tr("share.intro"))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(verbatim: shareMessage)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .textSelection(.enabled)
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    Color.primary.opacity(0.06),
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Theme.Palette.surfaceHover,
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                 )
 
             // Copy leads and Done trails: copying is what the dialog is for,
@@ -74,15 +74,15 @@ struct SharePanel: View {
                 Button(action: copy) {
                     HStack(spacing: 5) {
                         Image(systemName: copied ? "checkmark" : "square.on.square")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(Theme.Typography.footnoteEmphasis)
                             .accessibilityHidden(true)
                         Text(verbatim: copied ? L10n.tr("share.copied") : L10n.tr("share.copy"))
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(Theme.Typography.subheadlineEmphasis)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.Palette.onColor)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(copied ? Color.green : Color.accentColor))
+                    .background(Capsule().fill(copied ? Theme.Palette.success : Theme.Palette.info))
                 }
                 .buttonStyle(.plain)
 
@@ -90,11 +90,11 @@ struct SharePanel: View {
                     dismiss()
                 } label: {
                     Text(verbatim: L10n.tr("share.done"))
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.Typography.subheadlineEmphasis)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
-                        .background(Capsule().fill(Color.primary.opacity(0.08)))
+                        .background(Capsule().fill(Theme.Palette.surfaceHover))
                 }
                 .buttonStyle(.plain)
             }

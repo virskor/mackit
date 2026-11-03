@@ -46,7 +46,7 @@ struct AppUninstallConfirmSheet: View {
     var body: some View {
         ConfirmSheetShell(
             systemImage: hasCaution ? "exclamationmark.triangle.fill" : "trash.fill",
-            tint: hasCaution ? .red : .accentColor,
+            tint: hasCaution ? Theme.Palette.danger : Theme.Palette.info,
             title: isUninstall
                 ? L10n.tr("apps.confirm.title")
                 : L10n.tr("clean.confirm.title"),
@@ -69,7 +69,7 @@ struct AppUninstallConfirmSheet: View {
                 if !runningApps.isEmpty {
                     NoticeRow(
                         systemImage: "exclamationmark.triangle.fill",
-                        tint: .orange,
+                        tint: Theme.Palette.warning,
                         title: L10n.fmt(
                             L10n.plural("apps.confirm.running", runningApps.count),
                             runningApps.count
@@ -85,7 +85,7 @@ struct AppUninstallConfirmSheet: View {
                 if !leftovers.isEmpty {
                     NoticeRow(
                         systemImage: "folder.badge.questionmark",
-                        tint: .orange,
+                        tint: Theme.Palette.warning,
                         title: L10n.tr("apps.confirm.leftoverTitle"),
                         message: L10n.fmt(
                             "apps.confirm.leftoverDetail",
@@ -103,7 +103,7 @@ struct AppUninstallConfirmSheet: View {
                 if hasCaution {
                     NoticeRow(
                         systemImage: "exclamationmark.octagon.fill",
-                        tint: .red,
+                        tint: Theme.Palette.danger,
                         title: L10n.tr("clean.confirm.cautionTitle"),
                         message: L10n.tr("clean.confirm.cautionMessage")
                     )
@@ -111,7 +111,7 @@ struct AppUninstallConfirmSheet: View {
                 } else if hasOtherReview {
                     NoticeRow(
                         systemImage: "exclamationmark.circle.fill",
-                        tint: .orange,
+                        tint: Theme.Palette.warning,
                         title: L10n.tr("clean.confirm.reviewTitle"),
                         message: L10n.tr("clean.confirm.reviewMessage")
                     )
@@ -122,7 +122,7 @@ struct AppUninstallConfirmSheet: View {
                 if isUninstall {
                     NoticeRow(
                         systemImage: "info.circle.fill",
-                        tint: .accentColor,
+                        tint: Theme.Palette.info,
                         message: L10n.tr("apps.confirm.note")
                     )
                     .padding(.top, 12)
@@ -142,7 +142,7 @@ struct AppUninstallConfirmSheet: View {
                 : (hasCaution
                     ? L10n.tr("clean.confirm.cleanAnyway")
                     : L10n.tr("clean.confirm.cleanNow")),
-            confirmTint: isUninstall || hasCaution ? .red : .accentColor,
+            confirmTint: isUninstall || hasCaution ? Theme.Palette.danger : Theme.Palette.info,
             onConfirm: { model.beginClean(moveToTrash: useTrash) },
             onCancel: { model.cancelConfirmation() }
         )

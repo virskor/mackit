@@ -8,9 +8,9 @@ struct RowPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(
-                configuration.isPressed ? Color.primary.opacity(0.06) : .clear,
-                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                configuration.isPressed ? Theme.Palette.surfaceHover : .clear,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
             )
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: Theme.Motion.stateChange), value: configuration.isPressed)
     }
 }

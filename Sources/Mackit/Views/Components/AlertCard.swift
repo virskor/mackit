@@ -32,7 +32,7 @@ struct AlertCard: View {
     /// Leading symbol; nil leaves the card text-only.
     var systemImage: String?
     /// The accent carried by the icon, the fill and the border.
-    var tint: Color = .accentColor
+    var tint: Color = Theme.Palette.info
     /// The glyph's point size. Defaults to the size the card shipped
     /// with; a card whose message is its only line (no title) reads
     /// better with a larger glyph, so callers can ask for one.
@@ -62,11 +62,11 @@ struct AlertCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let title {
                     Text(verbatim: title)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(Theme.Typography.bodyMedium)
                         .lineLimit(1)
                 }
                 Text(verbatim: message)
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
 
@@ -75,7 +75,7 @@ struct AlertCard: View {
             if let action {
                 Button(action: action.handler) {
                     Text(verbatim: action.title)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                 }
                 .controlSize(.small)
                 .fixedSize()
@@ -85,10 +85,10 @@ struct AlertCard: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(tint.opacity(Theme.Palette.Tint.card), in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(tint.opacity(0.22), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                .strokeBorder(tint.opacity(Theme.Palette.Tint.border), lineWidth: Theme.Elevation.outlineWidth)
         }
     }
 }

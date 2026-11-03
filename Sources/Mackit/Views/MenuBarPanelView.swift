@@ -81,20 +81,20 @@ struct MenuBarPanelView: View {
                     // so an empty badge doesn't appear
                     systemImage: "sparkle.magnifyingglass",
                     image: BrandIcon.image,
-                    tint: .orange,
+                    tint: Theme.Palette.warning,
                     diameter: 46,
                     symbolSize: 26,
                     symbolWeight: .regular,
-                    cornerRadius: 12,
-                    fillOpacity: 0.14
+                    cornerRadius: Theme.Radius.lg,
+                    fillOpacity: Theme.Palette.Tint.badge
                 )
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: Formatters.bytes(snapshot.totalSize))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(Theme.Typography.statValueStrong)
                         .monospacedDigit()
                     Text(verbatim: headerSubtitle)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
 
@@ -104,14 +104,14 @@ struct MenuBarPanelView: View {
                 // the window's brand CTA: a green-tinted interactive glass
                 // capsule on macOS 26+, the flat green pill below that.
                 GlassSurface(
-                    style: .tinted(.green),
+                    style: .tinted(Theme.Palette.success),
                     interactive: true,
                     outline: .capsule,
-                    fallback: .fill(AnyShapeStyle(Color.green))
+                    fallback: .fill(AnyShapeStyle(Theme.Palette.success))
                 ) {
                     Text(verbatim: L10n.tr("panel.clean"))
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .font(Theme.Typography.subheadlineEmphasis)
+                        .foregroundStyle(Theme.Palette.onColor)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 7)
                 }
@@ -163,7 +163,7 @@ struct MenuBarPanelView: View {
                     symbol: "thermometer.medium",
                     value: stats.temperatureText,
                     label: L10n.tr("panel.temperature"),
-                    valueColor: stats.temperatureIsHot ? .orange : .primary
+                    valueColor: stats.temperatureIsHot ? Theme.Palette.warning : Color.primary
                 )
             }
         }
@@ -173,7 +173,7 @@ struct MenuBarPanelView: View {
 
     /// Font of the big numbers. Shared by the visible value and the invisible
     /// width placeholder, so the two measure identically.
-    private let bigValueFont = Font.system(size: 17, weight: .semibold, design: .rounded)
+    private let bigValueFont = Theme.Typography.statValue
 
     /// The widest string a percentage can render to.
     ///
@@ -191,7 +191,7 @@ struct MenuBarPanelView: View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
                 Image(systemName: symbol)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
                 if let widestValue {
                     fixedWidthValue(value, widest: widestValue, color: valueColor)
@@ -203,7 +203,7 @@ struct MenuBarPanelView: View {
                 }
             }
             Text(verbatim: label)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -243,17 +243,17 @@ struct MenuBarPanelView: View {
     private var memoryRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "memorychip")
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 
             Text(verbatim: L10n.tr("panel.memoryUsage"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
 
             if snapshot.stats.memoryTotal > 0 {
                 Text(verbatim: "\(Formatters.bytes(snapshot.stats.memoryUsed)) / \(Formatters.bytes(snapshot.stats.memoryTotal))")
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .monospacedDigit()
             }
 
@@ -264,10 +264,10 @@ struct MenuBarPanelView: View {
                 dismissPanel()
             } label: {
                 Text(verbatim: L10n.tr("panel.release"))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Theme.Typography.subheadlineMedium)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.blue)
+            .foregroundStyle(Theme.Palette.link)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -298,14 +298,14 @@ struct MenuBarPanelView: View {
     private var diskRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "internaldrive")
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 
             Text(verbatim: L10n.fmt("panel.diskAvailable", Formatters.bytes(vm.volumeUsage.available)))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
             Text(verbatim: "/ \(Formatters.bytes(vm.volumeUsage.total))")
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
 
             Spacer(minLength: 8)
@@ -314,10 +314,10 @@ struct MenuBarPanelView: View {
                 vm.showHardwareFromTray()
             } label: {
                 Text(verbatim: L10n.tr("panel.hardwareDetail"))
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.blue)
+            .foregroundStyle(Theme.Palette.link)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -328,7 +328,7 @@ struct MenuBarPanelView: View {
     private var cpuChart: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(verbatim: L10n.tr("panel.cpuHistory"))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
             CPUHistoryChart(history: snapshot.cpuHistory)
                 .frame(height: 56)
@@ -346,7 +346,7 @@ struct MenuBarPanelView: View {
                 dismissPanel()
             } label: {
                 Image(systemName: "gear")
-                    .font(.system(size: 13))
+                    .font(Theme.Typography.body)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
@@ -359,7 +359,7 @@ struct MenuBarPanelView: View {
                 dismissPanel()
             } label: {
                 Text(verbatim: L10n.tr("panel.openMainWindow"))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Theme.Typography.subheadlineMedium)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
@@ -374,7 +374,7 @@ struct MenuBarPanelView: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 13))
+                    .font(Theme.Typography.body)
                     .foregroundStyle(.secondary)
             }
             .menuStyle(.borderlessButton)
@@ -440,12 +440,12 @@ private struct AppMemoryRow: View {
             iconView
                 .frame(width: 20, height: 20)
             Text(verbatim: entry.name)
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 8)
             Text(verbatim: Formatters.bytes(entry.bytes))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .opacity(isHovered ? 0 : 1)
@@ -456,9 +456,9 @@ private struct AppMemoryRow: View {
         // The highlight says which row the two hover controls belong to — the
         // rows are only a few points tall, and the pointer is already inside
         // one of them by the time the controls fade in.
-        .background(isHovered ? Color.primary.opacity(0.06) : Color.clear)
+        .background(isHovered ? Theme.Palette.surfaceHover : Color.clear)
         .onHover { isRowHovered = $0 }
-        .animation(.easeOut(duration: 0.12), value: isHovered)
+        .animation(.easeOut(duration: Theme.Motion.stateChange), value: isHovered)
         .overlay(alignment: .trailing) {
             HStack(spacing: 6) {
                 quitButton
@@ -481,7 +481,7 @@ private struct AppMemoryRow: View {
                     quitHint
                         .offset(x: -(hintWidth + 6))
                         .transition(.opacity)
-                        .animation(.easeOut(duration: 0.12), value: isControlsHovered)
+                        .animation(.easeOut(duration: Theme.Motion.stateChange), value: isControlsHovered)
                 }
             }
         }
@@ -501,7 +501,7 @@ private struct AppMemoryRow: View {
                 .resizable()
         } else {
             Image(systemName: "app")
-                .font(.system(size: 13))
+                .font(Theme.Typography.body)
                 .foregroundStyle(.secondary)
         }
     }
@@ -511,8 +511,8 @@ private struct AppMemoryRow: View {
             onQuit(entry)
         } label: {
             Text(verbatim: L10n.tr("panel.quitApp"))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.blue)
+                .font(Theme.Typography.subheadlineMedium)
+                .foregroundStyle(Theme.Palette.link)
         }
         .buttonStyle(.plain)
         // The controls stay in the layout and in hit testing whether they are
@@ -534,7 +534,7 @@ private struct AppMemoryRow: View {
     /// message (see `quitHint`).
     private var quitWarning: some View {
         Image(systemName: "info.circle")
-            .font(.system(size: 13))
+            .font(Theme.Typography.body)
             .foregroundStyle(.secondary)
             .accessibilityLabel(L10n.tr("panel.quitApp.warning"))
     }
@@ -556,13 +556,13 @@ private struct AppMemoryRow: View {
     /// the name returns the moment the pointer leaves the controls.
     private var quitHint: some View {
         GlassSurface(
-            outline: .rounded(cornerRadius: 6),
+            outline: .rounded(cornerRadius: Theme.Radius.sm),
             fallback: .material(.ultraThinMaterial),
-            fallbackHairline: (color: .primary.opacity(0.12), width: 0.5),
-            fallbackShadow: (color: .black.opacity(0.2), radius: 8, y: 3)
+            fallbackHairline: (color: Theme.Palette.hairline, width: Theme.Elevation.hairlineWidth),
+            fallbackShadow: Theme.Elevation.panel
         ) {
             Text(verbatim: L10n.tr("panel.quitApp.warning"))
-                .font(.system(size: 10))
+                .font(Theme.Typography.caption)
                 .foregroundStyle(.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
@@ -589,7 +589,7 @@ private struct CPUHistoryChart: View {
             ZStack {
                 if history.count < 2 {
                     Capsule()
-                        .fill(Color.secondary.opacity(0.15))
+                        .fill(Theme.Palette.surfaceMuted)
                         .frame(width: size.width, height: 1)
                 } else {
                     Path { path in
@@ -600,7 +600,7 @@ private struct CPUHistoryChart: View {
                             if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
                         }
                     }
-                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                    .stroke(Theme.Palette.info, style: StrokeStyle(lineWidth: Theme.Elevation.accentOutlineWidth, lineCap: .round, lineJoin: .round))
 
                     Path { path in
                         path.move(to: CGPoint(x: 0, y: size.height))
@@ -614,7 +614,7 @@ private struct CPUHistoryChart: View {
                     }
                     .fill(
                         LinearGradient(
-                            colors: [Color.accentColor.opacity(0.25), Color.accentColor.opacity(0.02)],
+                            colors: [Theme.Palette.accentActive, Theme.Palette.accentFaint],
                             startPoint: .top,
                             endPoint: .bottom
                         )

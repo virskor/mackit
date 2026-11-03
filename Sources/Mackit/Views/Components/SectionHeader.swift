@@ -12,7 +12,7 @@ struct SectionHeader: View {
             Spacer()
             if let trailing {
                 Text(verbatim: trailing)
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -24,7 +24,7 @@ struct SectionHeader: View {
     private var label: some View {
         // title / trailing are both passed in by the caller, already localized results
         let text = Text(verbatim: title)
-            .font(.system(size: 11, weight: .semibold))
+            .font(Theme.Typography.footnoteEmphasis)
             .foregroundStyle(.secondary)
             // One line, truncating at the tail: a header that wraps grows its
             // container and reads as body text.

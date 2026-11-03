@@ -15,12 +15,12 @@ struct SuccessMark: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.green.opacity(0.12))
+                .fill(Theme.Palette.success.opacity(Theme.Palette.Tint.badge))
 
             checkmark
                 .trim(from: 0, to: drawn ? 1 : 0)
                 .stroke(
-                    Color.green,
+                    Theme.Palette.success,
                     style: StrokeStyle(lineWidth: diameter * 0.09, lineCap: .round, lineJoin: .round)
                 )
                 .animation(.easeOut(duration: 0.4).delay(0.12), value: drawn)

@@ -84,7 +84,7 @@ struct GlassSurface<Content: View>: View {
     init(
         style: GlassStyle = .regular,
         interactive: Bool = false,
-        outline: Outline = .rounded(cornerRadius: 12),
+        outline: Outline = .rounded(cornerRadius: Theme.Radius.lg),
         usesGlass: Bool = true,
         fallback: Fallback,
         fallbackHairline: (color: Color, width: CGFloat)? = nil,

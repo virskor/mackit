@@ -33,7 +33,7 @@ struct CleanResultCard: View {
                 } else {
                     IconBadge(
                         systemImage: "exclamationmark.circle.fill",
-                        tint: .orange,
+                        tint: Theme.Palette.warning,
                         diameter: 64,
                         symbolSize: 28
                     )
@@ -46,7 +46,7 @@ struct CleanResultCard: View {
                             L10n.plural("clean.result.doneWithFailures", failures.count),
                             failures.count
                         ))
-                    .font(.system(size: 18, weight: .bold))
+                    .font(Theme.Typography.resultHero)
                     // Recycling does not free space until the Trash is
                     // emptied, so a clean that moved anything says "moved" instead
                     // of claiming the bytes are already back.
@@ -54,7 +54,7 @@ struct CleanResultCard: View {
                         movedToTrash ? "clean.result.movedToTrash" : "clean.result.reclaimed",
                         Formatters.bytes(reclaimed)
                     ))
-                        .font(.system(size: 13, weight: .medium))
+                        .font(Theme.Typography.bodyMedium)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                         .contentTransition(.numericText())
@@ -63,17 +63,17 @@ struct CleanResultCard: View {
                 if !failures.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(verbatim: L10n.tr("clean.result.failuresTitle"))
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(Theme.Typography.footnoteEmphasis)
                             .foregroundStyle(.secondary)
                         ScrollView {
                             VStack(alignment: .leading, spacing: 4) {
                                 ForEach(failures) { failure in
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(verbatim: failure.title)
-                                            .font(.system(size: 11, weight: .medium))
+                                            .font(Theme.Typography.footnoteMedium)
                                             .lineLimit(1)
                                         Text(verbatim: failure.message)
-                                            .font(.system(size: 10))
+                                            .font(Theme.Typography.caption)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(2)
                                     }
@@ -85,7 +85,7 @@ struct CleanResultCard: View {
                     }
                     .padding(12)
                     .frame(maxWidth: 400)
-                    .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .background(Theme.Palette.warning.opacity(Theme.Palette.Tint.card), in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
                 }
 
                 HStack(spacing: 10) {

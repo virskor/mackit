@@ -15,7 +15,7 @@ struct LoadingRow: View {
                 .controlSize(.small)
 
             Text(verbatim: label)
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
         }
     }

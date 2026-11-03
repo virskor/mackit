@@ -15,11 +15,11 @@ struct PermissionStatusBadge: View {
 
     var body: some View {
         Label(label, systemImage: symbol)
-            .font(.system(size: 11, weight: .medium))
+            .font(Theme.Typography.footnoteMedium)
             .labelStyle(.titleAndIcon)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(tint.opacity(0.12), in: Capsule())
+            .background(tint.opacity(Theme.Palette.Tint.badge), in: Capsule())
             .foregroundStyle(tint)
     }
 
@@ -45,10 +45,10 @@ struct PermissionStatusBadge: View {
 
     private var tint: Color {
         switch status {
-        case .granted: return .green
-        case .notGranted, .notRequested: return .orange
-        case .undetermined: return Color.secondary
-        case .onDemand: return .accentColor
+        case .granted: return Theme.Palette.success
+        case .notGranted, .notRequested: return Theme.Palette.warning
+        case .undetermined: return Theme.Palette.labelSecondary
+        case .onDemand: return Theme.Palette.info
         }
     }
 }

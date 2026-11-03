@@ -247,10 +247,15 @@ struct StatsOverlayContentView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .foregroundStyle(.white)
+        .foregroundStyle(Theme.Palette.onColor)
         // White text sits directly on the wallpaper, where it washes out on light
         // wallpapers — add a very faint dark shadow
-        .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 1)
+        .shadow(
+            color: Theme.Elevation.text.color,
+            radius: Theme.Elevation.text.radius,
+            x: 0,
+            y: Theme.Elevation.text.y
+        )
         .fixedSize()
         .background(
             GeometryReader { proxy in
@@ -276,7 +281,7 @@ struct StatsOverlayContentView: View {
             result.append((
                 vm.stats.temperatureText,
                 L10n.tr("menubar.temperature"),
-                vm.stats.temperatureIsHot ? .orange : .primary
+                vm.stats.temperatureIsHot ? Theme.Palette.warning : Color.primary
             ))
         }
         return result
@@ -297,19 +302,19 @@ struct StatsOverlayContentView: View {
     private func metric(value: String, label: String, valueColor: Color = .primary) -> some View {
         VStack(spacing: 2) {
             Text(verbatim: value)
-                .font(.system(size: 20, weight: .semibold))
+                .font(Theme.Typography.pageTitle)
                 .monospacedDigit()
                 .foregroundStyle(valueColor)
             Text(verbatim: label)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.white.opacity(0.6))
+                .font(Theme.Typography.microMedium)
+                .foregroundStyle(Theme.Palette.onColorMuted)
         }
     }
 
     /// Divider between groups: a 1pt thin line, height close to two lines of text.
     private var separator: some View {
         Rectangle()
-            .fill(.white.opacity(0.3))
+            .fill(Theme.Palette.onColorSeparator)
             .frame(width: 1, height: 28)
             .padding(.horizontal, 12)
     }

@@ -40,7 +40,7 @@ struct LoginItemsView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
         .sheet(isPresented: Binding(
             get: { model.pendingChange != nil },
             set: { if !$0 { model.cancelPendingChange() } }
@@ -76,16 +76,16 @@ struct LoginItemsView: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: L10n.tr("loginItems.title"))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.bodyMedium)
                     .foregroundStyle(.secondary)
 
                 if model.hasScanned {
                     Text(verbatim: headerLine)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .lineLimit(1)
                 } else if model.isLoading {
                     Text(verbatim: L10n.tr("scan.loginItems"))
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -171,7 +171,7 @@ struct LoginItemsView: View {
             ProgressView()
                 .controlSize(.large)
             Text(verbatim: L10n.tr("scan.loginItems"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -208,7 +208,7 @@ struct LoginItemsView: View {
                 if let notice = model.notice {
                     AlertCard(
                         systemImage: notice.isError ? "exclamationmark.triangle" : "checkmark.circle.fill",
-                        tint: notice.isError ? .red : .green,
+                        tint: notice.isError ? Theme.Palette.danger : Theme.Palette.success,
                         iconSize: 15,
                         message: notice.message,
                         action: (L10n.tr("common.done"), { model.dismissNotice() })
@@ -274,7 +274,7 @@ struct LoginItemsView: View {
                     systemImage: VersionedSymbol.resolve("lock.shield.fill", fallback: "lock.fill"),
                     // A stale helper still works, but it predates the
                     // running app — the next system toggle replaces it.
-                    tint: stale ? .orange : .green,
+                    tint: stale ? Theme.Palette.warning : Theme.Palette.success,
                     // The message is the card's only line, so the glyph
                     // carries its weight — larger than the card default.
                     iconSize: 15,
@@ -286,7 +286,7 @@ struct LoginItemsView: View {
             case .notInstalled:
                 AlertCard(
                     systemImage: VersionedSymbol.resolve("lock.shield", fallback: "lock.fill"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     iconSize: 15,
                     message: L10n.tr("loginItems.helper.notInstalled")
                 )

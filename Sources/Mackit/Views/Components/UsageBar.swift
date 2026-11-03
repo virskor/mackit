@@ -11,7 +11,7 @@ struct UsageBar: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.secondary.opacity(0.18))
+                    .fill(Theme.Palette.surfaceMuted)
                 Capsule()
                     .fill(tint)
                     .frame(width: max(4, proxy.size.width * min(1, max(0, fraction))))

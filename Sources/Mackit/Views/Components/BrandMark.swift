@@ -15,7 +15,7 @@ struct BrandMark: View {
     var fallbackSymbol: String?
     var size: CGFloat
     var weight: Font.Weight = .regular
-    var tint: Color = .accentColor
+    var tint: Color = Theme.Palette.info
 
     var body: some View {
         if let image {

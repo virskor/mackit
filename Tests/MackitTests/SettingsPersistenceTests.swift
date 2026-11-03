@@ -45,6 +45,59 @@ struct SettingsPersistenceTests {
         #expect(reread.showMenuBarLogo == false)
     }
 
+    /// The appearance choice has to survive a relaunch and reach the tray
+    /// agent, which re-reads the shared file on the settings-changed
+    /// broadcast: a key that only existed on the write side would make the
+    /// picker appear to work and then silently revert to following the
+    /// system.
+    @Test func appearanceRoundTripsThroughSharedSettings() {
+        var saved: [String: Any] = [:]
+        let vm = AppViewModel(statsPolling: false)
+        vm.settingsSink = { saved = $0 }
+
+        vm.appAppearance = .dark
+        vm.saveSettings()
+
+        #expect(saved["appAppearance"] as? String == "dark")
+
+        let reread = AppViewModel(statsPolling: false)
+        reread.loadSettings(from: saved)
+
+        #expect(reread.appAppearance == .dark)
+    }
+
+    /// An absent key is a settings file written before the key existed, and
+    /// a value the enum no longer knows has to land on `.system` rather
+    /// than leaving the picker showing nothing selected.
+    ///
+    /// The choice is set first and asserted against that: a VM's own init
+    /// reads the developer's live settings file, so asserting on a freshly
+    /// constructed one would be testing that file — which, on a machine
+    /// where a side was picked, fails for reasons that have nothing to do
+    /// with the load path.
+    @Test func appearanceFallsBackToSystemWhenUnreadable() {
+        let vm = AppViewModel(statsPolling: false)
+        vm.appAppearance = .dark
+
+        // An absent key leaves the current choice alone; on a fresh process
+        // that choice is the `.system` default, so an old file keeps
+        // following the system rather than pinning a side.
+        vm.loadSettings(from: [:])
+        #expect(vm.appAppearance == .dark)
+
+        vm.loadSettings(from: ["appAppearance": "highContrast"])
+        #expect(vm.appAppearance == .system)
+    }
+
+    /// `.system` is the only choice that maps to no override — the other two
+    /// are what gets installed on the process, and a `.system` that resolved
+    /// to a concrete appearance would pin every user to one side.
+    @Test func systemAppearanceMapsToNoAppKitOverride() {
+        #expect(AppAppearance.system.nsAppearanceName == nil)
+        #expect(AppAppearance.light.nsAppearanceName == .aqua)
+        #expect(AppAppearance.dark.nsAppearanceName == .darkAqua)
+    }
+
     /// The persisted project-root list is deduplicated on load. The array is
     /// written as-is, and a settings file that repeats a path — a hand edit, or
     /// an older writer — would put duplicate ids into the settings list's

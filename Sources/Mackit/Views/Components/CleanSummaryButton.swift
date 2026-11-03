@@ -20,15 +20,15 @@ struct CleanSummaryButton: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "trash")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.Typography.subheadlineEmphasis)
                 if hasSelection {
                     Text(verbatim: L10n.fmt("clean.buttonWithSize", Formatters.bytes(vm.scopeSelectedSize)))
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(Theme.Typography.bodyEmphasis)
                         .monospacedDigit()
                         .contentTransition(.numericText())
                 } else {
                     Text(verbatim: L10n.tr("clean.button"))
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(Theme.Typography.bodyEmphasis)
                 }
             }
             .padding(.horizontal, 4)

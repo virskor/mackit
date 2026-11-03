@@ -12,9 +12,6 @@ struct ItemTitleBlock: View {
     /// Full text of the third line for the hover tooltip; nil shows the
     /// abbreviated line itself, which is a no-op tooltip.
     var tertiaryHelp: String?
-    var titleSize: CGFloat = 12
-    var subtitleSize: CGFloat = 10
-    var tertiarySize: CGFloat = 10
     /// Truncation direction of the subtitle: paths truncate at the head in tables, notes truncate at the tail.
     var truncation: Text.TruncationMode = .tail
 
@@ -22,12 +19,12 @@ struct ItemTitleBlock: View {
         VStack(alignment: .leading, spacing: 1) {
             // title / subtitle both come from the caller, already localized or formatted results
             Text(verbatim: title)
-                .font(.system(size: titleSize, weight: .medium))
+                .font(Theme.Typography.subheadlineMedium)
                 .lineLimit(1)
                 .truncationMode(.middle)
 
             Text(verbatim: subtitle)
-                .font(.system(size: subtitleSize))
+                .font(Theme.Typography.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(truncation)
@@ -36,7 +33,7 @@ struct ItemTitleBlock: View {
             // claim a row of height.
             if let tertiary, !tertiary.isEmpty {
                 Text(verbatim: tertiary)
-                    .font(.system(size: tertiarySize))
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.head)

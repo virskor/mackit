@@ -34,7 +34,7 @@ struct CrashLogDetailSheet: View {
             actions
         }
         .frame(width: 560, height: 520)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
         .confirmationDialog(
             L10n.tr("crashLogs.detail.deleteConfirm"),
             isPresented: $confirmsDeletion,
@@ -58,10 +58,10 @@ struct CrashLogDetailSheet: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: L10n.tr("crashLogs.detail.title"))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.bodyMedium)
                     .foregroundStyle(.secondary)
                 Text(verbatim: Formatters.dateTime(entry.date))
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(Theme.Typography.pageTitle)
             }
             Spacer(minLength: 12)
             Button(L10n.tr("common.done")) { dismiss() }
@@ -102,11 +102,11 @@ struct CrashLogDetailSheet: View {
     private func metadataRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Text(verbatim: label)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
                 .frame(width: 96, alignment: .trailing)
             Text(verbatim: value)
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .textSelection(.enabled)
             Spacer(minLength: 0)
         }
@@ -116,7 +116,7 @@ struct CrashLogDetailSheet: View {
     /// part of an exception record a reader wants verbatim.
     private func exceptionReason(_ reason: String) -> some View {
         Text(verbatim: reason)
-            .font(.system(size: 11))
+            .font(Theme.Typography.footnote)
             .foregroundStyle(.secondary)
             .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -128,12 +128,12 @@ struct CrashLogDetailSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
                 Text(verbatim: L10n.tr("crashLogs.detail.backtrace"))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(Theme.Typography.footnoteEmphasis)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)
                 if let reason = model.symbolications[entry.id]?.unavailableReason {
                     Text(verbatim: unavailableText(reason))
-                        .font(.system(size: 10))
+                        .font(Theme.Typography.caption)
                         .foregroundStyle(.tertiary)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 320, alignment: .trailing)
@@ -147,8 +147,8 @@ struct CrashLogDetailSheet: View {
                 }
                 .padding(8)
             }
-            .background(Color(nsColor: .textBackgroundColor).opacity(0.6))
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .background(Theme.Palette.textBackground.opacity(0.6))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
         }
         .padding(.horizontal, 28)
         .padding(.vertical, 12)
@@ -157,18 +157,18 @@ struct CrashLogDetailSheet: View {
     private func frameRow(index: Int, frame: SymbolizedFrame) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text("\(index)")
-                .font(.system(size: 10, design: .monospaced))
+                .font(Theme.Typography.monospacedCaption)
                 .foregroundStyle(.tertiary)
                 .frame(width: 24, alignment: .trailing)
             if let symbol = frame.symbol {
                 Text(verbatim: symbol)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(Theme.Typography.monospacedFootnote)
                 Text(verbatim: Formatters.hex(frame.address))
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(Theme.Typography.monospacedCaption)
                     .foregroundStyle(.tertiary)
             } else {
                 Text(verbatim: Formatters.hex(frame.address))
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(Theme.Typography.monospacedFootnote)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
@@ -205,21 +205,21 @@ struct CrashLogDetailSheet: View {
                     L10n.tr("crashLogs.action.symbolicated"),
                     systemImage: "checkmark.circle.fill"
                 )
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
             } else {
                 Label(
                     L10n.tr("crashLogs.action.symbolicateFailed"),
                     systemImage: "xmark.circle"
                 )
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
             }
         } else if model.isSymbolicating {
             ProgressView()
                 .controlSize(.small)
             Text(verbatim: L10n.tr("crashLogs.action.symbolicating"))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
         } else {
             Button(L10n.tr("crashLogs.action.symbolicate")) {

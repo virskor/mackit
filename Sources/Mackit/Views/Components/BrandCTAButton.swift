@@ -80,7 +80,7 @@ struct BrandCTAButton: View {
                         .monospacedDigit()
                         .lineLimit(1)
                 }
-                .font(.system(size: compact ? 12 : 15, weight: .semibold))
+                .font(compact ? Theme.Typography.subheadlineEmphasis : Theme.Typography.title3Emphasis)
                 .frame(minWidth: compact ? 0 : 208)
                 .padding(.horizontal, compact ? 14 : 22)
                 .padding(.vertical, compact ? 7 : 11)
@@ -102,13 +102,13 @@ struct BrandCTAButton: View {
     @ViewBuilder
     private func surface<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         GlassSurface(
-            style: style == .primary ? .tinted(destructive ? .red : BrandPalette.cta) : .regular,
+            style: style == .primary ? .tinted(destructive ? Theme.Palette.danger : Theme.Brand.cta) : .regular,
             interactive: true,
-            outline: .rounded(cornerRadius: compact ? 8 : 12),
+            outline: .rounded(cornerRadius: compact ? Theme.Radius.md : Theme.Radius.lg),
             usesGlass: isEnabled,
             fallback: .fill(background),
             fallbackShadow: style == .primary && isEnabled
-                ? (color: destructive ? Color.red.opacity(0.35) : BrandPalette.ctaShadow,
+                ? (color: destructive ? Theme.Palette.dangerShadow : Theme.Brand.ctaShadow,
                    radius: compact ? 4 : 8, y: compact ? 2 : 4)
                 : nil
         ) {
@@ -124,16 +124,16 @@ struct BrandCTAButton: View {
             // destructive buttons are flat, and the glass path above tints
             // the same red on macOS 26+.
             if destructive {
-                return AnyShapeStyle(Color.red)
+                return AnyShapeStyle(Theme.Palette.danger)
             }
-            return AnyShapeStyle(BrandPalette.ctaGradient)
+            return AnyShapeStyle(Theme.Brand.ctaGradient)
         }
-        return AnyShapeStyle(Color.primary.opacity(0.08))
+        return AnyShapeStyle(Theme.Palette.surfaceHover)
     }
 
     private var foreground: Color {
         if style == .primary, isEnabled {
-            return .white
+            return Theme.Palette.onColor
         }
         return isEnabled ? .primary : .secondary
     }

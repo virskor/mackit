@@ -21,7 +21,7 @@ struct FullDiskAccessAlert: View {
     var body: some View {
         AlertCard(
             systemImage: "exclamationmark.triangle.fill",
-            tint: .orange,
+            tint: Theme.Palette.warning,
             title: title,
             message: message,
             action: (

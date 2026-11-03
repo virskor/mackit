@@ -33,7 +33,7 @@ struct ItemDetailSheet: View {
             if let failureMessage {
                 NoticeRow(
                     systemImage: "exclamationmark.triangle.fill",
-                    tint: .orange,
+                    tint: Theme.Palette.warning,
                     title: L10n.tr("item.detail.failedTitle"),
                     message: failureMessage
                 )
@@ -47,7 +47,7 @@ struct ItemDetailSheet: View {
         // wraps to as many lines as it needs, and a fixed height would clip
         // the longest one.
         .frame(width: 560)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
         .confirmationDialog(
             L10n.fmt("item.detail.cleanConfirmTitle", item.title),
             isPresented: $confirmsClean,
@@ -74,10 +74,10 @@ struct ItemDetailSheet: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: item.category.title)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
                 Text(verbatim: item.title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(Theme.Typography.emptyStateTitle)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     // The full name is the one thing a truncated title owes
@@ -117,13 +117,13 @@ struct ItemDetailSheet: View {
     private func metadataRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Text(verbatim: label)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
                 .frame(width: 72, alignment: .trailing)
             // Selectable: a path is copied from here by hand at least as
             // often as through the button.
             Text(verbatim: value)
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .textSelection(.enabled)
             Spacer(minLength: 0)
         }
@@ -140,7 +140,7 @@ struct ItemDetailSheet: View {
                 ProgressView()
                     .controlSize(.small)
                 Text(verbatim: L10n.tr("item.detail.cleaning"))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
             } else {
                 // Accent-colored, the same as the toolbar's clean button.

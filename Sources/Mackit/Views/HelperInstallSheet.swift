@@ -28,17 +28,17 @@ struct HelperInstallSheet: View {
             VStack(spacing: 12) {
                 IconBadge(
                     systemImage: VersionedSymbol.resolve("lock.shield.fill", fallback: "lock.fill"),
-                    tint: .accentColor,
+                    tint: Theme.Palette.info,
                     diameter: 56,
                     symbolSize: 24
                 )
 
                 VStack(spacing: 5) {
                     Text(verbatim: L10n.tr(titleKey))
-                        .font(.system(size: 17, weight: .bold))
+                        .font(Theme.Typography.sheetTitle)
 
                     Text(verbatim: L10n.tr(summaryKey))
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -80,7 +80,7 @@ struct HelperInstallSheet: View {
             .padding(.bottom, 20)
         }
         .frame(width: 480)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
     }
 
     // MARK: - Copy per mode
@@ -114,11 +114,11 @@ struct HelperInstallSheet: View {
     private func point(_ key: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 12))
-                .foregroundStyle(.green)
+                .font(Theme.Typography.subheadline)
+                .foregroundStyle(Theme.Palette.success)
 
             Text(verbatim: L10n.tr(key))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

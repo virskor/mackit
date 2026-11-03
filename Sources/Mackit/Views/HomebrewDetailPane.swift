@@ -17,7 +17,7 @@ struct HomebrewDetailPane: View {
                 if model.snapshot?.detailsAvailable == false {
                     NoticeRow(
                         systemImage: "exclamationmark.triangle",
-                        tint: .orange,
+                        tint: Theme.Palette.warning,
                         message: L10n.tr("homebrew.detail.degraded")
                     )
                     .padding(.top, 14)
@@ -47,11 +47,11 @@ struct HomebrewDetailPane: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: package.kind == .formula ? "cube.box" : "macwindow")
-                    .font(.system(size: 22))
+                    .font(Theme.Typography.iconLarge)
                     .foregroundStyle(.secondary)
 
                 Text(verbatim: package.displayName)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(Theme.Typography.detailTitle)
                     .lineLimit(1)
                     .truncationMode(.middle)
 
@@ -66,7 +66,7 @@ struct HomebrewDetailPane: View {
 
             if let description = package.description {
                 Text(verbatim: description)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -86,7 +86,7 @@ struct HomebrewDetailPane: View {
                 L10n.tr("homebrew.detail.latest"),
                 package.latestVersion ?? L10n.tr("homebrew.detail.latestUnknown"),
                 monospaced: true,
-                tint: package.isOutdated ? .orange : nil
+                tint: package.isOutdated ? Theme.Palette.warning : nil
             )
 
             if let installedAt = package.installedAt {
@@ -119,7 +119,7 @@ struct HomebrewDetailPane: View {
                         NSWorkspace.shared.open(url)
                     } label: {
                         Text(verbatim: homepage)
-                            .font(.system(size: 12))
+                            .font(Theme.Typography.subheadline)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
@@ -157,19 +157,19 @@ struct HomebrewDetailPane: View {
 
             if package.dependencies.isEmpty {
                 Text(verbatim: L10n.tr("homebrew.detail.noDependencies"))
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.top, 6)
             } else {
                 FlowLayout(spacing: 4) {
                     ForEach(package.dependencies, id: \.self) { dependency in
                         Text(verbatim: dependency)
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(Theme.Typography.monospacedFootnote)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .fill(Color.primary.opacity(0.07))
+                                RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous)
+                                    .fill(Theme.Palette.surfaceHover)
                             )
                     }
                 }
@@ -181,7 +181,7 @@ struct HomebrewDetailPane: View {
 
             if dependents.isEmpty {
                 Text(verbatim: L10n.tr("homebrew.detail.noDependents"))
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.top, 6)
             } else {
@@ -192,16 +192,16 @@ struct HomebrewDetailPane: View {
                     ForEach(dependents) { dependent in
                         HStack(spacing: 4) {
                             Text(verbatim: dependent.displayName)
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(Theme.Typography.monospacedFootnote)
                             Text(verbatim: L10n.tr("homebrew.detail.blocksUninstall"))
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(.orange)
+                                .font(Theme.Typography.microMedium)
+                                .foregroundStyle(Theme.Palette.warning)
                         }
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(Color.orange.opacity(0.12))
+                            RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous)
+                                .fill(Theme.Palette.warning.opacity(Theme.Palette.Tint.badge))
                         )
                     }
                 }
@@ -251,7 +251,7 @@ struct HomebrewDetailPane: View {
                 .padding(.top, 8)
 
             Text(verbatim: L10n.tr("homebrew.detail.uninstallHelp"))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.top, 6)
 
@@ -261,7 +261,7 @@ struct HomebrewDetailPane: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .tint(.red)
+                .tint(Theme.Palette.danger)
                 .disabled(model.runningAction != nil)
 
                 Spacer(minLength: 0)
@@ -300,7 +300,7 @@ struct HomebrewDetailPane: View {
     ) -> some View {
         fact(label) {
             Text(verbatim: value)
-                .font(.system(size: 12, design: monospaced ? .monospaced : .default))
+                .font(monospaced ? Theme.Typography.monospacedSubheadline : Theme.Typography.subheadline)
                 .foregroundStyle(tint ?? .primary)
                 .textSelection(.enabled)
         }
@@ -309,12 +309,12 @@ struct HomebrewDetailPane: View {
     private func fact(_ label: String, @ViewBuilder value: () -> some View) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(verbatim: label)
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
                 .frame(width: 76, alignment: .leading)
 
             value()
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
 
             Spacer(minLength: 0)
         }

@@ -36,7 +36,7 @@ struct HardwareView: View {
                         Label(L10n.tr("hw.disk.analyze"), systemImage: "chart.pie")
                     }
                     .buttonStyle(.link)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                 }
 
                 row(symbol: "cpu", label: L10n.tr("hw.cpu")) {
@@ -89,11 +89,11 @@ struct HardwareView: View {
     private func header(_ profile: HardwareProfile) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(verbatim: value(profile.modelName))
-                .font(.system(size: 21, weight: .semibold))
+                .font(Theme.Typography.pageTitleLarge)
 
             if !profile.osVersion.isEmpty {
                 Text(verbatim: L10n.fmt("hw.osVersion", profile.osVersion, profile.osBuild))
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
             }
 
@@ -114,12 +114,12 @@ struct HardwareView: View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
                 Image(systemName: symbol)
-                    .font(.system(size: 18))
+                    .font(Theme.Typography.iconMedium)
                     .foregroundStyle(.secondary)
                     .frame(width: 24)
 
                 Text(verbatim: label)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .frame(width: 62, alignment: .leading)
 
                 // The pairs fill the remaining width: when the row narrows,
@@ -154,7 +154,7 @@ struct HardwareView: View {
             Text(verbatim: text)
                 .foregroundStyle(tint)
         }
-        .font(.system(size: 12))
+        .font(Theme.Typography.subheadline)
         .lineLimit(1)
     }
 
@@ -177,16 +177,16 @@ struct HardwareView: View {
     /// red below 10%.
     private var batteryTint: Color {
         let profile = vm.hardwareProfile
-        if profile.batteryCharging || profile.batteryLevel > 0.2 { return .green }
-        if profile.batteryLevel > 0.1 { return .orange }
-        return .red
+        if profile.batteryCharging || profile.batteryLevel > 0.2 { return Theme.Palette.success }
+        if profile.batteryLevel > 0.1 { return Theme.Palette.warning }
+        return Theme.Palette.danger
     }
 
     /// Health tinting: green when normal, orange when service is recommended.
     /// The tinting belongs to the view layer; putting it here rather than on
     /// `BatteryHealthStatus` means the monitor layer needn't depend on SwiftUI.
     private func healthTint(_ status: BatteryHealthStatus) -> Color {
-        status == .normal ? .green : .orange
+        status == .normal ? Theme.Palette.success : Theme.Palette.warning
     }
 
     /// A failed-to-sample item shows a dash rather than blank or 0.

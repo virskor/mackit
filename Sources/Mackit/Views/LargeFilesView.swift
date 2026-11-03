@@ -42,7 +42,7 @@ struct LargeFilesView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
         // The confirmation sheet hangs off the page, driven directly by the
         // model's phase rather than @State + onChange — the latter doesn't
         // trigger on "open again after cancel" because the value didn't
@@ -81,26 +81,26 @@ struct LargeFilesView: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: L10n.tr("largeFiles.title"))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.bodyMedium)
                     .foregroundStyle(.secondary)
 
                 if model.isScanning {
                     Text(verbatim: L10n.tr("largeFiles.scan.title"))
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .foregroundStyle(.secondary)
                 } else if model.hasScanned {
                     // "12 个文件 · 共 34.2 GB" — the count answers "is
                     // anything up there", the total what trashing everything
                     // listed would remove.
                     Text(verbatim: summaryLine)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .lineLimit(1)
                 } else {
                     // Before the first walk the line states what the walk will
                     // look for — the threshold just picked — so the header is
                     // not a lone small label floating over an empty page.
                     Text(verbatim: L10n.fmt("largeFiles.header.preset", model.threshold.label))
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -188,7 +188,7 @@ struct LargeFilesView: View {
     private var thresholdRow: some View {
         HStack(spacing: 10) {
             Text(verbatim: L10n.tr("largeFiles.tool.threshold"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
 
             thresholdMenu
@@ -239,7 +239,7 @@ struct LargeFilesView: View {
         MenuPill {
             HStack(spacing: 5) {
                 Image(systemName: "arrow.up.arrow.down")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(Theme.Typography.footnoteMedium)
 
                 Text(verbatim: model.sort.title)
             }
@@ -319,13 +319,13 @@ struct LargeFilesView: View {
                         set: { model.setIncludeProtectedPaths($0) }
                     )) {
                         Text(verbatim: L10n.tr("largeFiles.start.protected"))
-                            .font(.system(size: 12))
+                            .font(Theme.Typography.subheadline)
                     }
                     .toggleStyle(.checkbox)
                     .fixedSize()
 
                     Text(verbatim: L10n.tr("largeFiles.start.protected.help"))
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.tertiary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 300)
@@ -373,7 +373,7 @@ struct LargeFilesView: View {
                     model.files.count,
                     Formatters.bytes(model.totalSize)
                 ))
-                .font(.system(size: 12, weight: .medium))
+                .font(Theme.Typography.subheadlineMedium)
                 .monospacedDigit()
 
                 HStack(spacing: 5) {
@@ -381,12 +381,12 @@ struct LargeFilesView: View {
                         L10n.plural("largeFiles.scan.directories", model.scannedDirectories),
                         model.scannedDirectories
                     ))
-                    .font(.system(size: 10))
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.tertiary)
                     .monospacedDigit()
 
                     Text(verbatim: Formatters.abbreviateHome(model.scanCurrentPath))
-                        .font(.system(size: 10))
+                        .font(Theme.Typography.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -396,13 +396,13 @@ struct LargeFilesView: View {
             Spacer(minLength: 12)
 
             Text(verbatim: L10n.fmt("largeFiles.scan.elapsed", Formatters.clock(model.scanElapsed)))
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
 
             Button(L10n.tr("scan.progress.cancel")) { model.cancelScan() }
                 .buttonStyle(.link)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
         }
         .padding(.horizontal, 28)
         .padding(.vertical, 8)
@@ -415,7 +415,7 @@ struct LargeFilesView: View {
         VStack(spacing: 0) {
             Spacer(minLength: 24)
             Text(verbatim: L10n.tr("largeFiles.scan.streaming"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 24)
         }
@@ -435,7 +435,7 @@ struct LargeFilesView: View {
             // from reading as the complete answer.
             NoticeRow(
                 systemImage: "stop.circle",
-                tint: .orange,
+                tint: Theme.Palette.warning,
                 message: L10n.tr("largeFiles.partial")
             )
             .padding(.horizontal, 28)
@@ -507,7 +507,7 @@ struct LargeFilesView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: file.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(Theme.Typography.bodyMedium)
                         .lineLimit(1)
                         .truncationMode(.middle)
 
@@ -515,7 +515,7 @@ struct LargeFilesView: View {
                     // right above it, and "~/Library/Containers" is the part
                     // a user recognizes when deciding whether they need this.
                     Text(verbatim: Formatters.abbreviateHome(file.parentPath))
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -533,13 +533,13 @@ struct LargeFilesView: View {
                 // what the list is sorted by — they have to line up to be
                 // scannable.
                 Text(verbatim: Formatters.relative(file.modified))
-                    .font(.system(size: 10))
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .frame(width: 76, alignment: .trailing)
 
                 Text(verbatim: file.sizeText)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(Theme.Typography.footnoteMedium)
                     .monospacedDigit()
                     .frame(width: 76, alignment: .trailing)
 
@@ -559,7 +559,7 @@ struct LargeFilesView: View {
                 model.revealInFinder(file)
             } label: {
                 Image(systemName: "folder")
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 20)
                     .contentShape(Rectangle())
@@ -573,8 +573,8 @@ struct LargeFilesView: View {
 
     private func checkbox(isSelected: Bool) -> some View {
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-            .font(.system(size: 15))
-            .foregroundStyle(isSelected ? Color.green : Color.secondary)
+            .font(Theme.Typography.title3)
+            .foregroundStyle(isSelected ? Theme.Palette.success : Theme.Palette.labelSecondary)
             .frame(width: 18)
             .symbolEffect(.bounce, value: isSelected)
     }

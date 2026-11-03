@@ -59,7 +59,7 @@ struct HomebrewInstallPane: View {
     private var failed: some View {
         NoticeRow(
             systemImage: "exclamationmark.triangle",
-            tint: .red,
+            tint: Theme.Palette.danger,
             message: L10n.tr("homebrew.install.failed")
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -69,9 +69,9 @@ struct HomebrewInstallPane: View {
         VStack(spacing: 6) {
             Spacer()
             Text(verbatim: L10n.tr("homebrew.install.prompt"))
-                .font(.system(size: 15, weight: .semibold))
+                .font(Theme.Typography.title3Emphasis)
             Text(verbatim: L10n.tr("homebrew.install.promptHelp"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -82,9 +82,9 @@ struct HomebrewInstallPane: View {
         VStack(spacing: 6) {
             Spacer()
             Text(verbatim: L10n.tr("homebrew.install.noResults"))
-                .font(.system(size: 15, weight: .semibold))
+                .font(Theme.Typography.title3Emphasis)
             Text(verbatim: L10n.tr("homebrew.install.noResultsHelp"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -109,14 +109,14 @@ struct HomebrewInstallPane: View {
         let installed = model.isInstalled(result)
         return HStack(spacing: 10) {
             Image(systemName: result.kind == .formula ? "cube" : "macwindow")
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(verbatim: result.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(Theme.Typography.bodyMedium)
                         .lineLimit(1)
                         .truncationMode(.middle)
 
@@ -131,12 +131,12 @@ struct HomebrewInstallPane: View {
                 // the version stands in when the details call failed.
                 if let description = result.description {
                     Text(verbatim: description)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 } else if let version = result.latestVersion {
                     Text(verbatim: version)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
@@ -146,7 +146,7 @@ struct HomebrewInstallPane: View {
 
             if installed {
                 Text(verbatim: L10n.tr("homebrew.install.installed"))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
             } else {
                 BrandCTAButton(
@@ -166,13 +166,13 @@ struct HomebrewInstallPane: View {
 
     private var installedBadge: some View {
         Text(verbatim: L10n.tr("homebrew.install.installedBadge"))
-            .font(.system(size: 9, weight: .medium))
-            .foregroundStyle(.green)
+            .font(Theme.Typography.microMedium)
+            .foregroundStyle(Theme.Palette.success)
             .padding(.horizontal, 4)
             .padding(.vertical, 1)
             .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(Color.green.opacity(0.15))
+                RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous)
+                    .fill(Theme.Palette.success.opacity(Theme.Palette.Tint.badge))
             )
     }
 }

@@ -37,7 +37,7 @@ struct HeroPromptView<Accessory: View, Footer: View>: View {
     /// Draw the full-color brand icon instead of `systemImage`. Off for
     /// prompts whose subject is not the app itself.
     var brandIcon = true
-    var tint: Color = .accentColor
+    var tint: Color = Theme.Palette.info
     var diameter: CGFloat = 84
     var symbolSize: CGFloat = 60
     var symbolWeight: Font.Weight = .regular
@@ -45,7 +45,7 @@ struct HeroPromptView<Accessory: View, Footer: View>: View {
     var cornerRadius: CGFloat? = 18
     /// Opacity of the tinted fill behind the symbol. 0 leaves a bare symbol,
     /// which is what the compact in-column prompts use.
-    var fillOpacity: Double = 0.12
+    var fillOpacity: Double = Theme.Palette.Tint.badge
 
     // MARK: Copy
 
@@ -90,12 +90,12 @@ struct HeroPromptView<Accessory: View, Footer: View>: View {
     init(
         systemImage: String = "sparkle.magnifyingglass",
         brandIcon: Bool = true,
-        tint: Color = .accentColor,
+        tint: Color = Theme.Palette.info,
         diameter: CGFloat = 84,
         symbolSize: CGFloat = 60,
         symbolWeight: Font.Weight = .regular,
         cornerRadius: CGFloat? = 18,
-        fillOpacity: Double = 0.12,
+        fillOpacity: Double = Theme.Palette.Tint.badge,
         title: String? = nil,
         message: String,
         messageMaxWidth: CGFloat? = nil,
@@ -159,11 +159,11 @@ struct HeroPromptView<Accessory: View, Footer: View>: View {
                 VStack(spacing: 8) {
                     if let title {
                         Text(verbatim: title)
-                            .font(.system(size: 24, weight: .bold))
+                            .font(Theme.Typography.heroNumber)
                     }
 
                     Text(verbatim: message)
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .lineSpacing(3)
@@ -171,7 +171,7 @@ struct HeroPromptView<Accessory: View, Footer: View>: View {
 
                     if let hint {
                         Text(verbatim: hint)
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.tertiary)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: hintMaxWidth)

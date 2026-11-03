@@ -9,7 +9,7 @@ import SwiftUI
 /// uninstall).
 struct ProminentActionButton: View {
     let title: String
-    var tint: Color = .accentColor
+    var tint: Color = Theme.Palette.info
     var minWidth: CGFloat = 76
     var action: () -> Void
 

@@ -50,7 +50,7 @@ struct CleanConfirmationView: View {
     var body: some View {
         ConfirmSheetShell(
             systemImage: hasCaution ? "exclamationmark.triangle.fill" : "trash.fill",
-            tint: hasCaution ? .red : .accentColor,
+            tint: hasCaution ? Theme.Palette.danger : Theme.Palette.info,
             title: L10n.tr("clean.confirm.title"),
             summary: L10n.fmt(
                 L10n.plural("clean.confirm.summary", items.count),
@@ -64,7 +64,7 @@ struct CleanConfirmationView: View {
                 if hasCaution {
                     NoticeRow(
                         systemImage: "exclamationmark.octagon.fill",
-                        tint: .red,
+                        tint: Theme.Palette.danger,
                         title: L10n.tr("clean.confirm.cautionTitle"),
                         message: L10n.tr("clean.confirm.cautionMessage")
                     )
@@ -72,7 +72,7 @@ struct CleanConfirmationView: View {
                 } else if hasOtherReview {
                     NoticeRow(
                         systemImage: "exclamationmark.circle.fill",
-                        tint: .orange,
+                        tint: Theme.Palette.warning,
                         title: L10n.tr("clean.confirm.reviewTitle"),
                         message: L10n.tr("clean.confirm.reviewMessage")
                     )
@@ -87,7 +87,7 @@ struct CleanConfirmationView: View {
                 if languagePackCount > 0 {
                     NoticeRow(
                         systemImage: "character.book.closed.fill",
-                        tint: .orange,
+                        tint: Theme.Palette.warning,
                         title: L10n.tr("clean.confirm.languageTitle"),
                         message: L10n.fmt("clean.confirm.languageMessage", languagePackCount)
                     )
@@ -115,7 +115,7 @@ struct CleanConfirmationView: View {
             confirmTitle: hasCaution
                 ? L10n.tr("clean.confirm.cleanAnyway")
                 : L10n.tr("clean.confirm.cleanNow"),
-            confirmTint: hasCaution ? .red : .accentColor,
+            confirmTint: hasCaution ? Theme.Palette.danger : Theme.Palette.info,
             onConfirm: {
                 // Only when the prompt is actually showing: the toggle
                 // is off by default and only ever set on the general
@@ -135,14 +135,14 @@ struct CleanConfirmationView: View {
     private var rememberRow: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "star.fill")
-                .font(.system(size: 12))
-                .foregroundStyle(Color.accentColor)
+                .font(Theme.Typography.subheadline)
+                .foregroundStyle(Theme.Palette.info)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: L10n.tr("general.remember.title"))
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.Typography.subheadlineEmphasis)
                 Text(verbatim: L10n.tr("general.remember.message"))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

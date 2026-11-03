@@ -31,6 +31,8 @@ A change is not complete until `swift build` and `swift test` both pass. Running
 ## Code Conventions
 
 - **Componentize the design** — split logic into focused, single-purpose components; reuse existing components instead of copying code; keep the codebase free of redundant code
+- **Visual values come from the `Theme` layer** — colors from `Theme.Palette`, type from `Theme.Typography`, corner radii from `Theme.Radius`, shadows and hairlines from `Theme.Elevation`, repeated durations from `Theme.Motion` (`Views/Theme/`). A literal RGB triple, a bare `Color.red`, a hand-written `Font.system(size:)` or a corner radius nobody else uses is a value that cannot follow appearance and cannot be tuned in one place; a component's own size *parameter* that also drives its layout (`BrandMark.size`, `IconBadge.iconSize`) is the exception and stays a parameter
+- **The light/dark choice is installed on the process, never through `preferredColorScheme`** — that modifier sets an appearance on the hosting window and never takes it back, so a window pinned dark stays dark once the user picks "follow the system" and the third option is unreachable; use `AppAppearance.apply` (`NSApp.appearance`), which `nil` does clear, applied at `applicationDidFinishLaunching` and on every settings change
 - **Page layouts fill their container** — see [UI Layout](#ui-layout); a collapsed page passes every unit test and fails the first time it is seen
 - **Swift 6 strict concurrency is enabled** — new code must pass concurrency checking; if an exemption is truly needed, explain why in a comment
 - **Comments explain "why", not "what"** — constraints, trade-offs, and pitfalls are worth writing down; obvious logic does not need a comment

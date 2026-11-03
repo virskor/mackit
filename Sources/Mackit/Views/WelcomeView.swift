@@ -28,7 +28,7 @@ struct WelcomeView: View {
                         L10n.plural("welcome.projectRoots", vm.projectRoots.count),
                         vm.projectRoots.count
                     ))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                 }
                 .padding(.top, 18)

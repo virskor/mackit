@@ -131,8 +131,8 @@ struct ItemListView: View {
         )) {
             TableColumn("") { item in
                 Image(systemName: vm.isSelected(item) ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 13))
-                    .foregroundStyle(vm.isSelected(item) ? Color.accentColor : Color.secondary.opacity(0.45))
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(vm.isSelected(item) ? Theme.Palette.info : Theme.Palette.labelDisabled)
                     .contentShape(Rectangle())
                     .onTapGesture { vm.toggle(item) }
                     // The double-click lands on the cell frame around the
@@ -166,7 +166,7 @@ struct ItemListView: View {
 
             TableColumn(L10n.tr("table.size"), sortUsing: JunkItemComparator(field: .size, order: .forward)) { item in
                 Text(verbatim: item.sizeText)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .monospacedDigit()
                     .foregroundStyle(item.isUnknownSize ? .secondary : .primary)
                     .modifier(ItemDetailDoubleClick(item: item))
@@ -175,7 +175,7 @@ struct ItemListView: View {
 
             TableColumn(L10n.tr("table.modified"), sortUsing: JunkItemComparator(field: .modified, order: .forward)) { item in
                 Text(verbatim: Formatters.relative(item.modified))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .modifier(ItemDetailDoubleClick(item: item))
             }

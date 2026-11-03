@@ -167,8 +167,8 @@ struct HomebrewPackagesPane: View {
             // labels plus 4pt of vertical padding make its ~22pt height —
             // so the two sit flush instead of a hair taller or shorter,
             // and the 6pt continuous corners match the band's.
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(effective == .all ? Color.primary.opacity(0.08) : Color.accentColor)
+            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                .fill(effective == .all ? Theme.Palette.surfaceHover : Theme.Palette.info)
                 .allowsHitTesting(false)
 
             Menu {
@@ -200,7 +200,7 @@ struct HomebrewPackagesPane: View {
                 // menu: identical glyph, same center, so the white fully
                 // covers the gray one underneath.
                 Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 12, weight: .regular))
+                    .font(Theme.Typography.subheadline)
                     .opacity(0)
             }
             .menuStyle(.borderlessButton)
@@ -212,8 +212,8 @@ struct HomebrewPackagesPane: View {
             // lines read chunky at medium on the solid accent fill — the
             // platform's own filter buttons draw this glyph regular too.
             Image(systemName: "line.3.horizontal.decrease")
-                .font(.system(size: 12, weight: .regular))
-                .foregroundStyle(effective == .all ? Color.secondary : Color.white)
+                .font(Theme.Typography.subheadline)
+                .foregroundStyle(effective == .all ? Theme.Palette.labelSecondary : Theme.Palette.onColor)
                 .allowsHitTesting(false)
         }
         .frame(width: 28, height: 22)
@@ -244,14 +244,14 @@ struct HomebrewPackagesPane: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: package.kind == .formula ? "cube" : "macwindow")
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .frame(width: 16)
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 5) {
                         Text(verbatim: package.displayName)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(Theme.Typography.bodyMedium)
                             .lineLimit(1)
                             .truncationMode(.middle)
 
@@ -268,7 +268,7 @@ struct HomebrewPackagesPane: View {
 
                     if let description = package.description {
                         Text(verbatim: description)
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -278,13 +278,13 @@ struct HomebrewPackagesPane: View {
 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(verbatim: versionLine(package))
-                        .font(.system(size: 10))
-                        .foregroundStyle(package.isOutdated ? .orange : .secondary)
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(package.isOutdated ? Theme.Palette.warning : Theme.Palette.labelSecondary)
                         .monospacedDigit()
 
                     if let size = package.size, size > 0 {
                         Text(verbatim: Formatters.bytes(size))
-                            .font(.system(size: 10))
+                            .font(Theme.Typography.caption)
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
@@ -294,8 +294,8 @@ struct HomebrewPackagesPane: View {
             .padding(.vertical, 6)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(isSelected ? Color.accentColor.opacity(0.12) : .clear)
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                    .fill(isSelected ? Theme.Palette.accentSelected : .clear)
             )
         }
         .buttonStyle(.plain)
@@ -309,13 +309,13 @@ struct HomebrewPackagesPane: View {
 
     private var pinnedBadge: some View {
         Text(verbatim: L10n.tr("homebrew.package.pinned"))
-            .font(.system(size: 9, weight: .medium))
+            .font(Theme.Typography.microMedium)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 4)
             .padding(.vertical, 1)
             .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
+                RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous)
+                    .fill(Theme.Palette.surfaceHover)
             )
     }
 
@@ -332,7 +332,7 @@ struct HomebrewPackagesPane: View {
         VStack(spacing: 6) {
             Spacer()
             Text(verbatim: message)
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -343,9 +343,9 @@ struct HomebrewPackagesPane: View {
         VStack(spacing: 8) {
             Spacer()
             Text(verbatim: L10n.tr("homebrew.detail.noSelection"))
-                .font(.system(size: 15, weight: .semibold))
+                .font(Theme.Typography.title3Emphasis)
             Text(verbatim: L10n.tr("homebrew.detail.noSelectionHelp"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
         }

@@ -48,7 +48,7 @@ struct NavRowView: View {
                 CategoryIcon(icon, tint: tint, size: 15, width: 22)
 
                 Text(verbatim: title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.bodyMedium)
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
@@ -62,7 +62,7 @@ struct NavRowView: View {
                             .fontWeight(.medium)
                             .monospacedDigit()
                     }
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
@@ -78,7 +78,7 @@ struct NavRowView: View {
         }
         .buttonStyle(.plain)
         .listRowBackground(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                 // `Color.primary` rather than a hand-mixed white or a fixed
                 // gray: it is black in light mode and white in dark mode, so
                 // one opacity darkens the pill against the light sidebar and
@@ -86,7 +86,7 @@ struct NavRowView: View {
                 // keeping its contrast either way. A step above the hover
                 // fills the rest of the app uses (0.06), so a selected row
                 // still reads as more than the one the pointer is over.
-                .fill(isSelected ? Color.primary.opacity(0.08) : .clear)
+                .fill(isSelected ? Theme.Palette.surfaceHover : .clear)
                 // Inset from the row's edges the way the system's selection
                 // is, so the highlight reads as belonging to the row rather
                 // than as a band across the sidebar.

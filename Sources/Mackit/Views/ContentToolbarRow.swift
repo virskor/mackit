@@ -50,8 +50,8 @@ struct ContentToolbarRow: View {
                     outline: .capsule,
                     fallback: .fill(AnyShapeStyle(
                         vm.phase == .scanning
-                            ? Color.red.opacity(0.12)
-                            : Color.primary.opacity(0.06)
+                            ? Theme.Palette.danger.opacity(Theme.Palette.Tint.badge)
+                            : Theme.Palette.surfaceHover
                     ))
                 ) {
                     Label(
@@ -63,7 +63,7 @@ struct ContentToolbarRow: View {
                     // The `.large` control metrics the bordered button used
                     // to borrow are gone with the bezel, so the label pins
                     // its own size; the padding stands in for the bezel's.
-                    .font(.system(size: 13))
+                    .font(Theme.Typography.body)
                     // One line, always — the same contract BrandCTAButton's
                     // label keeps: a label that wraps when the row runs over
                     // its width budget grows the capsule's height and drags
@@ -73,7 +73,7 @@ struct ContentToolbarRow: View {
                     // wider than the budget gets the truncation, not a
                     // second line.
                     .lineLimit(1)
-                    .foregroundStyle(vm.phase == .scanning ? Color.red : Color.primary)
+                    .foregroundStyle(vm.phase == .scanning ? Theme.Palette.danger : Color.primary)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
                 }
@@ -123,7 +123,7 @@ struct ContentToolbarRow: View {
             // the size the row was tuned to.
             Toggle(isOn: $vm.safeOnly) {
                 Label(L10n.tr("toolbar.safeOnly"), systemImage: "checkmark.shield")
-                    .font(.system(size: 13))
+                    .font(Theme.Typography.body)
             }
             .toggleStyle(.switch)
             .controlSize(.regular)
@@ -144,7 +144,7 @@ struct ContentToolbarRow: View {
             // lines up with them instead of sitting low.
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(.quaternary.opacity(0.45), in: Capsule())
+            .background(Theme.Palette.surfaceControl, in: Capsule())
             // Dims with the state rather than leaving a full-strength pill
             // around a dimmed switch: the bordered buttons take the system's
             // disabled treatment, and this capsule has to fade with them.

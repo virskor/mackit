@@ -27,7 +27,7 @@ struct HomebrewServicesPane: View {
                     Label(L10n.tr("homebrew.action.refresh"), systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.plain)
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .disabled(model.isLoadingServices)
 
                 Picker(selection: $filter) {
@@ -48,7 +48,7 @@ struct HomebrewServicesPane: View {
             } else if model.servicesFailed {
                 NoticeRow(
                     systemImage: "exclamationmark.triangle",
-                    tint: .red,
+                    tint: Theme.Palette.danger,
                     message: L10n.tr("homebrew.services.failed")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -77,9 +77,9 @@ struct HomebrewServicesPane: View {
         VStack(spacing: 6) {
             Spacer()
             Text(verbatim: L10n.tr("homebrew.services.empty"))
-                .font(.system(size: 15, weight: .semibold))
+                .font(Theme.Typography.title3Emphasis)
             Text(verbatim: L10n.tr("homebrew.services.emptyHelp"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -89,27 +89,27 @@ struct HomebrewServicesPane: View {
     private func serviceRow(_ service: HomebrewService, model: HomebrewModel) -> some View {
         HStack(spacing: 10) {
             Image(systemName: service.isRunning ? "play.circle.fill" : "stop.circle")
-                .foregroundStyle(service.isRunning ? .green : .secondary)
+                .foregroundStyle(service.isRunning ? Theme.Palette.success : Theme.Palette.labelSecondary)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(verbatim: service.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(Theme.Typography.bodyMedium)
 
                     Text(verbatim: statusText(service))
-                        .font(.system(size: 10, weight: .medium))
+                        .font(Theme.Typography.captionMedium)
                         .foregroundStyle(statusTint(service))
                 }
 
                 HStack(spacing: 6) {
                     if let pid = service.pid, service.isRunning {
                         Text(verbatim: L10n.fmt("homebrew.services.pid", pid))
-                            .font(.system(size: 10))
+                            .font(Theme.Typography.caption)
                             .monospacedDigit()
                     }
                     if let user = service.user {
                         Text(verbatim: user)
-                            .font(.system(size: 10))
+                            .font(Theme.Typography.caption)
                     }
                 }
                 .foregroundStyle(.secondary)
@@ -141,7 +141,7 @@ struct HomebrewServicesPane: View {
     ) -> some View {
         Button(action: action) {
             Label(title, systemImage: symbol)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
@@ -155,8 +155,8 @@ struct HomebrewServicesPane: View {
     }
 
     private func statusTint(_ service: HomebrewService) -> Color {
-        if service.isRunning { return .green }
-        if service.status == "error" { return .red }
+        if service.isRunning { return Theme.Palette.success }
+        if service.status == "error" { return Theme.Palette.danger }
         return .secondary
     }
 

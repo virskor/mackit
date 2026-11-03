@@ -20,26 +20,26 @@ struct CleanProgressOverlay: View {
 
     var body: some View {
         ZStack {
-            Color(nsColor: .windowBackgroundColor).opacity(0.82)
+            Theme.Palette.windowBackground.opacity(0.82)
                 .ignoresSafeArea()
 
             GlassSurface(
-                outline: .rounded(cornerRadius: 16),
+                outline: .rounded(cornerRadius: Theme.Radius.xl),
                 fallback: .material(.regularMaterial),
-                fallbackShadow: (color: .black.opacity(0.12), radius: 24, y: 8)
+                fallbackShadow: Theme.Elevation.overlay
             ) {
                 VStack(spacing: 20) {
                     ProgressRing(progress: progress, diameter: 76, lineWidth: 7) {
                         Text("\(cleanedCount)")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(Theme.Typography.statHeroCompact)
                             .monospacedDigit()
                     }
 
                     VStack(spacing: 5) {
                         Text(L10n.tr("clean.progress.title"))
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(Theme.Typography.calloutEmphasis)
                         Text(verbatim: currentTitle)
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -51,14 +51,14 @@ struct CleanProgressOverlay: View {
                             L10n.plural("clean.progress.cleaned", cleanedCount),
                             cleanedCount
                         ))
-                        .font(.system(size: 11, weight: .medium))
+                        .font(Theme.Typography.footnoteMedium)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                     }
 
                     Button(L10n.tr("common.stop"), action: onStop)
                         .buttonStyle(.link)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                 }
                 .padding(32)
             }

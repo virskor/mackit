@@ -62,6 +62,13 @@ struct SettingsView: View {
                 .environment(vm)
         }
         .onChange(of: vm.autoSelectRisk) { _, _ in vm.saveSettings() }
+        .onChange(of: vm.appAppearance) { _, appearance in
+            // Install first, then persist: the window re-tints the moment
+            // the picker moves, while the write below is what makes the
+            // choice survive a relaunch and reach the tray agent.
+            appearance.apply()
+            vm.saveSettings()
+        }
         .onChange(of: vm.moveToTrash) { _, _ in vm.saveSettings() }
         .onChange(of: vm.includeCLI) { _, _ in vm.saveSettings() }
         .onChange(of: vm.includeApps) { _, _ in vm.saveSettings() }
@@ -162,6 +169,25 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            // Segmented rather than the language picker's menu: three
+            // choices, all short, and the shape reads as "pick a side"
+            // where a menu reads as "pick from a list". It lands on the
+            // window, the tray panel and every sheet the moment it is
+            // picked — no restart, unlike the language above.
+            Section {
+                Picker(L10n.tr("settings.appearance"), selection: Binding(
+                    get: { vm.appAppearance },
+                    set: { vm.appAppearance = $0 }
+                )) {
+                    ForEach(AppAppearance.allCases) { appearance in
+                        Text(verbatim: appearance.displayName).tag(appearance)
+                    }
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Label(L10n.tr("settings.appearance"), systemImage: "circle.lefthalf.filled")
+            }
+
             Section {
                 Toggle(L10n.tr("settings.launchAtLogin"), isOn: Binding(
                     get: { vm.launchAtLogin },
@@ -222,7 +248,7 @@ struct SettingsView: View {
             .disabled(!updates.canCheckForUpdates)
 
             Text(verbatim: lastCheckText)
-                .font(.system(size: 11))
+                .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
         } header: {
             Label(L10n.tr("settings.update.header"), systemImage: "arrow.triangle.2.circlepath")
@@ -251,7 +277,7 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
 
                 Text(verbatim: autoSelectHint)
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -280,7 +306,7 @@ struct SettingsView: View {
         return Form {
             Section {
                 Text(verbatim: L10n.tr("settings.projects.intro"))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
@@ -294,7 +320,7 @@ struct SettingsView: View {
                             Image(systemName: "folder")
                                 .foregroundStyle(.secondary)
                             Text(verbatim: root)
-                                .font(.system(size: 11))
+                                .font(Theme.Typography.footnote)
                                 .lineLimit(1)
                                 .truncationMode(.head)
                             Spacer()
@@ -312,7 +338,7 @@ struct SettingsView: View {
                 .overlay {
                     if vm.projectRoots.isEmpty {
                         Text(verbatim: L10n.tr("settings.projects.empty"))
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -320,7 +346,7 @@ struct SettingsView: View {
                 HStack(spacing: 8) {
                     TextField(L10n.tr("settings.projects.textField"), text: $newRoot)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                     Button(L10n.tr("common.add")) {
                         vm.addProjectRoot(newRoot)
                         newRoot = ""
@@ -345,10 +371,10 @@ struct SettingsView: View {
                                 Image(systemName: added ? "checkmark" : "plus")
                                 Text(verbatim: (candidate as NSString).lastPathComponent)
                             }
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.secondary.opacity(0.12), in: Capsule())
+                            .background(Theme.Palette.surfaceMuted, in: Capsule())
                         }
                         .buttonStyle(.plain)
                         .disabled(!exists || added)
@@ -379,7 +405,7 @@ struct SettingsView: View {
         return Form {
             Section {
                 Text(verbatim: L10n.tr("settings.ignoreList.intro"))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
@@ -396,7 +422,7 @@ struct SettingsView: View {
                             VersionedSymbolImage(name: "doc", fallback: "doc.fill")
                                 .foregroundStyle(.secondary)
                             Text(verbatim: path)
-                                .font(.system(size: 11))
+                                .font(Theme.Typography.footnote)
                                 .lineLimit(1)
                                 .truncationMode(.head)
                             Spacer()
@@ -414,7 +440,7 @@ struct SettingsView: View {
                 .overlay {
                     if vm.ignoredPaths.isEmpty {
                         Text(verbatim: L10n.tr("settings.ignoreList.paths.empty"))
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -429,7 +455,7 @@ struct SettingsView: View {
                             VersionedSymbolImage(name: "slash.circle", fallback: "folder.badge.minus")
                                 .foregroundStyle(.secondary)
                             Text(verbatim: ignoreRuleTitle(ruleID))
-                                .font(.system(size: 11))
+                                .font(Theme.Typography.footnote)
                                 .lineLimit(1)
                                 .truncationMode(.head)
                             Spacer()
@@ -447,7 +473,7 @@ struct SettingsView: View {
                 .overlay {
                     if vm.ignoredRules.isEmpty {
                         Text(verbatim: L10n.tr("settings.ignoreList.rules.empty"))
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -548,22 +574,22 @@ struct SettingsView: View {
                         // missing, so an empty badge doesn't appear
                         systemImage: "sparkle.magnifyingglass",
                         image: BrandIcon.image,
-                        tint: .accentColor,
+                        tint: Theme.Palette.info,
                         diameter: 56,
                         symbolSize: 40,
                         symbolWeight: .regular,
-                        cornerRadius: 12,
-                        fillOpacity: 0.12
+                        cornerRadius: Theme.Radius.lg,
+                        fillOpacity: Theme.Palette.Tint.badge
                     )
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(verbatim: "Mackit")
-                            .font(.system(size: 17, weight: .bold))
+                            .font(Theme.Typography.sheetTitle)
                         Text(verbatim: L10n.tr("settings.about.subtitle"))
-                            .font(.system(size: 12))
+                            .font(Theme.Typography.subheadline)
                             .foregroundStyle(.secondary)
                         Text(verbatim: L10n.fmt("settings.about.version", Self.versionText))
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.tertiary)
                     }
                     Spacer()
@@ -574,11 +600,11 @@ struct SettingsView: View {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(verbatim: L10n.tr("settings.about.privacy"))
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(verbatim: L10n.tr("settings.about.bundleID"))
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.tertiary)
                 }
                 .padding(.vertical, 4)
@@ -588,7 +614,7 @@ struct SettingsView: View {
                         Image(systemName: "globe")
                         Text(verbatim: L10n.tr("settings.about.website"))
                     }
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                 }
                 .padding(.vertical, 2)
 
@@ -597,7 +623,7 @@ struct SettingsView: View {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                         Text(verbatim: L10n.tr("settings.about.github"))
                     }
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                 }
                 .padding(.vertical, 2)
             }
@@ -700,7 +726,7 @@ struct SettingsView: View {
             // the truth, it is just not growing.
             if !vm.collectCrashLogs {
                 Text(verbatim: L10n.tr("settings.crashLogs.notice.off"))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
             }
             crashLogsRows
@@ -726,15 +752,15 @@ struct SettingsView: View {
                     HStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(verbatim: Formatters.dateTime(entry.date))
-                                .font(.system(size: 13))
+                                .font(Theme.Typography.body)
                                 .foregroundStyle(.primary)
                             Text(verbatim: crashLogSummary(entry))
-                                .font(.system(size: 11))
+                                .font(Theme.Typography.footnote)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 8)
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(Theme.Typography.footnoteEmphasis)
                             .foregroundStyle(.tertiary)
                     }
                 }

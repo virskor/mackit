@@ -34,11 +34,11 @@ struct LoginItemGroupRow: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(verbatim: group.name)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(Theme.Typography.bodyMedium)
                             .lineLimit(1)
 
                         Text(verbatim: L10n.items(group.items.count))
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.secondary)
                     }
 
@@ -52,7 +52,7 @@ struct LoginItemGroupRow: View {
                     StatusPill(status: group.status.pillStatus)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(Theme.Typography.captionEmphasis)
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }

@@ -171,6 +171,10 @@ final class AppViewModel {
     var autoSelectRisk: AutoSelectLevel = .none
     var moveToTrash: Bool = true
     var includeCLI: Bool = true
+    /// Which appearance the interface runs in. Follows the system by
+    /// default; the picker sits in the settings page's general tab beside
+    /// the language choice it is usually made alongside.
+    var appAppearance: AppAppearance = .system
     /// The general cleanup rows the user asked to remember, checked
     /// automatically on every later scan. nil means "not set yet" and falls
     /// back to the built-in default (the rows the layout pre-checks:
@@ -2147,6 +2151,13 @@ final class AppViewModel {
         if let value = values["moveToTrash"] as? Bool {
             moveToTrash = value
         }
+        // The appearance is stored as the enum's rawValue, like the
+        // language's. An unreadable value falls back to `.system`, which is
+        // also what an absent key means: a settings file written before the
+        // key existed keeps following the system rather than pinning a side.
+        if let raw = values["appAppearance"] as? String {
+            appAppearance = AppAppearance(rawValue: raw) ?? .system
+        }
         if let value = values["includeCLI"] as? Bool {
             includeCLI = value
         }
@@ -2216,6 +2227,7 @@ final class AppViewModel {
             "includeCLI": includeCLI,
             "includeApps": includeApps,
             "collectCrashLogs": collectCrashLogs,
+            "appAppearance": appAppearance.rawValue,
             "projectRoots": projectRoots,
             "ignoredPaths": Array(ignoredPaths),
             "ignoredRules": Array(ignoredRules),
@@ -2238,6 +2250,11 @@ final class AppViewModel {
     /// settings-changed broadcast.
     func reloadSettings() {
         loadSettings()
+        // The appearance is process-wide AppKit state rather than view
+        // state, and the tray panel is drawn by this process: a choice the
+        // main app just made has to be installed here too, the moment the
+        // broadcast arrives, or the panel keeps the side it was drawn with.
+        appAppearance.apply()
     }
 
     /// Toggles crash-log collection. Persists the choice and applies it in
@@ -2701,9 +2718,9 @@ struct Banner: Equatable, Identifiable {
 
         var tint: Color {
             switch self {
-            case .info: return .blue
-            case .success: return .green
-            case .error: return .orange
+            case .info: return Theme.Palette.info
+            case .success: return Theme.Palette.success
+            case .error: return Theme.Palette.warning
             }
         }
     }

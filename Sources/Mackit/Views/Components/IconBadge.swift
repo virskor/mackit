@@ -7,13 +7,13 @@ struct IconBadge: View {
     let systemImage: String
     /// Brand icon (full-color PNG, see BrandIcon); pass it to use it, and fall back to an SF Symbol when nil.
     var image: NSImage?
-    var tint: Color = .accentColor
+    var tint: Color = Theme.Palette.info
     var diameter: CGFloat = 56
     var symbolSize: CGFloat = 24
     var symbolWeight: Font.Weight = .semibold
     /// Corner radius; pass nil for a full circle.
     var cornerRadius: CGFloat?
-    var fillOpacity: Double = 0.14
+    var fillOpacity: Double = Theme.Palette.Tint.badge
 
     var body: some View {
         BrandMark(

@@ -124,6 +124,16 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
         return .symbol(symbol)
     }
 
+    /// The category's identity color — one hue per technology, so a row's
+    /// icon is recognizable before its label is read.
+    ///
+    /// Deliberately *not* a `Theme.Palette` token: `Theme.Palette` holds the
+    /// app's own surfaces and semantic states, while these thirteen hues are
+    /// a brand-style identity palette owned by the categories themselves —
+    /// the same relationship `Theme.Brand` has to the brand mark. They are
+    /// the one place a bare system color is allowed outside `Theme`, and the
+    /// comment below records the constraint that keeps them from colliding
+    /// with the semantic set.
     var tint: Color {
         switch self {
         // The other categories already use up all the semantic colors; apps use black/white adaptive color to stay neutral

@@ -57,7 +57,7 @@ struct GeneralCleanupView: View {
                 }
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
     }
 
     // MARK: - Header
@@ -66,26 +66,26 @@ struct GeneralCleanupView: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: L10n.tr("general.header.title"))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.bodyMedium)
                     .foregroundStyle(.secondary)
 
                 if vm.phase == .scanning {
                     Text(verbatim: L10n.tr(vm.cleanupScope.scanProgressTitleKey))
-                        .font(.system(size: 24, weight: .bold))
+                        .font(Theme.Typography.heroNumber)
                     ProgressView(value: vm.progressFraction)
                         .progressViewStyle(.linear)
                         .frame(maxWidth: 220)
                     Text(verbatim: vm.progressLabel)
-                        .font(.system(size: 11))
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 } else if vm.items.isEmpty {
                     Text(verbatim: L10n.tr("general.header.none"))
-                        .font(.system(size: 24, weight: .bold))
+                        .font(Theme.Typography.heroNumber)
                 } else {
                     Text(verbatim: Formatters.bytes(vm.generalTotalSize))
-                        .font(.system(size: 30, weight: .bold))
+                        .font(Theme.Typography.heroNumberLarge)
                         .monospacedDigit()
                         .contentTransition(.numericText())
                 }
@@ -205,17 +205,17 @@ struct GeneralCleanupView: View {
                     Image(systemName: group.isFullySelected
                         ? "checkmark.circle.fill"
                         : (group.isPartiallySelected ? "minus.circle.fill" : "circle"))
-                        .font(.system(size: 13))
-                        .foregroundStyle(group.isFullySelected || group.isPartiallySelected ? .green : .secondary)
+                        .font(Theme.Typography.body)
+                        .foregroundStyle(group.isFullySelected || group.isPartiallySelected ? Theme.Palette.success : Theme.Palette.labelSecondary)
                         .frame(width: 18)
                         .symbolEffect(.bounce, value: group.isFullySelected)
 
                     Image(systemName: group.group.symbol)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(Theme.Typography.footnoteEmphasis)
                         .foregroundStyle(group.group.tint)
 
                     Text(verbatim: group.group.title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(Theme.Typography.calloutEmphasis)
                         .foregroundStyle(group.group.tint)
 
                     Spacer(minLength: 8)
@@ -225,7 +225,7 @@ struct GeneralCleanupView: View {
                         Formatters.bytes(group.totalSize),
                         Formatters.bytes(group.selectedSize)
                     ))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                     .contentTransition(.numericText())
@@ -243,7 +243,7 @@ struct GeneralCleanupView: View {
                     ruleRow(rowState)
                 }
             }
-            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Theme.Palette.surfaceCard, in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
             .padding(.bottom, 18)
         }
     }
@@ -300,8 +300,8 @@ struct GeneralCleanupView: View {
                 Image(systemName: rowState.isFullySelected
                     ? "checkmark.circle.fill"
                     : (rowState.isPartiallySelected ? "minus.circle.fill" : "circle"))
-                    .font(.system(size: 15))
-                    .foregroundStyle(rowState.isFullySelected || rowState.isPartiallySelected ? .green : .secondary)
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(rowState.isFullySelected || rowState.isPartiallySelected ? Theme.Palette.success : Theme.Palette.labelSecondary)
                     .frame(width: 18)
                     // The checkmark bounces as it is checked — a toggle with no
                     // motion makes the row feel like a label, not a control.
@@ -331,13 +331,13 @@ struct GeneralCleanupView: View {
                 } label: {
                     let isHovered = hoveredChevronRow == rowState.row.id
                     Image(systemName: rowState.isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(Theme.Typography.captionEmphasis)
                         .foregroundStyle(isHovered ? .primary : .secondary)
                         // The glyph stays small; the frame is the hit area.
                         .frame(width: 26, height: 28)
                         .background(
-                            isHovered ? Color.primary.opacity(0.07) : .clear,
-                            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            isHovered ? Theme.Palette.surfaceHover : .clear,
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                         )
                         .contentShape(Rectangle())
                 }
@@ -357,10 +357,10 @@ struct GeneralCleanupView: View {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(verbatim: rowState.row.title)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(Theme.Typography.bodyMedium)
                             .lineLimit(1)
                         Text(verbatim: rowState.row.note)
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -390,20 +390,20 @@ struct GeneralCleanupView: View {
                 Image(systemName: sub.isFullySelected
                     ? "checkmark.circle.fill"
                     : (sub.isPartiallySelected ? "minus.circle.fill" : "circle"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(sub.isFullySelected || sub.isPartiallySelected ? .green : .secondary)
+                    .font(Theme.Typography.subheadline)
+                    .foregroundStyle(sub.isFullySelected || sub.isPartiallySelected ? Theme.Palette.success : Theme.Palette.labelSecondary)
                     .frame(width: 15)
                     .symbolEffect(.bounce, value: sub.isFullySelected)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(verbatim: sub.title)
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.subheadline)
                         .lineLimit(1)
                     // Which apps a language sub-row covers: the language name
                     // alone does not say what is about to change.
                     if let detail = sub.detail {
                         Text(verbatim: detail)
-                            .font(.system(size: 10))
+                            .font(Theme.Typography.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .truncationMode(.tail)
@@ -414,7 +414,7 @@ struct GeneralCleanupView: View {
                 Spacer(minLength: 8)
 
                 Text(verbatim: Formatters.bytes(sub.size))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -434,18 +434,18 @@ struct GeneralCleanupView: View {
 
         if rowState.items.isEmpty {
             Text(verbatim: L10n.tr(levelKey(rowState.row.risk)))
-                .font(.system(size: 11, weight: .medium))
+                .font(Theme.Typography.footnoteMedium)
                 .foregroundStyle(tint)
         } else {
             HStack(spacing: 3) {
                 Text(verbatim: L10n.fmt("general.row.total", Formatters.bytes(rowState.size)))
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .monospacedDigit()
                 Text(verbatim: L10n.tr("general.row.separator"))
-                    .font(.system(size: 11))
+                    .font(Theme.Typography.footnote)
                     .foregroundStyle(.tertiary)
                 Text(verbatim: L10n.tr(levelKey(rowState.row.risk)))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(Theme.Typography.footnoteMedium)
                     .foregroundStyle(tint)
             }
         }
@@ -461,9 +461,9 @@ struct GeneralCleanupView: View {
 
     private func levelTint(_ risk: RiskLevel) -> Color {
         switch risk {
-        case .safe: return .green
-        case .review: return .orange
-        case .caution: return .red
+        case .safe: return Theme.Palette.success
+        case .review: return Theme.Palette.warning
+        case .caution: return Theme.Palette.danger
         }
     }
 }

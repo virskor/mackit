@@ -8,7 +8,13 @@ import SwiftUI
 /// action: on this app's surfaces a blue button reads as generic scaffolding,
 /// while the amber/green pairing is what makes the interface feel like a
 /// product rather than a demo.
-enum BrandPalette {
+///
+/// The one place in the theme layer where a literal RGB triple belongs: the
+/// brand mark has to be the same color on every machine, so it can neither
+/// follow the system accent nor the appearance. Everything that merely
+/// *decorates* reads its color from `Theme.Palette` instead.
+extension Theme {
+    enum Brand {
     // MARK: Brand mark
 
     /// Amber — the light end of the brand gradient.
@@ -33,4 +39,5 @@ enum BrandPalette {
     /// Drop shadow under the CTA: the green's own hue at low opacity, so the
     /// shadow reads as ambient occlusion rather than a gray smudge.
     static let ctaShadow = Color(red: 0.10, green: 0.55, blue: 0.38).opacity(0.35)
+    }
 }

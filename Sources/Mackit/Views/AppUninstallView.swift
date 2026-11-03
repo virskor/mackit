@@ -37,7 +37,7 @@ struct AppUninstallView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Theme.Palette.windowBackground)
         // The confirmation sheet hangs off the page, driven directly by the
         // model's phase rather than @State + onChange — the latter doesn't
         // trigger on "open again after cancel" because the value didn't
@@ -77,16 +77,16 @@ struct AppUninstallView: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: L10n.tr("sidebar.appUninstall"))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.bodyMedium)
                     .foregroundStyle(.secondary)
 
                 if model.hasScanned {
                     Text(verbatim: headerLine)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .lineLimit(1)
                 } else if model.isLoading {
                     Text(verbatim: L10n.tr("scan.apps"))
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(Theme.Typography.pageTitle)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -217,7 +217,7 @@ struct AppUninstallView: View {
             ProgressView()
                 .controlSize(.large)
             Text(verbatim: L10n.tr("scan.apps"))
-                .font(.system(size: 12))
+                .font(Theme.Typography.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -285,7 +285,7 @@ struct AppUninstallView: View {
                     toggleExpanded(entry)
                 } label: {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(Theme.Typography.captionEmphasis)
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(expandedIDs.contains(entry.id) ? 90 : 0))
                         .frame(width: 14, height: 14)
@@ -318,12 +318,12 @@ struct AppUninstallView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(verbatim: entry.name)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(Theme.Typography.bodyMedium)
                             .lineLimit(1)
                         // "Version 2.0 · 3 leftover files" — the scanner's
                         // own composition, with missing parts omitted.
                         Text(verbatim: entry.bundle.detail)
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -331,7 +331,7 @@ struct AppUninstallView: View {
                     Spacer(minLength: 8)
 
                     Text(verbatim: Formatters.bytes(entry.totalSize))
-                        .font(.system(size: 11, weight: .medium))
+                        .font(Theme.Typography.footnoteMedium)
                         .monospacedDigit()
                 }
                 .contentShape(Rectangle())
@@ -350,8 +350,8 @@ struct AppUninstallView: View {
         Image(systemName: state == .all
             ? "checkmark.circle.fill"
             : (state == .partial ? "minus.circle.fill" : "circle"))
-            .font(.system(size: 15))
-            .foregroundStyle(state == .none ? Color.secondary : .green)
+            .font(Theme.Typography.title3)
+            .foregroundStyle(state == .none ? Theme.Palette.labelSecondary : Theme.Palette.success)
             .frame(width: 18)
             .symbolEffect(.bounce, value: state == .all)
     }
@@ -369,25 +369,25 @@ struct AppUninstallView: View {
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: model.isSelected(item) ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 13))
-                            .foregroundStyle(model.isSelected(item) ? .green : Color.secondary.opacity(0.45))
+                            .font(Theme.Typography.body)
+                            .foregroundStyle(model.isSelected(item) ? Theme.Palette.success : Theme.Palette.labelDisabled)
                             .frame(width: 16)
 
                         Text(verbatim: item.title)
-                            .font(.system(size: 12))
+                            .font(Theme.Typography.subheadline)
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .frame(minWidth: 120, alignment: .leading)
 
                         Text(verbatim: residueLabel(item))
-                            .font(.system(size: 11))
+                            .font(Theme.Typography.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
 
                         Spacer(minLength: 8)
 
                         Text(verbatim: item.abbreviatedPath)
-                            .font(.system(size: 10))
+                            .font(Theme.Typography.caption)
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
                             .truncationMode(.head)
@@ -395,7 +395,7 @@ struct AppUninstallView: View {
                             .help(item.displayPath)
 
                         Text(verbatim: item.sizeText)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(Theme.Typography.footnoteMedium)
                             .monospacedDigit()
 
                         RiskBadge(risk: item.risk)

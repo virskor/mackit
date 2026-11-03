@@ -30,7 +30,7 @@ struct JunkItemRow: View {
             Spacer(minLength: 8)
 
             Text(verbatim: item.sizeText)
-                .font(.system(size: 11, weight: .medium))
+                .font(Theme.Typography.footnoteMedium)
                 .monospacedDigit()
 
             RiskBadge(risk: item.risk)

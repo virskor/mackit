@@ -27,7 +27,7 @@ struct HomebrewEnvironmentPane: View {
                         Label(L10n.tr("homebrew.diagnostics.rerun"), systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .disabled(model.isLoadingDiagnostics)
                 } else {
                     Button {
@@ -36,7 +36,7 @@ struct HomebrewEnvironmentPane: View {
                         Label(L10n.tr("homebrew.action.refresh"), systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .disabled(model.isLoadingConfig)
                 }
 
@@ -47,7 +47,7 @@ struct HomebrewEnvironmentPane: View {
                         Label(L10n.tr(copyLabel), systemImage: "doc.on.doc")
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                 }
 
                 Spacer(minLength: 0)
@@ -85,7 +85,7 @@ struct HomebrewEnvironmentPane: View {
 
     private func emptyRow(_ message: String) -> some View {
         Text(verbatim: message)
-            .font(.system(size: 12))
+            .font(Theme.Typography.subheadline)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -93,7 +93,7 @@ struct HomebrewEnvironmentPane: View {
     private func monospaced(_ text: String) -> some View {
         ScrollView {
             Text(verbatim: text)
-                .font(.system(size: 11, design: .monospaced))
+                .font(Theme.Typography.monospacedFootnote)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 28)
@@ -132,19 +132,19 @@ struct HomebrewEnvironmentPane: View {
 
             if entries.isEmpty {
                 Text(verbatim: L10n.tr("homebrew.config.empty"))
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.top, 6)
             } else {
                 ForEach(entries) { entry in
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
                         Text(verbatim: entry.key)
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(Theme.Typography.monospacedFootnote)
                             .foregroundStyle(.secondary)
                             .frame(width: 160, alignment: .leading)
 
                         Text(verbatim: entry.value)
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(Theme.Typography.monospacedFootnote)
                             .textSelection(.enabled)
 
                         Spacer(minLength: 0)

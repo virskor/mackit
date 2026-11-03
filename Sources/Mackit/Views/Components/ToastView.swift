@@ -23,9 +23,9 @@ struct ToastView: View {
             // The same neutral plate the progress pill wears while an action
             // runs, so the window's floating furniture reads as one family.
             style: .regular,
-            outline: .rounded(cornerRadius: 12),
+            outline: .rounded(cornerRadius: Theme.Radius.lg),
             fallback: .material(.regularMaterial),
-            fallbackShadow: (color: .black.opacity(0.16), radius: 14, y: 5)
+            fallbackShadow: Theme.Elevation.plate
         ) {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
@@ -34,12 +34,12 @@ struct ToastView: View {
                         tint: banner.style.tint,
                         diameter: 22,
                         symbolSize: 11,
-                        cornerRadius: 7
+                        cornerRadius: Theme.Radius.sm
                     )
                     .accessibilityHidden(true)
 
                     Text(verbatim: banner.message)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(Theme.Typography.subheadlineMedium)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -71,11 +71,11 @@ struct ToastView: View {
             onDismiss()
         } label: {
             Image(systemName: "xmark")
-                .font(.system(size: 9, weight: .bold))
+                .font(Theme.Typography.microStrong)
                 .foregroundStyle(.secondary)
                 .padding(5)
                 .background(
-                    Circle().fill(hoverDismiss ? Color.primary.opacity(0.08) : .clear)
+                    Circle().fill(hoverDismiss ? Theme.Palette.surfaceHover : .clear)
                 )
         }
         .buttonStyle(.plain)
@@ -106,8 +106,8 @@ struct ToastView: View {
                     total: Banner.autoDismissSeconds
                 )
                 ZStack(alignment: .leading) {
-                    Capsule().fill(banner.style.tint.opacity(0.12))
-                    Capsule().fill(banner.style.tint.opacity(0.5))
+                    Capsule().fill(banner.style.tint.opacity(Theme.Palette.Tint.badge))
+                    Capsule().fill(banner.style.tint.opacity(Theme.Palette.Tint.track))
                         .frame(width: proxy.size.width * fraction)
                 }
             }
