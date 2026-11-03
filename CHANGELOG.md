@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Double-clicking a scan result opens its detail sheet** — the entry's full path, size, modification date and risk, with clean, show-in-Finder, copy-path and close actions.
 - **Russian, Spanish and French join the interface languages** — every screen is translated in all three, selectable in Settings or followed from the system language, and Russian count phrases follow Russian grammar (1 файл / 2 файла / 5 файлов).
 
 ### Changed

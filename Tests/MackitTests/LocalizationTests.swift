@@ -297,6 +297,12 @@ struct LocalizationTests {
             "permissions.hint.undetermined.automation",
             "permissions.hint.undetermined.fullDiskAccess",
             "permissions.hint.onDemand",
+            "common.close", "ctx.viewDetails",
+            "item.detail.category", "item.detail.source", "item.detail.path",
+            "item.detail.command", "item.detail.cleanConfirmTitle",
+            "item.detail.cleanToTrash", "item.detail.cleanPermanent",
+            "item.detail.cleaning", "item.detail.failedTitle",
+            "clean.error.noOutcome",
         ]
         for key in keys {
             #expect(!isFallback(L10n.tr(key), key: key), "\(key) not localized")
@@ -533,7 +539,8 @@ struct LocalizationTests {
             ("crashLogs.detail.versionValue", 2),
             ("crashLogs.symbolize.binaryReplaced", 2),
             ("settings.crashLogs.deleteAllFailed.one", 1),
-            ("settings.crashLogs.deleteAllFailed.other", 1)
+            ("settings.crashLogs.deleteAllFailed.other", 1),
+            ("item.detail.cleanConfirmTitle", 1)
         ]
         // Compatible with positional parameters (%1$@): residue file
         // subtitles use this layout

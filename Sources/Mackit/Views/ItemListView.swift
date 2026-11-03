@@ -48,6 +48,21 @@ struct ItemListView: View {
         // to cover whichever page the clean started from — the general
         // module's rows never render this view, so an overlay hung off it
         // would leave a general-module clean running with no progress at all.
+        //
+        // The detail sheet hangs off the list itself, where the double-click
+        // comes from. Its binding resolves the live entry, so a clean that
+        // drops the entry — here or from the toolbar — closes the sheet too.
+        .sheet(item: Binding(
+            get: { vm.detailItem },
+            set: { item in if item == nil { vm.dismissItemDetail() } }
+        )) { entry in
+            ItemDetailSheet(item: entry)
+                .environment(vm)
+        }
+        // Leaving the page — another module, the clean result, a scan that
+        // emptied the list — takes the sheet with it rather than leaving it
+        // floating over a page it no longer belongs to.
+        .onDisappear { vm.dismissItemDetail() }
     }
 
     // MARK: - Empty state
@@ -120,6 +135,10 @@ struct ItemListView: View {
                     .foregroundStyle(vm.isSelected(item) ? Color.accentColor : Color.secondary.opacity(0.45))
                     .contentShape(Rectangle())
                     .onTapGesture { vm.toggle(item) }
+                    // The double-click lands on the cell frame around the
+                    // image, so a double-click on the checkbox toggles twice
+                    // (netting nothing) and still opens the sheet.
+                    .modifier(ItemDetailDoubleClick(item: item))
             }
             .width(26)
 
@@ -142,6 +161,7 @@ struct ItemListView: View {
                         tertiaryHelp: item.displayPath
                     )
                 }
+                .modifier(ItemDetailDoubleClick(item: item))
             }
 
             TableColumn(L10n.tr("table.size"), sortUsing: JunkItemComparator(field: .size, order: .forward)) { item in
@@ -149,6 +169,7 @@ struct ItemListView: View {
                     .font(.system(size: 12))
                     .monospacedDigit()
                     .foregroundStyle(item.isUnknownSize ? .secondary : .primary)
+                    .modifier(ItemDetailDoubleClick(item: item))
             }
             .width(84)
 
@@ -156,11 +177,13 @@ struct ItemListView: View {
                 Text(verbatim: Formatters.relative(item.modified))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+                    .modifier(ItemDetailDoubleClick(item: item))
             }
             .width(96)
 
             TableColumn(L10n.tr("table.risk")) { item in
                 RiskBadge(risk: item.risk)
+                    .modifier(ItemDetailDoubleClick(item: item))
             }
             .width(74)
         }
@@ -184,6 +207,9 @@ struct ItemListView: View {
         let single = selectedItems.count == 1 ? selectedItems[0] : nil
 
         if let single {
+            // The detail sheet's keyboard-free twin: double-clicking the row
+            // is the fast path, this is the discoverable one.
+            Button(L10n.tr("ctx.viewDetails"), systemImage: "info.circle") { vm.showItemDetail(single) }
             Button(L10n.tr("ctx.revealInFinder"), systemImage: "arrow.up.forward.app") { vm.revealInFinder(single) }
                 .disabled(single.path.isEmpty)
             Button(L10n.tr("ctx.openInTerminal"), systemImage: "terminal") { vm.openInTerminal(single) }
@@ -215,5 +241,26 @@ struct ItemListView: View {
         Button(L10n.tr("ctx.deselectAll"), systemImage: "circle") { vm.deselectAllVisible() }
         Divider()
         Button(L10n.tr("ctx.selectSafeOnly"), systemImage: "checkmark.shield") { vm.selectAllSafe() }
+    }
+}
+
+/// Opens the entry's detail sheet on a double-click anywhere inside one
+/// table cell — the list's "open" gesture, the same as Finder's.
+///
+/// SwiftUI's `Table` has no row-level gesture, so every column's content
+/// carries it. Each cell fills its width — `maxWidth: .infinity` leaves the
+/// column's own sizing alone — and claims a rectangle, so the empty parts of
+/// a row open the sheet too instead of only the text. The single-click
+/// column toggles stay where they are: on the checkbox image inside its
+/// cell, a double-click toggles twice (netting nothing) and opens the sheet.
+private struct ItemDetailDoubleClick: ViewModifier {
+    @Environment(AppViewModel.self) private var vm
+    let item: JunkItem
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) { vm.showItemDetail(item) }
     }
 }

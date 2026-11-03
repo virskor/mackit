@@ -1413,13 +1413,19 @@ final class AppViewModel {
 
     // MARK: - Scan
 
-    func startScan() {
-        guard phase != .scanning else { return }
-        scanTask?.cancel()
-        cleanTask?.cancel()
-
+    /// Drops everything the previous scan left behind and enters .scanning.
+    ///
+    /// Split out from `startScan` so the reset is one reviewable block — and
+    /// drivable in tests without launching a scan against the real disk.
+    /// Visible within the module for that reason.
+    func resetForNewScan() {
         items = []
         listedIndex = ListedPathIndex()
+        // The detail sheet describes an entry from the list being dropped.
+        // Cleared outright rather than left to resolve to nil: a rescan
+        // rediscovers the same paths under the same ids, and a lingering id
+        // would pop the sheet back open mid-scan.
+        detailItemID = nil
         selectionState.reset()
         resetGeneralRowChecks()
         cleanOutcomes = []
@@ -1441,6 +1447,14 @@ final class AppViewModel {
         publishMenuSnapshot(force: true)
         scanStartedAt = .now
         MackitLog.scan.info("scan started: \(self.projectRoots.count, privacy: .public) project roots, CLI \(self.includeCLI, privacy: .public), app junk \(self.includeApps, privacy: .public)")
+    }
+
+    func startScan() {
+        guard phase != .scanning else { return }
+        scanTask?.cancel()
+        cleanTask?.cancel()
+
+        resetForNewScan()
 
         let options = ScanOptions(
             autoSelectRisk: autoSelectRisk,
@@ -1838,6 +1852,7 @@ final class AppViewModel {
     /// Visible within the module so tests can drive it directly.
     func removeCleanedItems(_ ids: Set<String>) {
         guard !ids.isEmpty else { return }
+        closeDetailIfShowing(anyOf: ids)
         selectionState.applyCleanResult(ids, items: items)
         items.removeAll { ids.contains($0.id) }
         // Rebuilt rather than updated: a set cannot drop the id, path and
@@ -1849,6 +1864,7 @@ final class AppViewModel {
     }
 
     private func removeItem(id: String) {
+        closeDetailIfShowing(anyOf: [id])
         selectionState.discard([id])
         items.removeAll { $0.id == id }
         listedIndex = ListedPathIndex(items: items)
@@ -2015,6 +2031,78 @@ final class AppViewModel {
             self.volumeUsage = .home()
             self.showToast(.success, L10n.fmt("toast.trashed", item.title))
         }
+    }
+
+    // MARK: - Item Detail Sheet
+
+    /// The id of the entry whose detail sheet is open; nil means none.
+    ///
+    /// Held as an id rather than the entry itself: the sheet resolves the
+    /// live entry on every read, so an entry that leaves the list — cleaned,
+    /// ignored, or dropped by a rescan — closes the sheet by itself instead
+    /// of leaving it describing something that no longer exists. The id is
+    /// also cleared on every removal path, so an entry a later scan
+    /// rediscovers does not reopen a sheet the user already closed.
+    private(set) var detailItemID: String?
+
+    /// The entry the detail sheet shows, or nil when it is closed (or its
+    /// entry is gone).
+    var detailItem: JunkItem? {
+        guard let detailItemID else { return nil }
+        return items.first { $0.id == detailItemID }
+    }
+
+    func showItemDetail(_ item: JunkItem) {
+        detailItemID = item.id
+    }
+
+    func dismissItemDetail() {
+        detailItemID = nil
+    }
+
+    /// Closes the detail sheet when the entry it shows is one of these.
+    /// See `detailItemID` for why the id is cleared rather than left to
+    /// resolve to nil.
+    private func closeDetailIfShowing(anyOf ids: Set<String>) {
+        if let detailItemID, ids.contains(detailItemID) { self.detailItemID = nil }
+    }
+
+    /// Cleans exactly one entry on its own — the item detail sheet's action.
+    ///
+    /// The same engine, checks and preference as a batch clean (see
+    /// `beginClean`), at the scale of one entry: the sheet asks first, then
+    /// this runs and returns the single outcome so a failure can be shown
+    /// where it happened. Reusing the engine rather than calling the removal
+    /// seam directly keeps the protected-path, vnode-identity and
+    /// running-app checks — and the move-to-Trash preference — identical for
+    /// one entry and for a whole selection.
+    ///
+    /// A successful clean drops the entry from the list, which also closes
+    /// the sheet: its binding resolves the live entry.
+    func cleanSingle(_ item: JunkItem) async -> CleanOutcome {
+        var outcome: CleanOutcome?
+        for await event in CleanEngine.clean(items: [item], moveToTrash: moveToTrash) {
+            if case .outcome(let result) = event { outcome = result }
+        }
+        // The engine yields exactly one outcome per entry before it
+        // finishes; a stream that ends without one is a bug, not a user
+        // failure, and is reported as one rather than trapped on.
+        guard let outcome else {
+            return CleanOutcome(
+                id: item.id, itemID: item.id, title: item.title, path: item.path,
+                reclaimed: 0, succeeded: false, message: L10n.tr("clean.error.noOutcome")
+            )
+        }
+        guard outcome.succeeded else {
+            MackitLog.clean.error("single item clean failed \"\(item.title, privacy: .public)\": \(outcome.message, privacy: .public)")
+            return outcome
+        }
+        removeItem(id: item.id)
+        volumeUsage = .home()
+        showToast(.success, outcome.movedToTrash
+            ? L10n.fmt("toast.trashed", item.title)
+            : L10n.fmt("toast.reclaimed", Formatters.bytes(outcome.reclaimed)))
+        return outcome
     }
 
     // MARK: - Settings Persistence
@@ -2422,6 +2510,7 @@ final class AppViewModel {
     private func dropIgnoredItems() {
         let stale = Set(items.filter(isIgnored).map(\.id))
         guard !stale.isEmpty else { return }
+        closeDetailIfShowing(anyOf: stale)
         selectionState.discard(stale)
         items.removeAll { stale.contains($0.id) }
         listedIndex = ListedPathIndex(items: items)
