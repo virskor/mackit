@@ -136,7 +136,20 @@ enum MenuBarStatsImage {
             let valueBaseline = top + item.valueAscent
             let labelBaseline = valueBaseline + lineGap + item.labelAscent
 
-            context.textPosition = CGPoint(x: x, y: barHeight - valueBaseline)
+            // Both lines share the group's center, so the label sits centered
+            // below the value whatever drove the group's width. The value used
+            // to be drawn at the group's left edge, which only agrees with the
+            // centered label while the value itself is the widest thing in the
+            // group: a group widened by a long label or by a wide reserved
+            // value left the two lines offset by up to half the difference —
+            // in Russian the reserved thermal word "Критическая" is more than
+            // twice the width of the "55°C" it stands in for, drifting the
+            // label a visible distance right of the value. The value's own
+            // width centers it, not the reserved one: centering by the reserve
+            // would pin a two-digit "64%" back to the left edge of a group
+            // sized for "100%".
+            let valueX = x + (item.width - item.valueWidth) / 2
+            context.textPosition = CGPoint(x: valueX, y: barHeight - valueBaseline)
             CTLineDraw(item.value, context)
 
             let labelX = x + (item.width - item.labelWidth) / 2
@@ -179,6 +192,10 @@ enum MenuBarStatsImage {
         /// Group width = max(value width, label width). The short label is centered within the group.
         let width: CGFloat
         let labelWidth: CGFloat
+        /// The value's own typographic width — not the reserved one, which covers
+        /// every rendering the value may take. Centering the value as drawn
+        /// needs the width of the string actually being drawn.
+        let valueWidth: CGFloat
         let valueAscent: CGFloat
         let labelAscent: CGFloat
         /// Height of the two-line block: value line + gap + label line.
@@ -196,7 +213,8 @@ enum MenuBarStatsImage {
         // Critical); without a fixed width, the menu bar item would jitter wider and
         // narrower whenever the state changes.
         let value = line(metric.value, size: valueSize, weight: .semibold, alpha: 1, monospacedDigits: true)
-        var bounds = typographicBounds(of: value)
+        let valueBounds = typographicBounds(of: value)
+        var bounds = valueBounds
         for alternative in metric.alternativeValues {
             let candidate = typographicBounds(
                 of: line(alternative, size: valueSize, weight: .semibold, alpha: 1, monospacedDigits: true)
@@ -209,6 +227,7 @@ enum MenuBarStatsImage {
             label: label,
             width: max(bounds.width, labelBounds.width),
             labelWidth: labelBounds.width,
+            valueWidth: valueBounds.width,
             valueAscent: bounds.ascent,
             labelAscent: labelBounds.ascent,
             height: bounds.ascent + lineGap + labelBounds.ascent + labelBounds.descent
