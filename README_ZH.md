@@ -203,8 +203,6 @@ Text(verbatim: L10n.items(count))                         // "N 项"，复数已
 
 界面语言选择在 `Utilities/AppLanguage.swift`："跟随系统"外加八种语言，存于 UserDefaults 的 `appLanguage`，并镜像进 App 域的 `AppleLanguages`——CFBundle 的字符串查找读这个键，因此重启后生效（Sparkle 的更新界面与系统文件面板也随之切换）。为什么是重启而不是进程内切换：扫描结果的标题与描述在创建时即以当前语言定稿，进程内刷新只会得到一份中英混杂的列表（详见源码注释）。
 
-两个复数键（`.one` / `.other`）必须保持相同的占位符布局——`.one` 也要有 `%lld`，只把名词换成单数形式；否则 `%@` 会收到整数，界面首次渲染即崩溃。
-
 ### 日志
 
 生命周期事件（扫描 / 清理的开始、完成、取消、失败）与窗口形态变化统一走 `os.Logger`（subsystem = bundle ID），release 构建同样记录。两个进程各按自己的 subsystem 记录：主 App 是 `cn.mingcui.mackit`，托盘代理是 `cn.mingcui.mackit.agent`。实时查看：

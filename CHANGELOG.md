@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.17] - 2026-11-03
+
+### Added
+
+- **Russian, Spanish and French join the interface languages** — every screen is translated in all three, selectable in Settings or followed from the system language, and Russian count phrases follow Russian grammar (1 файл / 2 файла / 5 файлов).
+
 ## [1.0.16] - 2026-11-02
 
 ### Added
@@ -13,7 +19,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **An ignore list keeps chosen entries and rules out of every later scan** — right-click any scan result to ignore that path or its whole rule, manage both lists in the new settings tab, and the choice survives restarts and reaches the tray agent.
 - **Leftover caches of removed apps are now listed for cleaning** — the scan enumerates the shared cache pools once, subtracts every path the static rules and the installed apps already claim — including a live app's helper and extension cache spellings — and offers only the unclaimed remainder as an opt-in row.
 - **Xcode's device logs join the cleanup list** — the logs collected from connected devices are re-collected on the next connect, and the rule sits at the same review level as the device-support files.
-- **Russian, Spanish and French join the interface languages** — every screen, scan result and menu is translated in all three, selectable in Settings beside the existing five or followed from the system language, and Russian count phrases now follow Russian grammar (1 файл / 2 файла / 5 файлов) instead of the two-form English rule.
 
 ### Changed
 

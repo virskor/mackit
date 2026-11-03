@@ -4,12 +4,15 @@ import Testing
 
 @testable import Mackit
 
-/// Width stability of the menu bar label image.
+/// Width stability of the menu bar label image, and the value's horizontal
+/// placement inside its group.
 ///
 /// The whole item is a single template image whose width follows its text: a
 /// value that changes length on every poll (7% → 47%) widens and narrows the
 /// item, which the menu bar renders as the icon jumping sideways. Each group
-/// therefore has to reserve the widest width it can ever need.
+/// therefore has to reserve the widest width it can ever need. The value is
+/// drawn centered in its group whatever drove the group's width, so the two
+/// lines share one center.
 @MainActor
 struct MenuBarStatsImageTests {
     /// A percentage group keeps one width from 7% through 100%.
@@ -73,6 +76,58 @@ struct MenuBarStatsImageTests {
         let empty = MenuBarStatsImage.image(metrics: [], barHeight: 38, showIcon: false)
 
         #expect(empty.size.width > 0)
+    }
+
+    /// The value is centered in its group even when the label is the widest
+    /// thing in it — it used to be drawn at the group's left edge, which only
+    /// agrees with the centered label while the value itself drives the width.
+    @Test func valueIsCenteredWhenTheLabelIsWider() throws {
+        // One group, icon off: the image is exactly the group, so the group's
+        // center is the image's center.
+        let image = MenuBarStatsImage.image(
+            metrics: [.init(value: "47%", label: "a much wider label")],
+            barHeight: 22,
+            showIcon: false
+        )
+
+        let (centroid, deviceWidth) = try #require(inkCentroid(of: image))
+        // Both lines are drawn centered, so a correct image has its centroid
+        // on the center line. Measured against the drawing pipeline: the
+        // centered draw lands 0.05px off it, a left-edge-drawn value drags it
+        // ~21 device pixels (10.7pt) off. Four pixels of slack covers glyph
+        // side bearings; beyond it the two lines no longer share the center.
+        #expect(
+            abs(centroid - deviceWidth / 2) <= 4,
+            "the ink center is \(centroid)px in a \(deviceWidth)px-wide group"
+        )
+    }
+
+    /// The horizontal centroid of the image's ink, in device pixels, plus the
+    /// image's device width. A template image's ink is entirely in the alpha
+    /// channel.
+    private func inkCentroid(of image: NSImage) -> (x: CGFloat, width: CGFloat)? {
+        var rect = CGRect(origin: .zero, size: image.size)
+        guard let cgImage = image.cgImage(forProposedRect: &rect, context: nil, hints: nil),
+              let data = cgImage.dataProvider?.data,
+              let bytes = CFDataGetBytePtr(data as CFData) else { return nil }
+
+        // Drawn premultiplied-last: four bytes per pixel, alpha last
+        let bytesPerPixel = cgImage.bitsPerPixel / 8
+        guard bytesPerPixel == 4, cgImage.alphaInfo == .premultipliedLast else { return nil }
+
+        var weighted: CGFloat = 0
+        var total: CGFloat = 0
+        for y in 0..<cgImage.height {
+            for x in 0..<cgImage.width {
+                let alpha = CGFloat(bytes[y * cgImage.bytesPerRow + x * bytesPerPixel + 3])
+                if alpha > 0 {
+                    weighted += CGFloat(x) * alpha
+                    total += alpha
+                }
+            }
+        }
+        guard total > 0 else { return nil }
+        return (weighted / total, CGFloat(cgImage.width))
     }
 
     private func width(value: String, alternatives: [String] = []) -> CGFloat {

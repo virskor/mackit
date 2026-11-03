@@ -200,8 +200,6 @@ To add a language: translate it in the catalog (open it in Xcode, click `+` at t
 
 Interface language selection lives in `Utilities/AppLanguage.swift`: "Follow system" plus eight languages, stored in UserDefaults under `appLanguage` and mirrored into the app domain's `AppleLanguages` — CFBundle's string lookup reads that key, so it takes effect after a restart (Sparkle's update UI and system file panels follow too). Why a restart instead of an in-process switch: scan result titles and descriptions are frozen in the current language when created, so an in-process refresh would only produce a mixed-language list (see the source comments for details).
 
-The two plural keys (`.one` / `.other`) must keep the same placeholder layout — `.one` needs `%lld` too, with only the noun made singular; otherwise `%@` receives an integer and the UI crashes on first render.
-
 ### Logging
 
 Lifecycle events (scan / clean start, completion, cancellation, failure) and window-shape changes all go through a unified `os.Logger` (subsystem = bundle ID), recorded in release builds too. Each process logs under its own subsystem: `cn.mingcui.mackit` for the main app, `cn.mingcui.mackit.agent` for the tray agent. Watch live:

@@ -62,7 +62,9 @@ struct HomebrewOutcome: Equatable, Sendable {
                 return L10n.tr("homebrew.result.cleanedNone")
             case .autoremove:
                 if let measure, measure > 0 {
-                    // `measure` counts bytes as Int64; the plural helper counts in Int
+                    // `measure` rides the shared Int64 field: bytes on the
+                    // cleanup path, the autoremove formula count here — the
+                    // plural helper counts in Int
                     return L10n.fmt(L10n.plural("homebrew.result.autoremoved", Int(measure)), measure)
                 }
                 return L10n.tr("homebrew.result.autoremovedNone")

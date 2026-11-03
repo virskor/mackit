@@ -142,12 +142,12 @@ enum MenuBarStatsImage {
             // centered label while the value itself is the widest thing in the
             // group: a group widened by a long label or by a wide reserved
             // value left the two lines offset by up to half the difference —
-            // in Russian the reserved thermal word "Критическая" is more than
-            // twice the width of the "55°C" it stands in for, drifting the
-            // label a visible distance right of the value. The value's own
-            // width centers it, not the reserved one: centering by the reserve
-            // would pin a two-digit "64%" back to the left edge of a group
-            // sized for "100%".
+            // in Russian the reserved thermal word "Перегрев" is twice the
+            // width of the "110°" it stands in for (63pt against 31pt),
+            // drifting the label a visible distance right of the value. The
+            // value's own width centers it, not the reserved one: centering by
+            // the reserve would pin a two-digit "64%" back to the left edge of
+            // a group sized for "100%".
             let valueX = x + (item.width - item.valueWidth) / 2
             context.textPosition = CGPoint(x: valueX, y: barHeight - valueBaseline)
             CTLineDraw(item.value, context)

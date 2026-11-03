@@ -203,8 +203,6 @@ Text(verbatim: L10n.items(count))                         // "N 項"，複數已
 
 介面語言選擇在 `Utilities/AppLanguage.swift`："跟隨系統"外加八種語言，存於 UserDefaults 的 `appLanguage`，並鏡像進 App 域的 `AppleLanguages`——CFBundle 的字串查找讀這個鍵，因此重啟後生效（Sparkle 的更新介面與系統文件面板也隨之切換）。為什麼是重啟而不是程序內切換：掃描結果的標題與描述在創建時即以當前語言定稿，程序內重新整理只會得到一份中英混雜的列表（詳見原始碼註釋）。
 
-兩個複數鍵（`.one` / `.other`）必須保持相同的佔位符布局——`.one` 也要有 `%lld`，只把名詞換成單數形式；否則 `%@` 會收到整數，介面首次渲染即崩潰。
-
 ### 日誌
 
 生命周期事件（掃描 / 清理的開始、完成、取消、失敗）與視窗形態變化統一走 `os.Logger`（subsystem = bundle ID），release 建置同樣記錄。兩個程序各按自己的 subsystem 記錄：主 App 是 `cn.mingcui.mackit`，托盤代理是 `cn.mingcui.mackit.agent`。實時查看：
