@@ -12,7 +12,7 @@
 [![Release](https://img.shields.io/github/v/release/virskor/mackit?style=flat-square)](https://github.com/virskor/mackit/releases)
 [![Downloads](https://img.shields.io/github/downloads/virskor/mackit/total?style=flat-square)](https://github.com/virskor/mackit/releases)
 
-[简体中文](README_ZH.md) · [繁體中文](README_ZH_HANT.md) · [English](README.md) · [한국어](README_KO.md) · [日本語](README_JA.md)
+[简体中文](README_ZH.md) · [繁體中文](README_ZH_HANT.md) · [English](README.md) · [한국어](README_KO.md) · [日本語](README_JA.md) · [Русский](README_RU.md) · [Español](README_ES.md) · [Français](README_FR.md)
 
 🌐 [官方网站 / 落地页](https://www.mingcui.cn) · ⬇️ [下载](https://www.mingcui.cn/download/mackit)
 
