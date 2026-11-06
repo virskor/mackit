@@ -114,7 +114,8 @@ swift test
 | 빌드 산출물 | node_modules, build, Pods, .gradle, .dart_tool, DerivedData, dist, target, .venv, __pycache__ 등 |
 | Xcode | DerivedData, Archives, iOS/watchOS DeviceSupport, DocumentationCache, 모듈 캐시 |
 | 시뮬레이터 | dyld 캐시, 기기 내 앱 캐시, 기기 임시 디렉토리, 시뮬레이터 로그 |
-| Android / Gradle | Gradle 캐시, wrapper 배포판, 데몬 로그, Android Studio 캐시, Kotlin/Native, Maven 저장소 |
+| Java | Gradle 캐시, wrapper 배포판, 데몬 로그, Gradle JDK, Maven 저장소 |
+| Android | Android SDK 캐시, Android Studio 캐시, Kotlin/Native |
 | Node / 프론트엔드 | npm `_cacache`, Yarn, pnpm store, Bun, node-gyp, TypeScript, ESLint, Deno |
 | Flutter / Dart | pub-cache(hosted / git / temp), Dart Analysis Server |
 | Go | go-build 캐시, 모듈 다운로드 캐시 |

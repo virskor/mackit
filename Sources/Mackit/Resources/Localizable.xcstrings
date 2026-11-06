@@ -1458,7 +1458,7 @@
         }
       }
     },
-    "rule.android.gradle-caches.title": {
+    "rule.java.gradle-caches.title": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1510,7 +1510,7 @@
         }
       }
     },
-    "rule.android.gradle-caches.note": {
+    "rule.java.gradle-caches.note": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1562,7 +1562,7 @@
         }
       }
     },
-    "rule.android.gradle-wrapper.title": {
+    "rule.java.gradle-wrapper.title": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1614,7 +1614,7 @@
         }
       }
     },
-    "rule.android.gradle-wrapper.note": {
+    "rule.java.gradle-wrapper.note": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1666,7 +1666,7 @@
         }
       }
     },
-    "rule.android.gradle-daemon-logs.title": {
+    "rule.java.gradle-daemon-logs.title": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -1718,7 +1718,7 @@
         }
       }
     },
-    "rule.android.gradle-daemon-logs.note": {
+    "rule.java.gradle-daemon-logs.note": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2082,7 +2082,7 @@
         }
       }
     },
-    "rule.android.maven.title": {
+    "rule.java.maven.title": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -2134,7 +2134,7 @@
         }
       }
     },
-    "rule.android.maven.note": {
+    "rule.java.maven.note": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -11603,49 +11603,49 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Android / Gradle"
+            "value": "Android"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Android / Gradle"
+            "value": "Android"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Android / Gradle"
+            "value": "Android"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Android / Gradle"
+            "value": "Android"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Android / Gradle"
+            "value": "Android"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Android / Gradle"
+            "value": "Android"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Android / Gradle"
+            "value": "Android"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Android / Gradle"
+            "value": "Android"
           }
         }
       }
@@ -11655,49 +11655,49 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gradle 与 Android Studio 缓存"
+            "value": "Android SDK 与 Android Studio 缓存"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gradle and Android Studio caches"
+            "value": "Android SDK and Android Studio caches"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gradle 與 Android Studio 快取"
+            "value": "Android SDK 與 Android Studio 快取"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gradle 및 Android Studio 캐시"
+            "value": "Android SDK 및 Android Studio 캐시"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "GradleとAndroid Studioのキャッシュ"
+            "value": "Android SDKとAndroid Studioのキャッシュ"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Кэши Gradle и Android Studio"
+            "value": "Кэши Android SDK и Android Studio"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cachés de Gradle y Android Studio"
+            "value": "Cachés del SDK de Android y Android Studio"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Caches de Gradle et d'Android Studio"
+            "value": "Caches du SDK Android et d'Android Studio"
           }
         }
       }
@@ -45918,7 +45918,7 @@
         }
       }
     },
-    "rule.android.gradle-jdks.title": {
+    "rule.java.gradle-jdks.title": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -45970,7 +45970,7 @@
         }
       }
     },
-    "rule.android.gradle-jdks.note": {
+    "rule.java.gradle-jdks.note": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -57458,6 +57458,110 @@
           "stringUnit": {
             "state": "translated",
             "value": "Le nettoyage n'a renvoyé aucun résultat ; réessayez"
+          }
+        }
+      }
+    },
+    "category.java.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Java"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Java"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Java"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Java"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Java"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Java"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Java"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Java"
+          }
+        }
+      }
+    },
+    "category.java.summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle、Maven 与 JDK 的缓存"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle, Maven and JDK caches"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle、Maven 與 JDK 的快取"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle, Maven 및 JDK 캐시"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gradle、MavenとJDKのキャッシュ"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кэши Gradle, Maven и JDK"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cachés de Gradle, Maven y JDK"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caches de Gradle, Maven et du JDK"
           }
         }
       }

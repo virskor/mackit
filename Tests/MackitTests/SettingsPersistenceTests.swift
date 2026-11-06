@@ -203,4 +203,17 @@ struct SettingsPersistenceTests {
 
         #expect(vm.collectCrashLogs == true)
     }
+
+    /// A rule ignored before it was renamed must stay ignored: the list stores
+    /// ids, so an unmigrated entry would match nothing and the rule would
+    /// quietly reappear in every later scan.
+    @Test func renamedIgnoredRuleIsMigratedOnLoad() {
+        let vm = AppViewModel(statsPolling: false)
+
+        vm.loadSettings(from: [
+            "ignoredRules": ["android.gradle-jdks", "browser.chrome-cache"],
+        ])
+
+        #expect(vm.ignoredRules == ["java.gradle-jdks", "browser.chrome-cache"])
+    }
 }

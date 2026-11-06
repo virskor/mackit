@@ -112,7 +112,8 @@ Keyboard shortcuts:
 | Build artifacts | node_modules, build, Pods, .gradle, .dart_tool, DerivedData, dist, target, .venv, __pycache__, etc. |
 | Xcode | DerivedData, Archives, iOS/watchOS DeviceSupport, DocumentationCache, module caches |
 | Simulators | dyld caches, in-device app caches, device temp dirs, simulator logs |
-| Android / Gradle | Gradle caches, wrapper distributions, daemon logs, Android Studio caches, Kotlin/Native, Maven repo |
+| Java | Gradle caches, wrapper distributions, daemon logs, Gradle JDKs, Maven repo |
+| Android | Android SDK caches, Android Studio caches, Kotlin/Native |
 | Node / frontend | npm `_cacache`, Yarn, pnpm store, Bun, node-gyp, TypeScript, ESLint, Deno |
 | Flutter / Dart | pub-cache (hosted / git / temp), Dart Analysis Server |
 | Go | go-build cache, module download cache |

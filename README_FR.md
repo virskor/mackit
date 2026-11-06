@@ -114,7 +114,8 @@ Raccourcis clavier :
 | Artéfacts de compilation | node_modules, build, Pods, .gradle, .dart_tool, DerivedData, dist, target, .venv, __pycache__, etc. |
 | Xcode | DerivedData, Archives, DeviceSupport iOS/watchOS, DocumentationCache, caches de modules |
 | Simulateurs | caches dyld, caches d'apps sur l'appareil, dossiers temporaires de l'appareil, journaux du simulateur |
-| Android / Gradle | caches Gradle, distributions du wrapper, journaux du daemon, caches Android Studio, Kotlin/Native, dépôt Maven |
+| Java | caches Gradle, distributions du wrapper, journaux du daemon, JDK de Gradle, dépôt Maven |
+| Android | caches du SDK Android, caches Android Studio, Kotlin/Native |
 | Node / frontend | npm `_cacache`, Yarn, pnpm store, Bun, node-gyp, TypeScript, ESLint, Deno |
 | Flutter / Dart | pub-cache (hosted / git / temp), Dart Analysis Server |
 | Go | cache go-build, cache de téléchargement des modules |

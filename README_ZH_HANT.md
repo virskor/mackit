@@ -115,7 +115,8 @@ swift test
 | 建置產物 | node_modules、build、Pods、.gradle、.dart_tool、DerivedData、dist、target、.venv、__pycache__ 等 |
 | Xcode | DerivedData、Archives、iOS/watchOS DeviceSupport、DocumentationCache、模組快取 |
 | 模擬器 | dyld 快取、設備內應用快取、設備臨時目錄、模擬器日誌 |
-| Android / Gradle | Gradle 快取、wrapper 發行包、常駐程式日誌、Android Studio 快取、Kotlin/Native、Maven 倉庫 |
+| Java | Gradle 快取、wrapper 發行包、常駐程式日誌、Gradle JDK、Maven 倉庫 |
+| Android | Android SDK 快取、Android Studio 快取、Kotlin/Native |
 | Node / 前端 | npm `_cacache`、Yarn、pnpm store、Bun、node-gyp、TypeScript、ESLint、Deno |
 | Flutter / Dart | pub-cache（hosted / git / temp）、Dart Analysis Server |
 | Go | go-build 快取、模組下載快取 |

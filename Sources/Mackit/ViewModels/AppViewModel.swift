@@ -2189,7 +2189,11 @@ final class AppViewModel {
         ignoredPaths = Set((values["ignoredPaths"] as? [String] ?? [])
             .filter { !$0.isEmpty && seenPaths.insert($0).inserted })
         var seenRules = Set<String>()
+        // Renamed rules are migrated on the way in: the ignore list holds ids,
+        // and a rule that was renamed would otherwise stop matching and come
+        // back into every later scan despite the user having ignored it.
         ignoredRules = Set((values["ignoredRules"] as? [String] ?? [])
+            .map(RulesCatalog.currentRuleID(forStoredID:))
             .filter { !$0.isEmpty && seenRules.insert($0).inserted })
         // The three monitoring toggles default to all on: the monitoring
         // section is a feature the user actively asks for, and defaulting

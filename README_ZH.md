@@ -115,7 +115,8 @@ swift test
 | 构建产物 | node_modules、build、Pods、.gradle、.dart_tool、DerivedData、dist、target、.venv、__pycache__ 等 |
 | Xcode | DerivedData、Archives、iOS/watchOS DeviceSupport、DocumentationCache、模块缓存 |
 | 模拟器 | dyld 缓存、设备内应用缓存、设备临时目录、模拟器日志 |
-| Android / Gradle | Gradle 缓存、wrapper 发行包、守护进程日志、Android Studio 缓存、Kotlin/Native、Maven 仓库 |
+| Java | Gradle 缓存、wrapper 发行包、守护进程日志、Gradle JDK、Maven 仓库 |
+| Android | Android SDK 缓存、Android Studio 缓存、Kotlin/Native |
 | Node / 前端 | npm `_cacache`、Yarn、pnpm store、Bun、node-gyp、TypeScript、ESLint、Deno |
 | Flutter / Dart | pub-cache（hosted / git / temp）、Dart Analysis Server |
 | Go | go-build 缓存、模块下载缓存 |

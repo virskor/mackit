@@ -114,7 +114,8 @@ Atajos de teclado:
 | Artefactos de compilación | node_modules, build, Pods, .gradle, .dart_tool, DerivedData, dist, target, .venv, __pycache__, etc. |
 | Xcode | DerivedData, Archives, DeviceSupport de iOS/watchOS, DocumentationCache, cachés de módulos |
 | Simuladores | cachés de dyld, cachés de apps dentro del dispositivo, carpetas temporales del dispositivo, registros del simulador |
-| Android / Gradle | cachés de Gradle, distribuciones del wrapper, registros del daemon, cachés de Android Studio, Kotlin/Native, repositorio de Maven |
+| Java | cachés de Gradle, distribuciones del wrapper, registros del daemon, JDK de Gradle, repositorio de Maven |
+| Android | cachés del SDK de Android, cachés de Android Studio, Kotlin/Native |
 | Node / frontend | npm `_cacache`, Yarn, pnpm store, Bun, node-gyp, TypeScript, ESLint, Deno |
 | Flutter / Dart | pub-cache (hosted / git / temp), Dart Analysis Server |
 | Go | caché de go-build, caché de descarga de módulos |

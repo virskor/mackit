@@ -114,7 +114,8 @@ swift test
 | Артефакты сборки | node_modules, build, Pods, .gradle, .dart_tool, DerivedData, dist, target, .venv, __pycache__ и т. п. |
 | Xcode | DerivedData, Archives, DeviceSupport для iOS/watchOS, DocumentationCache, кэши модулей |
 | Симуляторы | кэши dyld, кэши приложений на устройстве, временные директории устройств, журналы симуляторов |
-| Android / Gradle | кэши Gradle, дистрибутивы оболочек (wrapper), журналы демонов, кэши Android Studio, Kotlin/Native, репозиторий Maven |
+| Java | кэши Gradle, дистрибутивы оболочек (wrapper), журналы демонов, JDK Gradle, репозиторий Maven |
+| Android | кэши Android SDK, кэши Android Studio, Kotlin/Native |
 | Node / фронтенд | npm `_cacache`, Yarn, хранилище pnpm, Bun, node-gyp, TypeScript, ESLint, Deno |
 | Flutter / Dart | pub-cache (hosted / git / temp), Dart Analysis Server |
 | Go | кэш go-build, кэш загрузки модулей |

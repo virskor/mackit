@@ -114,7 +114,8 @@ swift test
 | ビルド成果物 | node_modules、build、Pods、.gradle、.dart_tool、DerivedData、dist、target、.venv、__pycache__ など |
 | Xcode | DerivedData、Archives、iOS/watchOS DeviceSupport、DocumentationCache、モジュールキャッシュ |
 | シミュレータ | dyldキャッシュ、デバイス内のAppキャッシュ、デバイスのテンポラリディレクトリ、シミュレータのログ |
-| Android / Gradle | Gradleキャッシュ、wrapperのディストリビューション、デーモンのログ、Android Studioキャッシュ、Kotlin/Native、Mavenリポジトリ |
+| Java | Gradleキャッシュ、wrapperのディストリビューション、デーモンのログ、Gradle JDK、Mavenリポジトリ |
+| Android | Android SDKキャッシュ、Android Studioキャッシュ、Kotlin/Native |
 | Node / フロントエンド | npm `_cacache`、Yarn、pnpm store、Bun、node-gyp、TypeScript、ESLint、Deno |
 | Flutter / Dart | pub-cache（hosted / git / temp）、Dart Analysis Server |
 | Go | go-buildキャッシュ、モジュールのダウンロードキャッシュ |

@@ -56,6 +56,17 @@ struct RulesCatalogTests {
         }
     }
 
+    /// A renamed rule id has to point at a rule that still exists, and no live
+    /// rule may keep an id the map renames away — either mistake makes the
+    /// ignore list match nothing, so the rule silently returns to every scan.
+    @Test func renamedRuleIDsPointAtCurrentRules() {
+        let ids = Set(RulesCatalog.scanRules.map(\.id)).union(RulesCatalog.cliRules.map(\.id))
+        for (old, new) in RulesCatalog.renamedRuleIDs {
+            #expect(!ids.contains(old), "\(old) is still a live rule id")
+            #expect(ids.contains(new), "\(old) maps to \(new), which is not a rule")
+        }
+    }
+
     @Test func projectJunkScanFindsBuildArtifacts() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("mackit-project-\(UUID().uuidString)", isDirectory: true)

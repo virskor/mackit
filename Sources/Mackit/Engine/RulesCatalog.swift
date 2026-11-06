@@ -97,25 +97,7 @@ enum RulesCatalog {
             risk: .safe
         ),
 
-        // MARK: Android / Gradle
-        ScanRule(
-            id: "android.gradle-caches",
-            category: .android,
-            target: .children("${GRADLE_USER_HOME}/caches"),
-            risk: .safe
-        ),
-        ScanRule(
-            id: "android.gradle-wrapper",
-            category: .android,
-            target: .children("${GRADLE_USER_HOME}/wrapper/dists"),
-            risk: .safe
-        ),
-        ScanRule(
-            id: "android.gradle-daemon-logs",
-            category: .android,
-            target: .glob("${GRADLE_USER_HOME}/daemon/*/*.log"),
-            risk: .safe
-        ),
+        // MARK: Android
         ScanRule(
             id: "android.android-cache",
             category: .android,
@@ -128,13 +110,6 @@ enum RulesCatalog {
             category: .android,
             target: .children("${ANDROID_USER_HOME}/cache"),
             risk: .safe
-        ),
-        // JDK distributions the Gradle toolchain downloads; big re-downloads, hence review
-        ScanRule(
-            id: "android.gradle-jdks",
-            category: .android,
-            target: .children("${GRADLE_USER_HOME}/jdks"),
-            risk: .review
         ),
         ScanRule(
             id: "android.studio-caches",
@@ -150,9 +125,40 @@ enum RulesCatalog {
             target: .children("~/.konan"),
             risk: .review
         ),
+
+        // MARK: Java / JVM
+        // Gradle and Maven build the JVM project whether it targets Android or
+        // not, so their caches belong to the Java toolchain rather than to the
+        // Android SDK rules they used to sit beside. GRADLE_USER_HOME defaults
+        // to ~/.gradle; every Gradle path below lives inside it.
         ScanRule(
-            id: "android.maven",
-            category: .android,
+            id: "java.gradle-caches",
+            category: .java,
+            target: .children("${GRADLE_USER_HOME}/caches"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "java.gradle-wrapper",
+            category: .java,
+            target: .children("${GRADLE_USER_HOME}/wrapper/dists"),
+            risk: .safe
+        ),
+        ScanRule(
+            id: "java.gradle-daemon-logs",
+            category: .java,
+            target: .glob("${GRADLE_USER_HOME}/daemon/*/*.log"),
+            risk: .safe
+        ),
+        // JDK distributions the Gradle toolchain downloads; big re-downloads, hence review
+        ScanRule(
+            id: "java.gradle-jdks",
+            category: .java,
+            target: .children("${GRADLE_USER_HOME}/jdks"),
+            risk: .review
+        ),
+        ScanRule(
+            id: "java.maven",
+            category: .java,
             target: .directory("~/.m2/repository"),
             risk: .review
         ),
@@ -964,7 +970,7 @@ enum RulesCatalog {
         ),
         CLIRule(
             id: "cli.gradle-cache",
-            category: .android,
+            category: .java,
             executable: "gradle",
             arguments: ["--stop"],
             title: "gradle --stop",
@@ -1020,4 +1026,25 @@ enum RulesCatalog {
             sizeHints: ["${CRYSTAL_CACHE_DIR}"]
         )
     ]
+
+    /// Rule ids renamed after they had already been persisted. The ignore list
+    /// stores ids in the shared settings file, so a rename without this map
+    /// would silently bring an ignored rule back into every later scan.
+    ///
+    /// The Gradle and Maven rules left the Android category when the Java
+    /// category was split out of it; only the ids changed, not the paths.
+    static let renamedRuleIDs: [String: String] = [
+        "android.gradle-caches": "java.gradle-caches",
+        "android.gradle-wrapper": "java.gradle-wrapper",
+        "android.gradle-daemon-logs": "java.gradle-daemon-logs",
+        "android.gradle-jdks": "java.gradle-jdks",
+        "android.maven": "java.maven",
+    ]
+
+    /// Resolves a stored (possibly pre-rename) rule id to the catalog's current
+    /// one. Unknown ids pass through unchanged: a settings file may name a rule
+    /// from a newer build, and dropping it would lose the user's choice.
+    static func currentRuleID(forStoredID id: String) -> String {
+        renamedRuleIDs[id] ?? id
+    }
 }

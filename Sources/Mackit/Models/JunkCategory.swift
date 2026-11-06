@@ -8,6 +8,7 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
     case xcode
     case simulator
     case android
+    case java
     case go
     case node
     case flutter
@@ -53,6 +54,7 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
         case .xcode: return "hammer.fill"
         case .simulator: return "apps.iphone"
         case .android: return "cube.fill"
+        case .java: return "cup.and.saucer.fill"
         case .go: return "arrow.triangle.branch"
         case .node: return "square.stack.3d.up.fill"
         case .flutter: return "leaf.fill"
@@ -143,6 +145,7 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
         case .xcode: return .blue
         case .simulator: return .purple
         case .android: return .green
+        case .java: return .brown
         case .go: return .cyan
         case .node: return .mint
         case .flutter: return .teal
@@ -186,33 +189,34 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
         case .xcode: return 3
         case .simulator: return 4
         case .android: return 5
-        case .go: return 6
-        case .node: return 7
-        case .flutter: return 8
-        case .rust: return 9
-        case .python: return 10
-        case .ruby: return 11
-        case .php: return 12
-        case .dotnet: return 13
-        case .scala: return 14
-        case .haskell: return 15
-        case .clojure: return 16
-        case .elixir: return 17
-        case .lua: return 18
-        case .julia: return 19
-        case .ocaml: return 20
-        case .zig: return 21
-        case .nim: return 22
-        case .crystal: return 23
-        case .perl: return 24
-        case .pods: return 25
-        case .ide: return 26
-        case .browser: return 27
-        case .language: return 28
-        case .downloads: return 29
-        case .homebrew: return 30
-        case .system: return 31
-        case .trash: return 32
+        case .java: return 6
+        case .go: return 7
+        case .node: return 8
+        case .flutter: return 9
+        case .rust: return 10
+        case .python: return 11
+        case .ruby: return 12
+        case .php: return 13
+        case .dotnet: return 14
+        case .scala: return 15
+        case .haskell: return 16
+        case .clojure: return 17
+        case .elixir: return 18
+        case .lua: return 19
+        case .julia: return 20
+        case .ocaml: return 21
+        case .zig: return 22
+        case .nim: return 23
+        case .crystal: return 24
+        case .perl: return 25
+        case .pods: return 26
+        case .ide: return 27
+        case .browser: return 28
+        case .language: return 29
+        case .downloads: return 30
+        case .homebrew: return 31
+        case .system: return 32
+        case .trash: return 33
         }
     }
 
@@ -224,7 +228,7 @@ enum JunkCategory: String, CaseIterable, Identifiable, Sendable {
     /// guarantees no path is cleaned by both features.
     var scope: CleanupScope {
         switch self {
-        case .apps, .projects, .xcode, .simulator, .android, .go, .node, .flutter, .rust, .python, .ruby, .php, .dotnet, .scala, .haskell, .clojure, .elixir, .lua, .julia, .ocaml, .zig, .nim, .crystal, .perl, .pods, .ide, .homebrew:
+        case .apps, .projects, .xcode, .simulator, .android, .java, .go, .node, .flutter, .rust, .python, .ruby, .php, .dotnet, .scala, .haskell, .clojure, .elixir, .lua, .julia, .ocaml, .zig, .nim, .crystal, .perl, .pods, .ide, .homebrew:
             return .developer
         case .appJunk, .browser, .language, .downloads, .system, .trash:
             return .general

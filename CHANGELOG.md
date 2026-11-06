@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **An appearance picker in Settings chooses light, dark or following the system** — it applies to the main window, the tray panel and every sheet immediately, without a restart.
+- **Gradle, Maven and JDK caches now sit in a Java category of their own** — the Android category keeps the SDK, Android Studio and Kotlin/Native caches.
 
 ## [1.0.17] - 2026-11-03
 
