@@ -8,8 +8,8 @@ import Testing
 /// page depends on: the threshold filter (inclusive), allocated sizes and
 /// modification dates, the skip rules — symlinked children, `com.apple.*`
 /// system data (which would pop a TCC authorization dialog on macOS 26+),
-/// mount points, and the protected-path set — and the unreadable-directory
-/// count the finished event carries.
+/// mount points, the protected-path set and the Trash — and the
+/// unreadable-directory count the finished event carries.
 @Suite(.serialized)
 struct LargeFileScannerTests {
     /// The threshold the fixture is built around. Small on purpose: the
@@ -63,12 +63,18 @@ struct LargeFileScannerTests {
     private func scan(
         root: String,
         threshold: Int64,
-        protectedPaths: Set<String> = []
+        protectedPaths: Set<String> = [],
+        trashDirectory: URL? = nil
     ) async -> (files: [LargeFile], progressEvents: Int, unreadable: Int) {
         var files: [LargeFile] = []
         var progressEvents = 0
         var unreadable = 0
-        for await event in LargeFileScanner.scan(root: root, protectedPaths: protectedPaths, threshold: threshold) {
+        for await event in LargeFileScanner.scan(
+            root: root,
+            protectedPaths: protectedPaths,
+            threshold: threshold,
+            trashDirectory: trashDirectory
+        ) {
             switch event {
             case .progress:
                 progressEvents += 1
@@ -132,6 +138,52 @@ struct LargeFileScannerTests {
         // rule the disk analysis applies to the TCC-protected home trio.
         #expect(files.contains { $0.name == "hidden.bin" } == false)
         #expect(files.map(\.name).sorted() == ["a.bin", "b.bin", "c.bin", "root.bin"])
+    }
+
+    /// keep/{a,b}.bin plus .Trash/{t1,t2}.bin, all at the fixture threshold —
+    /// the Trash test's four-way would-be hit list.
+    private func makeTrashFixture() throws -> URL {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("mackit-large-file-trash-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        try write(size: 120_000, at: base.appendingPathComponent("keep/a.bin"))
+        try write(size: 120_000, at: base.appendingPathComponent("keep/b.bin"))
+        try write(size: 120_000, at: base.appendingPathComponent(".Trash/t1.bin"))
+        try write(size: 120_000, at: base.appendingPathComponent(".Trash/t2.bin"))
+        return base
+    }
+
+    @Test func trashDirectoryIsNeverEntered() async throws {
+        let base = try makeTrashFixture()
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        // The Trash's contents are already marked for removal, and the clean
+        // engine deletes in-Trash items outright, so a file sitting there
+        // must never be offered — the sheet would say "moved to Trash" over
+        // a permanent delete. The fixture's own Trash is passed in, because
+        // the walk resolves the real system Trash from the root's volume
+        // and a temp fixture cannot be it.
+        let (files, _, _) = await scan(
+            root: base.path,
+            threshold: threshold,
+            trashDirectory: base.appendingPathComponent(".Trash")
+        )
+
+        #expect(files.map(\.name).sorted() == ["a.bin", "b.bin"])
+    }
+
+    @Test func aFolderMerelyNamedTrashIsOrdinaryContent() async throws {
+        let base = try makeTrashFixture()
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        // The control: without the injection the walk resolves the *real*
+        // Trash from the fixture's volume — a folder under /var/folders can
+        // never be it — so a folder that merely carries the name is ordinary
+        // content and its files are listed. The exclusion is exact identity
+        // with the system Trash, not a name match.
+        let (files, _, _) = await scan(root: base.path, threshold: threshold)
+
+        #expect(files.map(\.name).sorted() == ["a.bin", "b.bin", "t1.bin", "t2.bin"])
     }
 
     @Test func hitCarriesTheFilesModificationDate() async throws {

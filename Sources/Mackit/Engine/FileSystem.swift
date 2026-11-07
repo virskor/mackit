@@ -21,6 +21,12 @@ enum FileSystem {
     /// simulator device cache rules entirely.
     static let systemDataPrefix = "com.apple."
 
+    /// Volume-root plumbing that must not be listed or traversed. These names
+    /// only ever exist at volume roots (and inside `.nofollow`'s mirror of
+    /// one), so matching them by name at any depth is safe and keeps every
+    /// walk from re-declaring the same set.
+    static let volumeMarkers: Set<String> = [".nofollow", ".resolve", ".vol", ".file"]
+
     /// Where simulator device data trees live. See `systemDataPrefix` for why
     /// the system-data skip does not apply beneath this root.
     static let simulatorDevicesRoot = expand("~/Library/Developer/CoreSimulator/Devices")
@@ -111,6 +117,10 @@ enum FileSystem {
         /// Bytes allocated to the entry. Regular files only: the kernel
         /// reports nothing here for directories.
         var allocatedSize: Int64
+        /// Logical size of the entry's data fork. Regular files only, and
+        /// only on filesystems that report it — the duplicate walk needs it
+        /// to group by content size without a per-file `stat`.
+        var logicalSize: Int64
         /// The entry is a mount point — the traversal boundary that keeps a
         /// whole other volume from being counted twice.
         var isMountPoint: Bool
@@ -146,7 +156,7 @@ enum FileSystem {
             commonattr: attrgroup_t(UInt32(ATTR_CMN_NAME) | UInt32(ATTR_CMN_RETURNED_ATTRS) | UInt32(ATTR_CMN_OBJTYPE)),
             volattr: 0,
             dirattr: attrgroup_t(UInt32(ATTR_DIR_MOUNTSTATUS)),
-            fileattr: attrgroup_t(UInt32(ATTR_FILE_ALLOCSIZE)),
+            fileattr: attrgroup_t(UInt32(ATTR_FILE_ALLOCSIZE) | UInt32(ATTR_FILE_DATALENGTH)),
             forkattr: 0
         )
         // 64 KB holds hundreds of records per call, and a single record is at
@@ -197,10 +207,19 @@ enum FileSystem {
                     // offset inside the record, so the aligned load would
                     // trap on the misaligned address.
                     allocatedSize = field.loadUnaligned(fromByteOffset: 0, as: off_t.self)
+                    field = field.advanced(by: 8)
+                }
+                // DATALENGTH follows ALLOCSIZE in fileattr bit order. A
+                // filesystem that does not report it leaves the default;
+                // callers that need the logical size fall back to the
+                // allocation in that case.
+                var logicalSize = allocatedSize
+                if returned.fileattr & UInt32(ATTR_FILE_DATALENGTH) != 0 {
+                    logicalSize = field.loadUnaligned(fromByteOffset: 0, as: off_t.self)
                 }
                 offset += Int(length)
                 if name.isEmpty { continue }
-                body(BulkEntry(name: name, type: type, allocatedSize: allocatedSize, isMountPoint: isMountPoint))
+                body(BulkEntry(name: name, type: type, allocatedSize: allocatedSize, logicalSize: logicalSize, isMountPoint: isMountPoint))
             }
         }
     }
@@ -234,6 +253,9 @@ enum FileSystem {
         let parentPath: String
         let isDirectory: Bool
         let isSymbolicLink: Bool
+        /// The entry is a regular file. Sockets, FIFOs and device nodes are
+        /// not directories but must not be read as content either.
+        let isRegularFile: Bool
         /// The entry is a mount point — another volume's root. The disk
         /// analysis skips these: their bytes belong to that volume's
         /// accounting, and a startup-disk scan reaches the data volume's
@@ -242,6 +264,9 @@ enum FileSystem {
         /// Bytes allocated to the entry. Regular files only — the kernel
         /// reports nothing here for directories.
         let allocatedSize: Int64
+        /// Logical size of the entry's data fork; 0 for directories. Equal
+        /// to `allocatedSize` on filesystems that do not report it.
+        let logicalSize: Int64
 
         /// Full path, computed rather than stored.
         ///
@@ -279,8 +304,10 @@ enum FileSystem {
                     parentPath: parentPath,
                     isDirectory: entry.type == VDIR,
                     isSymbolicLink: entry.type == VLNK,
+                    isRegularFile: entry.type == VREG,
                     isMountPoint: entry.isMountPoint,
-                    allocatedSize: entry.allocatedSize
+                    allocatedSize: entry.allocatedSize,
+                    logicalSize: entry.logicalSize
                 )
             )
         }
@@ -557,6 +584,35 @@ enum FileSystem {
             appropriateFor: anchor,
             create: false
         )
+    }
+
+    /// The Trash directory of the volume holding `directory`.
+    ///
+    /// `trashDirectory(for:)` anchors on the parent because the entry being
+    /// looked up may already be gone. A walk root is a directory that exists,
+    /// and a root that *is* a volume (`/Volumes/Archive`) would otherwise be
+    /// resolved through its parent on another volume — yielding the startup
+    /// disk's Trash and leaving the root's own `.Trashes` traversable.
+    static func trashDirectory(forDirectory directory: URL) -> URL? {
+        try? manager.url(
+            for: .trashDirectory,
+            in: .userDomainMask,
+            appropriateFor: directory,
+            create: false
+        )
+    }
+
+    /// Whether a walk must refuse to enter `path` as a Trash.
+    ///
+    /// `trashPath` is the Trash a walk resolves for its root. The exact path
+    /// is the user's own Trash (usually `~/.Trash`); a per-volume `.Trashes`
+    /// container is an ancestor of that path and holds other users' trashed
+    /// items, so it is excluded as well. The `.Trashes` name check keeps a
+    /// user folder that merely carries the name out of this rule.
+    static func isTrashDirectory(_ path: String, resolvingTo trashPath: String?) -> Bool {
+        guard let trashPath else { return false }
+        if path == trashPath { return true }
+        return lastComponent(of: path) == ".Trashes" && trashPath.hasPrefix(path + "/")
     }
 
     /// Whether `url` already sits inside a Trash directory.

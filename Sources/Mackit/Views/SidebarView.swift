@@ -71,6 +71,20 @@ struct SidebarView: View {
                 )
                 .help(L10n.tr("sidebar.largeFiles.help"))
 
+                // The duplicate-file tool sits directly under the large-file
+                // one: the two are the file-level pair, "which files are
+                // big" and "which content exists more than once", both
+                // answered one click apart.
+                row(
+                    icon: .symbol("doc.on.doc"),
+                    tint: Theme.Palette.info,
+                    title: L10n.tr("sidebar.duplicateFiles"),
+                    isSelected: vm.showsDuplicateFiles,
+                    isBusy: vm.duplicates.isScanning,
+                    action: { vm.showDuplicateFiles() }
+                )
+                .help(L10n.tr("sidebar.duplicateFiles.help"))
+
                 row(
                     icon: .symbol("shippingbox"),
                     tint: Theme.Palette.info,
@@ -137,7 +151,7 @@ struct SidebarView: View {
     /// sidebar has one selected item at a time, and switching pages has to
     /// clear the highlight.
     private var itemListIsActive: Bool {
-        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsLargeFiles && !vm.showsAppUninstall && !vm.showsLoginItems
+        !vm.showsSettings && !vm.showsHardware && !vm.showsGeneralCleanup && !vm.showsDiskAnalysis && !vm.showsHomebrew && !vm.showsLargeFiles && !vm.showsDuplicateFiles && !vm.showsAppUninstall && !vm.showsLoginItems
     }
 
     /// One sidebar row. The row itself — its single-line height, the trailing

@@ -192,8 +192,6 @@ final class LargeFilesModel {
     /// a test decide the unreadable-folders notice's answer without
     /// depending on the machine running the suite.
     private let fullDiskAccess: @MainActor @Sendable () -> Bool
-    /// The real icon of a file path.
-    private let iconForPath: @MainActor @Sendable (String) -> NSImage?
 
     private let rootPath: String
 
@@ -225,12 +223,7 @@ final class LargeFilesModel {
 
     /// The file-icon cache. Excluded from Observation: filling it during a
     /// render would add a pointless extra round of body recomputation.
-    /// Capped, with FIFO eviction — a walk can list thousands of paths and
-    /// every cached NSImage carries its full representation set; eviction is
-    /// cheap because an icon is a couple of syscalls to rebuild.
-    @ObservationIgnored private var iconCache: [String: NSImage] = [:]
-    @ObservationIgnored private var iconCacheOrder: [String] = []
-    private let iconCacheCapacity = 128
+    @ObservationIgnored private let iconCache: FileIconCache
 
     init(
         rootPath: String = "/",
@@ -249,7 +242,7 @@ final class LargeFilesModel {
         self.scan = scan
         self.clean = clean
         self.fullDiskAccess = fullDiskAccess
-        self.iconForPath = iconForPath
+        self.iconCache = FileIconCache(load: iconForPath)
     }
 
     // MARK: Lifecycle
@@ -390,19 +383,8 @@ final class LargeFilesModel {
 
     /// File icons, cached per path: `NSWorkspace.icon` is not free, and the
     /// list re-renders on every observation change.
-    ///
-    /// Capped: a walk can list thousands of paths, and each NSImage carries
-    /// its full representation set. Eviction is FIFO — an icon is a few
-    /// syscalls to rebuild, so the policy only has to be cheap.
     func icon(forPath path: String) -> NSImage {
-        if let cached = iconCache[path] { return cached }
-        let icon = iconForPath(path) ?? NSWorkspace.shared.icon(forFile: path)
-        if iconCacheOrder.count >= iconCacheCapacity {
-            iconCache.removeValue(forKey: iconCacheOrder.removeFirst())
-        }
-        iconCacheOrder.append(path)
-        iconCache[path] = icon
-        return icon
+        iconCache.icon(forPath: path)
     }
 
     // MARK: Walk

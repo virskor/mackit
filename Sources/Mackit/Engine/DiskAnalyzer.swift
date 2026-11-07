@@ -115,13 +115,6 @@ enum DiskAnalyzer {
     /// one explicit scan away (see `DiskEntry.isTruncated`).
     static let maxDepth = 6
 
-    /// Volume-root plumbing that must not be listed or traversed: the
-    /// firmlink marker dirs (macOS 26+) and the permission-less `.file`
-    /// placeholder. Skipped by name at any depth — they only ever exist at
-    /// volume roots and inside `.nofollow`'s mirror of one.
-    private static let systemMarkers: Set<String> = [".nofollow", ".resolve", ".vol", ".file"]
-
-
     /// Counts the directories a scan of `root` will visit, applying the same
     /// skip rules, so the scan can publish a real fraction and a remaining
     /// time instead of sweeping until the tree has been measured once.
@@ -196,7 +189,7 @@ enum DiskAnalyzer {
             counted += 1
             guard let children = FileSystem.directories(of: path) else { continue }
             for child in children {
-                if systemMarkers.contains(FileSystem.lastComponent(of: child)) { continue }
+                if FileSystem.volumeMarkers.contains(FileSystem.lastComponent(of: child)) { continue }
                 if protectedPaths.contains(child) { continue }
                 stack.append(child)
             }
@@ -384,7 +377,7 @@ enum DiskAnalyzer {
                 var children: [DiskEntry] = []
                 var subdirectories: [MeasureJob] = []
                 for entry in entries {
-                    if systemMarkers.contains(entry.name) { continue }
+                    if FileSystem.volumeMarkers.contains(entry.name) { continue }
                     if entry.isSymbolicLink { continue }
                     if entry.isDirectory {
                         // A mount point is another volume: not listed, not

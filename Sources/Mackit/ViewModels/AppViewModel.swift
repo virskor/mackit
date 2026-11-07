@@ -90,6 +90,11 @@ final class AppViewModel {
     /// are taking up the space", where the disk analysis answers it by
     /// directory tree.
     var showsLargeFiles: Bool = false
+    /// The duplicate-file tool row is selected in the sidebar: the detail
+    /// area switches to the analysis page, the same embedded-page pattern as
+    /// the other tools. This one answers "which content exists more than
+    /// once", where the large-file tool answers "which files are big".
+    var showsDuplicateFiles: Bool = false
     /// The startup-items tool row is selected in the sidebar: the detail
     /// area switches to the startup-items page, same embedded-page pattern
     /// again.
@@ -129,6 +134,12 @@ final class AppViewModel {
     /// survives page switches, and tests drive the page against a fixture
     /// walk instead of the real disk.
     let largeFiles: LargeFilesModel
+
+    /// State model of the duplicate-file tool page. Same session-lifetime
+    /// and injectability contract as the other tools: the scanned groups
+    /// survive page switches, and tests drive the page against a fixture
+    /// scan instead of the real disk.
+    let duplicates: DuplicatesModel
 
     /// State model of the startup-items tool page. Same session-lifetime
     /// and injectability contract as the other tools: the scanned item
@@ -339,11 +350,12 @@ final class AppViewModel {
     /// "emit one event, assert one snapshot" in tests. Visible within the
     /// module so tests can drive it directly; the default value is the
     /// app's startup behavior.
-    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel(), largeFiles: LargeFilesModel = LargeFilesModel(), loginItems: LoginItemsModel = LoginItemsModel(), crashLogs: CrashLogsModel = CrashLogsModel()) {
+    init(statsPolling: Bool = true, diskAnalysis: DiskAnalysisModel = DiskAnalysisModel(), homebrew: HomebrewModel = HomebrewModel(), appUninstall: AppUninstallModel = AppUninstallModel(), largeFiles: LargeFilesModel = LargeFilesModel(), duplicates: DuplicatesModel = DuplicatesModel(), loginItems: LoginItemsModel = LoginItemsModel(), crashLogs: CrashLogsModel = CrashLogsModel()) {
         self.diskAnalysis = diskAnalysis
         self.homebrew = homebrew
         self.appUninstall = appUninstall
         self.largeFiles = largeFiles
+        self.duplicates = duplicates
         self.loginItems = loginItems
         self.crashLogs = crashLogs
         // A remembered row selection is the one piece of selection state that
@@ -710,6 +722,7 @@ final class AppViewModel {
         dismissHomebrew()
         dismissAppUninstall()
         dismissLargeFiles()
+        dismissDuplicates()
         dismissLoginItems()
         hardwareProfile = HardwareSampler.profile()
     }
@@ -734,6 +747,7 @@ final class AppViewModel {
         dismissHomebrew()
         dismissAppUninstall()
         dismissLargeFiles()
+        dismissDuplicates()
         dismissLoginItems()
     }
 
@@ -750,6 +764,7 @@ final class AppViewModel {
         showsHomebrew = false
         showsAppUninstall = false
         showsLargeFiles = false
+        showsDuplicateFiles = false
         showsLoginItems = false
         if cleanPhase == .done { dismissCleanResult() }
         diskAnalysis.activate()
@@ -784,6 +799,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         showsAppUninstall = false
         showsLargeFiles = false
+        showsDuplicateFiles = false
         showsLoginItems = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
@@ -811,6 +827,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         showsHomebrew = false
         showsLargeFiles = false
+        showsDuplicateFiles = false
         showsLoginItems = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
@@ -838,6 +855,7 @@ final class AppViewModel {
         showsGeneralCleanup = false
         showsHomebrew = false
         showsAppUninstall = false
+        showsDuplicateFiles = false
         showsLoginItems = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
@@ -851,6 +869,34 @@ final class AppViewModel {
     private func dismissLargeFiles() {
         guard showsLargeFiles else { return }
         showsLargeFiles = false
+    }
+
+    /// Opens the duplicate-file tool page from the sidebar. Same
+    /// embedded-page pattern as the other tools: the detail area swaps
+    /// entirely and the main toolbar hides.
+    func showDuplicateFiles() {
+        guard !showsDuplicateFiles else { return }
+        showsDuplicateFiles = true
+        selectedCategory = nil
+        showsSettings = false
+        showsHardware = false
+        showsGeneralCleanup = false
+        showsHomebrew = false
+        showsAppUninstall = false
+        showsLargeFiles = false
+        showsLoginItems = false
+        dismissDiskAnalysis()
+        if cleanPhase == .done { dismissCleanResult() }
+        duplicates.activate()
+    }
+
+    /// Leaves the duplicate-file tool page. Deliberately does not touch the
+    /// scan — same contract as the other tools: the scan belongs to the
+    /// session, not to the page being visible, and an in-flight comparison
+    /// is the model's to keep or cancel.
+    private func dismissDuplicates() {
+        guard showsDuplicateFiles else { return }
+        showsDuplicateFiles = false
     }
 
     /// Opens the startup-items tool page from the sidebar. Same
@@ -867,6 +913,7 @@ final class AppViewModel {
         showsHomebrew = false
         showsAppUninstall = false
         showsLargeFiles = false
+        showsDuplicateFiles = false
         dismissDiskAnalysis()
         if cleanPhase == .done { dismissCleanResult() }
         loginItems.activate()
@@ -1699,6 +1746,7 @@ final class AppViewModel {
         dismissHomebrew()
         dismissAppUninstall()
         dismissLargeFiles()
+        dismissDuplicates()
         dismissLoginItems()
         if cleanPhase == .done { dismissCleanResult() }
     }
@@ -1714,6 +1762,7 @@ final class AppViewModel {
         dismissHomebrew()
         dismissAppUninstall()
         dismissLargeFiles()
+        dismissDuplicates()
         dismissLoginItems()
         if cleanPhase == .done { dismissCleanResult() }
     }

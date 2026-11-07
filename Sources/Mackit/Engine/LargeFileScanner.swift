@@ -67,6 +67,10 @@ enum LargeFileScanEvent: Sendable {
 /// - mount points are skipped entirely: another volume's bytes belong to that
 ///   volume's accounting, and a startup-disk walk reaches the data volume's
 ///   contents through the firmlinks;
+/// - the Trash is never entered: its contents are already marked for removal,
+///   and the clean engine deletes in-Trash items outright, so offering one
+///   would put a permanent delete behind the confirmation sheet's
+///   move-to-Trash wording;
 /// - `com.apple.*` system data is skipped by `FileSystem.entries`
 ///   (TCC-protected on macOS 26+);
 /// - the volume-root plumbing markers are skipped by name at any depth;
@@ -79,11 +83,6 @@ enum LargeFileScanEvent: Sendable {
 /// one — deleting one name of a hard-linked pair frees nothing, which is a
 /// fact the clean flow surfaces per item anyway.
 enum LargeFileScanner {
-    /// Volume-root plumbing that must not be listed or traversed. Same set,
-    /// same reason as the disk analysis: they only ever exist at volume roots
-    /// and inside `.nofollow`'s mirror of one.
-    private static let systemMarkers: Set<String> = [".nofollow", ".resolve", ".vol", ".file"]
-
     /// Walk `root`, reporting every regular file at or above `threshold`
     /// bytes. Cancelling the stream's consumer cancels the underlying walk.
     ///
@@ -92,16 +91,28 @@ enum LargeFileScanner {
     /// passes its session's set, the same contract the disk analysis scan
     /// has — a stale default would silently re-skip (or re-enter) folders the
     /// user already decided about.
+    ///
+    /// `trashDirectory` stands in for the system Trash in tests: a fixture
+    /// cannot be the real one, so a test passes its own and the walk
+    /// excludes that — the same seam `CleanEngine.removeFromDisk` uses.
+    /// Nil (the default) resolves the real Trash from `root`'s volume.
     static func scan(
         root: String,
         protectedPaths: Set<String>,
-        threshold: Int64
+        threshold: Int64,
+        trashDirectory: URL? = nil
     ) -> AsyncStream<LargeFileScanEvent> {
         AsyncStream(LargeFileScanEvent.self) { continuation in
             let task = Task.detached(priority: .userInitiated) {
                 let startedAt = ContinuousClock.now
                 let progress = LargeFileProgressGate(continuation)
-                let queue = WalkQueue(root: root)
+                let queue = ScanWalkQueue(root: root)
+                // Resolved once rather than per directory: the walk never
+                // crosses volumes (mount points are skipped), so the root's
+                // own Trash is the only one it can reach. Standardized to
+                // match the spelling the walk's joined paths produce.
+                let trashPath = (trashDirectory ?? FileSystem.trashDirectory(forDirectory: URL(fileURLWithPath: root)))?
+                    .standardizedFileURL.path
                 await withTaskGroup(of: Void.self) { group in
                     for _ in 0..<ScanEngine.maxConcurrentMeasurements {
                         group.addTask {
@@ -109,6 +120,7 @@ enum LargeFileScanner {
                                 queue: queue,
                                 protectedPaths: protectedPaths,
                                 threshold: threshold,
+                                trashPath: trashPath,
                                 progress: progress
                             )
                         }
@@ -139,9 +151,10 @@ enum LargeFileScanner {
     /// continuation keeps a cancelled worker waking up, the same choice the
     /// disk analysis's counting pass makes.
     private static func walkThroughQueue(
-        queue: WalkQueue,
+        queue: ScanWalkQueue,
         protectedPaths: Set<String>,
         threshold: Int64,
+        trashPath: String?,
         progress: LargeFileProgressGate
     ) async {
         while !Task.isCancelled {
@@ -153,7 +166,7 @@ enum LargeFileScanner {
             var subdirectories: [String] = []
             for path in batch {
                 if Task.isCancelled { break }
-                walk(path, protectedPaths: protectedPaths, threshold: threshold, progress: progress, into: &subdirectories)
+                walk(path, protectedPaths: protectedPaths, threshold: threshold, trashPath: trashPath, progress: progress, into: &subdirectories)
             }
             queue.push(contentsOf: subdirectories)
             queue.record()
@@ -166,6 +179,7 @@ enum LargeFileScanner {
         _ path: String,
         protectedPaths: Set<String>,
         threshold: Int64,
+        trashPath: String?,
         progress: LargeFileProgressGate,
         into subdirectories: inout [String]
     ) {
@@ -179,7 +193,7 @@ enum LargeFileScanner {
             return
         }
         for entry in entries {
-            if systemMarkers.contains(entry.name) { continue }
+            if FileSystem.volumeMarkers.contains(entry.name) { continue }
             // A symlinked child is neither followed nor listed: not followed
             // avoids double-counting the target and cycles; not listed keeps
             // the link's own few dozen bytes from ever passing the threshold.
@@ -189,8 +203,16 @@ enum LargeFileScanner {
                 // not entered (see the type comment).
                 if entry.isMountPoint { continue }
                 if protectedPaths.contains(entry.path) { continue }
+                // The Trash is the system's staging area for removal: its
+                // contents are already marked for deletion and the clean
+                // engine deletes in-Trash items outright, so a file sitting
+                // there must never be offered — the sheet would say "moved
+                // to Trash" over a permanent delete. The helper also covers
+                // the per-volume `.Trashes` container, not just the user's
+                // own Trash.
+                if FileSystem.isTrashDirectory(entry.path, resolvingTo: trashPath) { continue }
                 subdirectories.append(entry.path)
-            } else if entry.allocatedSize >= threshold {
+            } else if entry.isRegularFile, entry.allocatedSize >= threshold {
                 progress.found(LargeFile(
                     path: entry.path,
                     name: entry.name,
@@ -209,84 +231,6 @@ enum LargeFileScanner {
     /// rare files need would churn code the disk analysis also depends on.
     private static func modificationDate(of url: URL) -> Date? {
         (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-    }
-}
-
-/// The walk's shared work queue.
-///
-/// Workers take batches, walk them, and hand the batch back through `record`.
-/// A drained queue cannot tell a worker the walk is over on its own — another
-/// worker may be mid-enumeration with children still to push — so `working`
-/// tracks the workers holding a batch right now, and only an empty queue with
-/// none of them busy ends the walk. Same shape, and same reasoning, as the
-/// disk analysis counting pass's queue.
-///
-/// A lock rather than an actor: `push` runs once per batch, and the actor hop
-/// is cheap at that rate, but `nextBatch`'s take-and-count must be one
-/// atomic step — a worker that took a batch without yet counting itself busy
-/// would let another conclude the walk is over and exit with that batch's
-/// subdirectories never walked.
-private final class WalkQueue: Sendable {
-    private struct State {
-        var pending: [String] = []
-        /// Workers holding a batch right now — between taking one and handing
-        /// its result back. Subdirectories are pushed only while a batch is
-        /// held, so an empty queue with none of them means everything
-        /// discovered has been visited: the walk is over, not waiting.
-        var working = 0
-    }
-
-    private let state = OSAllocatedUnfairLock(initialState: State())
-
-    /// How many directories one worker takes per lock acquisition. Batching
-    /// keeps the lock traffic next to the enumerations rather than per
-    /// directory.
-    private static let batchSize = 64
-
-    init(root: String) {
-        state.withLock { $0.pending = [root] }
-    }
-
-    /// The next batch of directories, or nil when the walk is over.
-    func nextBatch() async -> [String]? {
-        while true {
-            let outcome = state.withLock { state -> Outcome? in
-                guard !state.pending.isEmpty else {
-                    return state.working == 0 ? .done : nil
-                }
-                let size = min(Self.batchSize, state.pending.count)
-                let batch = Array(state.pending.suffix(size))
-                state.pending.removeLast(size)
-                state.working += 1
-                return .batch(batch)
-            }
-            switch outcome {
-            case .batch(let batch):
-                return batch
-            case .done:
-                return nil
-            case nil:
-                if Task.isCancelled { return nil }
-                try? await Task.sleep(for: .milliseconds(2))
-            }
-        }
-    }
-
-    func push(contentsOf paths: [String]) {
-        guard !paths.isEmpty else { return }
-        state.withLock { $0.pending.append(contentsOf: paths) }
-    }
-
-    /// Hands a finished batch back. Taking the worker off `working` here —
-    /// after its subdirectories are already in the queue — is what makes the
-    /// empty-queue check above sound.
-    func record() {
-        state.withLock { $0.working -= 1 }
-    }
-
-    private enum Outcome {
-        case batch([String])
-        case done
     }
 }
 
