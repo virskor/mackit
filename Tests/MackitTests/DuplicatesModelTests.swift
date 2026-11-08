@@ -11,13 +11,18 @@ private let fixtureHome = "/Users/x"
 /// A group of `count` copies of one file, dated so the keeper choice is
 /// deterministic: copy `i` is `i` days older than copy `i-1`, and every path
 /// is spelled to the same length so the tie-break never interferes.
-private func fixtureGroup(id: String, count: Int, modified: Bool = true) -> DuplicateGroup {
+private func fixtureGroup(
+    id: String,
+    count: Int,
+    size: Int64 = 1_000_000,
+    modified: Bool = true
+) -> DuplicateGroup {
     let files = (0..<count).map { i -> DuplicateFile in
         let path = "\(fixtureHome)/set\(id)/copy\(i).bin"
         return DuplicateFile(
             path: path,
             name: "copy\(i).bin",
-            size: 1_000_000,
+            size: size,
             modified: modified ? Date(timeIntervalSince1970: 1_700_000_000 + Double(i) * 86_400) : nil,
             parentPath: "\(fixtureHome)/set\(id)",
             nodeIdentity: FileSystem.NodeIdentity(device: 1, node: UInt64(i + 1))
@@ -454,6 +459,32 @@ struct DuplicatesModelTests {
 
         model.searchText = ""
         #expect(model.groupsFullySelected == 1, "clearing the filter restores the warning")
+    }
+
+    @Test func sortOrdersGroupsByContentSizeInBothDirections() async {
+        // The triplet holds smaller copies and the pair larger ones, chosen
+        // so reclaimable bytes tie at 2 MB either way: the size sort must
+        // follow the content size, not the reclaimable figure the last scan
+        // happened to order by.
+        let model = makeModel(streams: [
+            { continuation in
+                continuation.yield(.found(fixtureGroup(id: "small", count: 3, size: 1_000_000)))
+                continuation.yield(.found(fixtureGroup(id: "large", count: 2, size: 2_000_000)))
+                continuation.yield(.finished(unreadableDirectories: 0, skippedLinkedFiles: 0))
+                continuation.finish()
+            }
+        ])
+
+        model.startScan()
+        await model.waitUntilSettled()
+
+        #expect(model.groups.map(\.id) == ["small", "large"], "groups keep emission order")
+        #expect(model.sort == .sizeDescending)
+        #expect(model.visibleGroups.map(\.id) == ["large", "small"])
+
+        model.sort = .sizeAscending
+        #expect(model.visibleGroups.map(\.id) == ["small", "large"])
+        #expect(model.groups.map(\.id) == ["small", "large"], "sorting is presentation only")
     }
 
     @Test func rescanAfterACleanLeavesTheResultCard() async {

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.19] - 2026-11-08
+
+### Added
+
+- **The duplicate-file tool can sort its groups by size** — a menu beside the threshold orders them largest-first (the new default) or smallest-first, and re-orders the groups already found while a scan is still running.
+
 ## [1.0.18] - 2026-11-07
 
 ### Added

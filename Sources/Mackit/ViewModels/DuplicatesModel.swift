@@ -19,7 +19,9 @@ import AppKit
 /// after emission — the digests are the verdict — so showing one the moment
 /// it lands shows nothing that is still moving. What still waits for the
 /// end is the order: the engine emits groups as its buckets complete, and
-/// the list is re-ordered by reclaimable bytes when the scan lands.
+/// the list is presented under the user's chosen sort when the scan lands
+/// (see `visibleGroups`), which also re-orders the groups already on screen
+/// mid-scan.
 ///
 /// Nothing arrives checked. A cleaner that pre-ticks deletions is one
 /// careless click away from removing files the user never looked at, so the
@@ -50,6 +52,38 @@ final class DuplicatesModel {
         var id: Int64 { rawValue }
 
         var label: String { Formatters.bytes(rawValue) }
+    }
+
+    /// The order the groups are listed in. The size is the group's content
+    /// size — the figure the group header and every member row print — the
+    /// duplicate-list counterpart of the large-file page's size sort. Both
+    /// directions: largest first is the "what is worth cleaning" read,
+    /// smallest first the "what did the threshold turn up" read.
+    enum Sort: String, CaseIterable, Identifiable {
+        case sizeDescending
+        case sizeAscending
+
+        var id: String { rawValue }
+
+        var title: String { L10n.tr("sort.\(rawValue)") }
+
+        /// The comparator behind this order, total so the sort is
+        /// deterministic: equal sizes fall back to the first member's path,
+        /// ascending in both directions.
+        var comparator: (DuplicateGroup, DuplicateGroup) -> Bool {
+            switch self {
+            case .sizeDescending:
+                return { lhs, rhs in
+                    if lhs.logicalSize != rhs.logicalSize { return lhs.logicalSize > rhs.logicalSize }
+                    return (lhs.files.first?.path ?? "") < (rhs.files.first?.path ?? "")
+                }
+            case .sizeAscending:
+                return { lhs, rhs in
+                    if lhs.logicalSize != rhs.logicalSize { return lhs.logicalSize < rhs.logicalSize }
+                    return (lhs.files.first?.path ?? "") < (rhs.files.first?.path ?? "")
+                }
+            }
+        }
     }
 
     /// Which pass of the scan is running: the directory walk, then the
@@ -117,9 +151,9 @@ final class DuplicatesModel {
     private(set) var fullDiskAccessGranted = false
 
     /// Every proven group, in the order the comparison emitted it. The
-    /// comparison's buckets finish concurrently, so that order is not final
-    /// until the scan lands; the presentation order is applied there (see
-    /// `visibleGroups`).
+    /// comparison's buckets finish concurrently, so that order is not final;
+    /// the presentation order is applied in `visibleGroups` under the
+    /// current `sort`.
     private(set) var groups: [DuplicateGroup] = []
 
     /// Each file path → the path its group suggests keeping. Decided once
@@ -144,6 +178,10 @@ final class DuplicatesModel {
     /// Filter over the found files' names and paths; a group stays visible
     /// whole if any of its members matches.
     var searchText: String = ""
+
+    /// The order groups are listed in. Presentation only: changing it never
+    /// touches `groups` or starts a scan, so it stays live while one runs.
+    var sort: Sort = .sizeDescending
 
     /// Paths the user has checked for the Trash action. Nothing is ever
     /// checked automatically; a rescan keeps the checks whose files the new
@@ -370,21 +408,23 @@ final class DuplicatesModel {
 
     // MARK: Derived data
 
-    /// The groups the search field leaves, in the list's current order:
-    /// emission order while a scan is still appending, then reclaimable
-    /// bytes first once it lands.
+    /// The groups the search field leaves, in the current sort order.
     ///
     /// Computed rather than stored: the list holds at most a few hundred
-    /// groups, so filtering per read is cheaper than cache-invalidation
-    /// machinery — and it keeps working while the scan is still appending.
+    /// groups, so filtering and sorting per read is cheaper than
+    /// cache-invalidation machinery — and it keeps working while the scan is
+    /// still appending, so a sort change re-orders the groups that have
+    /// already landed.
     var visibleGroups: [DuplicateGroup] {
         let needle = searchText.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !needle.isEmpty else { return groups }
-        return groups.filter { group in
-            group.files.contains {
-                $0.name.lowercased().contains(needle) || $0.path.lowercased().contains(needle)
+        let matching = needle.isEmpty
+            ? groups
+            : groups.filter { group in
+                group.files.contains {
+                    $0.name.lowercased().contains(needle) || $0.path.lowercased().contains(needle)
+                }
             }
-        }
+        return matching.sorted(by: sort.comparator)
     }
 
     private var allFiles: [DuplicateFile] {
@@ -529,13 +569,9 @@ final class DuplicatesModel {
         scanCompleted = true
         unreadableDirectories = unreadable
         skippedLinkedFiles = skippedLinked
-        // The engine emits groups as its buckets complete, which during the
-        // comparison runs concurrently; the presentation order is decided
-        // once the scan lands: the most reclaimable bytes first.
-        groups.sort { lhs, rhs in
-            if lhs.wasted != rhs.wasted { return lhs.wasted > rhs.wasted }
-            return (lhs.files.first?.path ?? "") < (rhs.files.first?.path ?? "")
-        }
+        // The presentation order is not written here: `visibleGroups` sorts
+        // on every read under `sort`, which keeps a change live mid-scan and
+        // leaves `groups` in the comparison's own emission order.
         // Probed here, where the notice the answer gates becomes relevant:
         // the grant state during the scan is the one that explains the
         // folders it could not read.

@@ -78,6 +78,13 @@ struct DuplicateGroup: Identifiable, Sendable, Hashable {
         guard files.count > 1, let largest = files.map(\.size).max() else { return 0 }
         return files.reduce(0) { $0 + $1.size } - largest
     }
+
+    /// The content size every member shares — the figure the group header
+    /// prints. Bucketing is by logical size, so the first member's value
+    /// stands for the whole group.
+    var logicalSize: Int64 {
+        files.first?.logicalSize ?? 0
+    }
 }
 
 /// Events while searching for duplicate files.

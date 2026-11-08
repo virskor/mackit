@@ -236,22 +236,12 @@ struct LargeFilesView: View {
     /// Sorting stays live during a walk — it re-orders the hits that have
     /// landed so far, which is the point of streaming them in.
     private var sortMenu: some View {
-        MenuPill {
-            HStack(spacing: 5) {
-                Image(systemName: "arrow.up.arrow.down")
-                    .font(Theme.Typography.footnoteMedium)
-
-                Text(verbatim: model.sort.title)
-            }
-        } content: {
-            ForEach(LargeFilesModel.Sort.allCases) { option in
-                Button {
-                    model.sort = option
-                } label: {
-                    Text(verbatim: option.title)
-                }
-            }
-        }
+        SortMenuPill(
+            options: LargeFilesModel.Sort.allCases,
+            selection: model.sort,
+            optionTitle: { $0.title },
+            onSelect: { model.sort = $0 }
+        )
     }
 
     // MARK: - Content

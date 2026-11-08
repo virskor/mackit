@@ -204,6 +204,13 @@ struct DuplicatesView: View {
             }
 
             Spacer(minLength: 12)
+
+            // Nothing to order on the start screen; from the first streaming
+            // group on, the sort is live — it re-orders what has landed and
+            // never restarts the scan.
+            if !showsStartScreen {
+                sortMenu
+            }
         }
         .padding(.horizontal, 28)
         .padding(.vertical, 8)
@@ -230,6 +237,19 @@ struct DuplicatesView: View {
         }
         .disabled(model.isScanning)
         .help(L10n.tr("duplicateFiles.tool.threshold.help"))
+    }
+
+    /// The sort menu, labelled with the current order. Sorting stays live
+    /// during a scan — a proven group's size is final, so changing the order
+    /// re-arranges the groups that have landed instead of waiting for the
+    /// comparison to finish.
+    private var sortMenu: some View {
+        SortMenuPill(
+            options: DuplicatesModel.Sort.allCases,
+            selection: model.sort,
+            optionTitle: { $0.title },
+            onSelect: { model.sort = $0 }
+        )
     }
 
     /// The opt-in for the TCC-protected home trio. One control, used both in
@@ -546,7 +566,7 @@ struct DuplicatesView: View {
             title: L10n.fmt(
                 L10n.plural("duplicateFiles.group.files", group.files.count),
                 group.files.count,
-                Formatters.bytes(group.files.first?.logicalSize ?? 0)
+                Formatters.bytes(group.logicalSize)
             ),
             symbol: "doc.on.doc",
             trailing: L10n.fmt("duplicateFiles.group.wasted", Formatters.bytes(group.wasted))
