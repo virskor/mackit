@@ -12,12 +12,89 @@ import AppKit
 /// The panel is a persistent view rather than a modal menu, so the VM's
 /// real-time state can be read directly here; the poll pushes an update every
 /// two seconds, and the panel refreshes along.
+///
+/// The overview tab keeps the original single-page content (reclaimable
+/// header, monitor row, memory release, app ranking, disk and CPU history);
+/// the processor and memory tabs expand it with per-core utilization,
+/// composition, swap and process rankings. The tab picker and the bottom
+/// action bar are the only shared chrome.
 struct MenuBarPanelView: View {
     @Environment(AppViewModel.self) private var vm
+
+    /// The page shown in the panel. Local state: the panel is long-lived, so
+    /// the last visited tab survives a close/reopen; the overview is the
+    /// starting page.
+    @State private var selectedTab: PanelTab = .overview
 
     private var snapshot: MenuBarSnapshot { vm.menuSnapshot }
 
     var body: some View {
+        VStack(spacing: 0) {
+            tabBar
+
+            switch selectedTab {
+            case .overview:
+                overview
+            case .processor:
+                ScrollView(.vertical) {
+                    ProcessorPage(
+                        snapshot: snapshot,
+                        cpuName: SystemInfo.cpuName,
+                        coreSummary: SystemInfo.coreSummary,
+                        uptime: Formatters.uptime(snapshot.stats.uptime),
+                        icon: { rank in appIcon(for: rank) },
+                        onRangeChange: { range in vm.selectCPUChartRange(range) }
+                    )
+                }
+                .frame(height: detailHeight)
+            case .memory:
+                ScrollView(.vertical) {
+                    MemoryPage(
+                        snapshot: snapshot,
+                        cpuName: SystemInfo.cpuName,
+                        icon: { rank in appIcon(for: rank) },
+                        onMetricChange: { metric in vm.selectMemoryChartMetric(metric) }
+                    )
+                }
+                .frame(height: detailHeight)
+            }
+
+            Divider()
+            bottomBar
+        }
+        .frame(width: panelWidth)
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { fitPanelWindow(to: proxy.size.height) }
+                    .onChange(of: proxy.size.height) { _, height in
+                        fitPanelWindow(to: height)
+                    }
+            }
+        )
+        // An open panel is the exception to the "nobody is watching" sampling
+        // guard: its detail pages need monitoring even when every menu-bar
+        // toggle is off. The VM checks the MenuBarExtra window's visibility
+        // on every tick, so a closed panel stops sampling even though this
+        // view stays alive.
+        .onAppear { vm.beginPanelMonitoring() }
+    }
+
+    /// The tab header.
+    ///
+    /// The selected tab is a folder tab: the tinted band above the page is
+    /// cut away around the current tab, so the page surface itself shows
+    /// through and the tab merges with the content below it. The band rounds
+    /// the page's top corners and the tab's top corners on the same surface;
+    /// no divider follows the header because the tab's own fillets already
+    /// mark where navigation ends and the page begins.
+    private var tabBar: some View {
+        PanelTabHeader(selection: $selectedTab)
+    }
+
+    /// The panel's original single-page content, unchanged apart from the
+    /// bottom bar moving out to the shared chrome.
+    private var overview: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerCard
             sectionDivider
@@ -40,24 +117,27 @@ struct MenuBarPanelView: View {
             diskRow
             sectionDivider
             cpuChart
-            Divider()
-            bottomBar
         }
-        .frame(width: panelWidth)
-        .background(
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear { fitPanelWindow(to: proxy.size.height) }
-                    .onChange(of: proxy.size.height) { _, height in
-                        fitPanelWindow(to: height)
-                    }
-            }
-        )
     }
 
-    /// Panel width: fits the "name + size" two columns without taking up half
-    /// the screen.
-    private let panelWidth: CGFloat = 320
+    /// The detail pages need a bounded height: their content is much taller
+    /// than the overview, and the MenuBarExtra window must stay inside the
+    /// visible frame. The overview stays content-sized, as before.
+    private var detailHeight: CGFloat {
+        guard let screen = NSScreen.main else { return 620 }
+        return min(720, max(420, screen.visibleFrame.height - 100))
+    }
+
+    /// The app icon for a process group. Daemons have no bundle path and get
+    /// the row's generic symbol.
+    private func appIcon(for rank: ProcessRank) -> NSImage? {
+        guard rank.isApp, !rank.path.isEmpty else { return nil }
+        return vm.appIcon(forPath: rank.path)
+    }
+
+    /// Panel width: fits the "name + size" two columns and the processor
+    /// page's per-core grid without taking up half the screen.
+    private let panelWidth: CGFloat = 360
 
     /// Divider between sections, with left/right padding matching the content's.
     private var sectionDivider: some View {
@@ -252,7 +332,10 @@ struct MenuBarPanelView: View {
                 .foregroundStyle(.secondary)
 
             if snapshot.stats.memoryTotal > 0 {
-                Text(verbatim: "\(Formatters.bytes(snapshot.stats.memoryUsed)) / \(Formatters.bytes(snapshot.stats.memoryTotal))")
+                // The total is a capacity, so it uses the same rounded
+                // `memory` format as the memory page; `bytes` would print
+                // 17.18 GB for a 16 GB machine.
+                Text(verbatim: "\(Formatters.bytes(snapshot.stats.memoryUsed)) / \(Formatters.memory(snapshot.stats.memoryTotal))")
                     .font(Theme.Typography.subheadline)
                     .monospacedDigit()
             }
@@ -330,7 +413,7 @@ struct MenuBarPanelView: View {
             Text(verbatim: L10n.tr("panel.cpuHistory"))
                 .font(Theme.Typography.footnote)
                 .foregroundStyle(.secondary)
-            CPUHistoryChart(history: snapshot.cpuHistory)
+            UsageLineChart(values: snapshot.cpuHistory)
                 .frame(height: 56)
         }
         .padding(.horizontal, 14)
@@ -351,6 +434,19 @@ struct MenuBarPanelView: View {
             }
             .buttonStyle(.plain)
             .help(L10n.tr("menubar.settings"))
+
+            // The detail pages have no header card, so the one-click clean
+            // rides the shared bottom bar; the overview keeps its full card.
+            Button {
+                vm.cleanFromTray()
+                dismissPanel()
+            } label: {
+                Image(systemName: "wand.and.stars")
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(L10n.tr("panel.clean"))
 
             Spacer(minLength: 0)
 
@@ -571,57 +667,6 @@ private struct AppMemoryRow: View {
                 .padding(.vertical, 5)
         }
         .allowsHitTesting(false)
-    }
-}
-
-/// CPU usage curve: line + gradient fill below.
-///
-/// When there are fewer than one or two data points, draw a flat line — just
-/// started and hasn't accumulated enough history yet; an empty coordinate
-/// system looks more like "sampling in progress" than a straight line hugging
-/// the bottom.
-private struct CPUHistoryChart: View {
-    let history: [Double]
-
-    var body: some View {
-        GeometryReader { geometry in
-            let size = geometry.size
-            ZStack {
-                if history.count < 2 {
-                    Capsule()
-                        .fill(Theme.Palette.surfaceMuted)
-                        .frame(width: size.width, height: 1)
-                } else {
-                    Path { path in
-                        for (index, value) in history.enumerated() {
-                            let x = size.width * CGFloat(index) / CGFloat(history.count - 1)
-                            let y = size.height * (1 - min(1, max(0, value)))
-                            let point = CGPoint(x: x, y: y)
-                            if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
-                        }
-                    }
-                    .stroke(Theme.Palette.info, style: StrokeStyle(lineWidth: Theme.Elevation.accentOutlineWidth, lineCap: .round, lineJoin: .round))
-
-                    Path { path in
-                        path.move(to: CGPoint(x: 0, y: size.height))
-                        for (index, value) in history.enumerated() {
-                            let x = size.width * CGFloat(index) / CGFloat(history.count - 1)
-                            let y = size.height * (1 - min(1, max(0, value)))
-                            path.addLine(to: CGPoint(x: x, y: y))
-                        }
-                        path.addLine(to: CGPoint(x: size.width, y: size.height))
-                        path.closeSubpath()
-                    }
-                    .fill(
-                        LinearGradient(
-                            colors: [Theme.Palette.accentActive, Theme.Palette.accentFaint],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                }
-            }
-        }
     }
 }
 

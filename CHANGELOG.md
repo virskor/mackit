@@ -4,11 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.19] - 2026-11-08
+## [1.0.19] - 2026-11-15
 
 ### Added
 
+- **The tray panel is now tabbed, with Processor and Memory pages beside the overview** — the tabs sit in a folder-style header, and the shared bottom bar keeps the panel's clean, settings and main-window actions.
+- **The Processor page shows live load, per-core rings, load averages, user/system/temperature figures, a stacked CPU history from live to 24 hours, and the processes using the most CPU** — process rows group an app's helpers and show a multi-process group's count.
+- **The Memory page shows pressure, the app/wired/compressed/cached/free composition, page-in and page-out rates, swap usage, a history for used, compressed and swap memory, and the processes holding the most memory** — it uses the same grouped process rows as the Processor page.
 - **The duplicate-file tool can sort its groups by size** — a menu beside the threshold orders them largest-first (the new default) or smallest-first, and re-orders the groups already found while a scan is still running.
+
+### Changed
+
+- **The overview's app memory rows now include each app's helper processes** — the row reports the whole process group, so its figure agrees with the Memory page instead of showing only the main process.
+- **Memory Used now matches Activity Monitor's figure** — app memory, wired memory and compressed memory sum the same way, and the menu-bar percentage, overview row and Memory page all report that total.
 
 ## [1.0.18] - 2026-11-07
 

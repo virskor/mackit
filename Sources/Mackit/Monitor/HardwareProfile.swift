@@ -1,5 +1,4 @@
 import CoreGraphics
-import Darwin
 import Foundation
 import IOKit
 
@@ -98,15 +97,15 @@ enum HardwareSampler {
     static func profile() -> HardwareProfile {
         var profile = HardwareProfile()
 
-        let identifier = sysctlString("hw.model") ?? ""
+        let identifier = Sysctl.string("hw.model") ?? ""
         profile.modelIdentifier = identifier
         if !identifier.isEmpty {
             profile.modelName = marketingName(identifier: identifier)
                 ?? identifier
         }
 
-        profile.osVersion = sysctlString("kern.osproductversion") ?? ""
-        profile.osBuild = sysctlString("kern.osversion") ?? ""
+        profile.osVersion = Sysctl.string("kern.osproductversion") ?? ""
+        profile.osBuild = Sysctl.string("kern.osversion") ?? ""
 
         // Physical memory has no sysctl to read; ProcessInfo is the
         // system's own measure (same source as the total memory in
@@ -177,32 +176,11 @@ enum HardwareSampler {
     // MARK: - Processor
 
     private static func applyProcessor(to profile: inout HardwareProfile) {
-        profile.cpuName = sysctlString("machdep.cpu.brand_string") ?? ""
-        profile.cpuCores = coresDescription()
-    }
-
-    /// Core description. Apple Silicon splits into performance /
-    /// efficiency clusters; writing them separately is what makes it
-    /// informative; Intel and cases where cluster info is unavailable
-    /// report only the total core count.
-    private static func coresDescription() -> String {
-        let total = sysctlInt("hw.physicalcpu") ?? sysctlInt("hw.ncpu")
-        guard let total, total > 0 else { return "" }
-
-        // Only Apple Silicon has perflevel nodes; two clusters
-        // (performance + efficiency) are its standard form; when the count
-        // does not match (three-cluster new chips) report only the total,
-        // without forcing the format.
-        let levels = sysctlInt("hw.nperflevels") ?? 0
-        if levels == 2,
-           sysctlString("hw.perflevel0.name") == "Performance",
-           sysctlString("hw.perflevel1.name") == "Efficiency",
-           let performance = sysctlInt("hw.perflevel0.physicalcpu"),
-           let efficiency = sysctlInt("hw.perflevel1.physicalcpu"),
-           performance > 0, efficiency > 0, performance + efficiency == total {
-            return L10n.fmt("hw.cpu.coresSplit", total, performance, efficiency)
-        }
-        return L10n.fmt("hw.cpu.cores", total)
+        // Both values come from `SystemInfo`: the tray panel's processor page
+        // shows the same processor and core description, and one shared
+        // implementation keeps the two from drifting apart.
+        profile.cpuName = SystemInfo.cpuName
+        profile.cpuCores = SystemInfo.coreDescription
     }
 
     // MARK: - Graphics
@@ -307,34 +285,6 @@ enum HardwareSampler {
     }
 
     // MARK: - System Interfaces
-
-    /// Reads a string-type sysctl; returns nil when the key does not
-    /// exist.
-    private static func sysctlString(_ name: String) -> String? {
-        var size = size_t(0)
-        // The first pass asks only for the length: if the length cannot be
-        // obtained, the buffer size is not guessed.
-        guard sysctlbyname(name, nil, &size, nil, 0) == 0, size > 0 else { return nil }
-        var buffer = [CChar](repeating: 0, count: size)
-        guard sysctlbyname(name, &buffer, &size, nil, 0) == 0 else { return nil }
-        // The kernel appends \0 at the end of the value; decode as UTF-8 up
-        // to the terminator
-        let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
-        return String(decoding: bytes, as: UTF8.self)
-    }
-
-    /// Reads an integer-type sysctl.
-    ///
-    /// The buffer is given as 8 bytes: sysctl integer values come in both
-    /// 4-byte and 8-byte; too small and the kernel rejects it with
-    /// ENOMEM; too large and the kernel fills per the actual size and
-    /// writes back the real length, so either way it can be read.
-    private static func sysctlInt(_ name: String) -> Int? {
-        var value: UInt64 = 0
-        var size = MemoryLayout<UInt64>.size
-        guard sysctlbyname(name, &value, &size, nil, 0) == 0 else { return nil }
-        return Int(value)
-    }
 
     /// Reads a registry string property. Strings in the device tree are
     /// often stored as OSData (null-terminated C strings), so both

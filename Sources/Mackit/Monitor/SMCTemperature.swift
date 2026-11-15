@@ -87,16 +87,7 @@ enum SMCTemperature {
     /// The CPU brand string ("Apple M2 Max", "Intel Core i7…"), read through
     /// sysctl. Empty when unreadable, which selects no sensor table.
     static func brandString() -> String {
-        var size = 0
-        guard sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0) == 0, size > 0 else {
-            return ""
-        }
-        var buffer = [CChar](repeating: 0, count: size)
-        let result = sysctlbyname("machdep.cpu.brand_string", &buffer, &size, nil, 0)
-        guard result == 0 else { return "" }
-        // The buffer is NUL-terminated; decode only up to it.
-        let end = buffer.firstIndex(of: 0) ?? buffer.count
-        return String(decoding: buffer[..<end].map(UInt8.init(bitPattern:)), as: UTF8.self)
+        (Sysctl.string("machdep.cpu.brand_string") ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

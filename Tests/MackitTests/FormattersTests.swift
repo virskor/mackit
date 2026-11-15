@@ -126,4 +126,52 @@ struct FormattersTests {
         #expect(Formatters.abbreviateHome("") == "")
         #expect(Formatters.abbreviateHome(home + "2/Library/Caches") == home + "2/Library/Caches")
     }
+
+    /// A process group can use more than one core, so the top-consumer table
+    /// must not clamp the way the whole-machine percentage does; a group using
+    /// two and a half cores reads "250%".
+    @Test func percentUnclampedKeepsMultiCoreValues() {
+        #expect(Formatters.percentUnclamped(2.5) == "250%")
+        #expect(Formatters.percentUnclamped(0.5) == "50%")
+        #expect(Formatters.percentUnclamped(-1) == "0%")
+        #expect(Formatters.percentUnclamped(.nan) == "0%")
+    }
+
+    /// Page rates are a byte count per second; invalid sampled arithmetic
+    /// must not trap the Int64 conversion or print a negative rate. The
+    /// suffix is a localization entry, so the expected text is built through
+    /// the same key rather than assuming English.
+    @Test func byteRateAppendsPerSecondAndFiltersInvalidValues() {
+        #expect(
+            Formatters.byteRate(41_000_000)
+                == L10n.fmt("format.bytesPerSecond", Formatters.bytes(41_000_000))
+        )
+        #expect(!Formatters.byteRate(-1).hasPrefix("-"))
+        #expect(
+            Formatters.byteRate(.nan)
+                == L10n.fmt("format.bytesPerSecond", Formatters.bytes(0))
+        )
+        #expect(
+            Formatters.byteRate(.infinity)
+                == L10n.fmt("format.bytesPerSecond", Formatters.bytes(0))
+        )
+        // A finite rate past Int64's range is clamped before conversion.
+        #expect(
+            Formatters.byteRate(1e30)
+                == L10n.fmt(
+                    "format.bytesPerSecond",
+                    Formatters.bytes(9_000_000_000_000_000_000)
+                )
+        )
+    }
+
+    /// Uptime is a localized duration; zero has nothing to render, and a
+    /// non-finite reading must not reach `Duration.seconds`.
+    @Test func uptimeRendersDurationsAndRejectsInvalidValues() {
+        #expect(Formatters.uptime(0) == "—")
+        #expect(Formatters.uptime(-1) == "—")
+        #expect(Formatters.uptime(.nan) == "—")
+        #expect(Formatters.uptime(90_000) != "—")
+        #expect(!Formatters.uptime(90_000).isEmpty)
+    }
 }

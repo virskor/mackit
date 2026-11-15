@@ -275,6 +275,34 @@ final class AppViewModel {
     /// the snapshot.
     private(set) var cpuHistory: [Double] = []
 
+    /// Top processes by CPU and memory for the processor and memory pages.
+    /// The all-process view is deliberately separate from `topApps`: the
+    /// overview's ranking stays "regular apps only", while these pages also
+    /// list daemons the user can actually see in the figures.
+    private(set) var processRanking = ProcessRanking()
+
+    /// Full-resolution CPU histories behind the processor page's range
+    /// picker. 24 hours at the two-second poll is the widest window; only a
+    /// 60-point downsample enters the snapshot, so the menu's equality check
+    /// never walks tens of thousands of points. Excluded from Observation:
+    /// the snapshot is the view's data path, and these arrays are the one
+    /// large piece of state in this model. The chart is stacked user/system,
+    /// so only those two histories are kept.
+    @ObservationIgnored private var cpuUserHistory = MetricHistory(capacity: AppViewModel.cpuRangeHistoryCapacity)
+    @ObservationIgnored private var cpuSystemHistory = MetricHistory(capacity: AppViewModel.cpuRangeHistoryCapacity)
+
+    /// The memory chart is a fixed two-minute window, matching the overview's
+    /// CPU chart; the three metrics each keep their own history.
+    @ObservationIgnored private var memoryUsedHistory = MetricHistory(capacity: AppViewModel.memoryHistoryCapacity)
+    @ObservationIgnored private var memoryCompressedHistory = MetricHistory(capacity: AppViewModel.memoryHistoryCapacity)
+    @ObservationIgnored private var memorySwapHistory = MetricHistory(capacity: AppViewModel.memoryHistoryCapacity)
+
+    /// Which window the processor page's chart shows. Not persisted: it is a
+    /// view preference, and the overview's chart always keeps its live window.
+    private(set) var cpuChartRange: CPUChartRange = .live
+    /// Which metric the memory page's chart shows.
+    private(set) var memoryChartMetric: MemoryChartMetric = .used
+
     // MARK: Dependencies
 
     private var scanTask: Task<Void, Never>?
@@ -284,6 +312,18 @@ final class AppViewModel {
     /// A stateful sampler: CPU usage needs the difference between two
     /// adjacent samples.
     private var statsSampler = SystemStatsSampler()
+    /// Stateful all-process sampler for the processor/memory rankings. Its
+    /// rusage deltas need the previous sample, so it lives with the VM.
+    private var processSampler = ProcessSampler()
+    /// Ticks until the next all-process sample. The process table costs one
+    /// `proc_pid_rusage` per pid, an order of magnitude more than the stats
+    /// sample, so it runs every other stats tick — four seconds — while the
+    /// snapshot still publishes on every two-second tick.
+    @ObservationIgnored private var processSampleCountdown = 0
+    /// When the stats sampler last ran. A gap longer than the sampler's own
+    /// baseline threshold means the next CPU reading is a baseline, not a
+    /// failure, which decides whether the last known value may be kept.
+    @ObservationIgnored private var lastStatsRefreshAt: ContinuousClock.Instant?
 
     /// The start moment of scan / clean, used to record duration in logs.
     private var scanStartedAt: ContinuousClock.Instant?
@@ -292,14 +332,25 @@ final class AppViewModel {
     /// System stats sampling interval.
     ///
     /// The tray panel only reads the snapshot when opened, so this cadence
-    /// only determines "how fresh the numbers are at the moment the panel
-    /// is opened"; each sample is just a few system calls, so the cost is
-    /// negligible.
+    /// only determines "how fresh the numbers are at the moment the panel is
+    /// opened"; a stats sample is a handful of system calls, and the heavier
+    /// all-process table runs on every other tick (see
+    /// `processSampleIntervalTicks`).
     private let statsPollInterval: Duration = .seconds(2)
 
     /// How many sample points the CPU history retains. One point every
     /// two seconds; 60 points is the last two minutes.
     static let cpuHistoryCapacity = 60
+
+    /// Raw CPU history for the processor page's widest range: 24 hours at
+    /// the two-second poll. The chart only receives a 60-point downsample.
+    static let cpuRangeHistoryCapacity = 43_200
+
+    /// The memory chart's fixed two-minute window.
+    static let memoryHistoryCapacity = 60
+
+    /// How many stats ticks between all-process samples (two ticks = 4 s).
+    static let processSampleIntervalTicks = 2
 
     /// The minimum publishing interval for the menu snapshot.
     ///
@@ -411,11 +462,11 @@ final class AppViewModel {
     /// has not changed, not even a notification is sent.
     ///
     /// Each half of the snapshot has its own owner: both processes write
-    /// the monitoring fields (stats / topApps / cpuHistory) from their own
-    /// sampling; only the main app writes the scan / clean fields, and the
-    /// agent process publishes only the monitoring half (see
-    /// `isAgentProcess`). Visible within the module so tests can drive it
-    /// directly.
+    /// the monitoring fields (stats / topApps / CPU history / process
+    /// ranking / chart series) from their own sampling; only the main app
+    /// writes the scan / clean fields, and the agent process publishes only
+    /// the monitoring half (see `isAgentProcess`). Visible within the module
+    /// so tests can drive it directly.
     func publishMenuSnapshot(force: Bool = false) {
         let now = ContinuousClock.now
 
@@ -462,6 +513,15 @@ final class AppViewModel {
         next.stats = stats
         next.topApps = topApps
         next.cpuHistory = cpuHistory
+        next.processes = processRanking
+        next.cpuChartRange = cpuChartRange
+        // Only the downsampled series enters the snapshot: the raw 24-hour
+        // history is tens of thousands of points, and this struct is
+        // compared and published every two seconds.
+        next.cpuUserSeries = cpuSeries(cpuUserHistory)
+        next.cpuSystemSeries = cpuSeries(cpuSystemHistory)
+        next.memoryChartMetric = memoryChartMetric
+        next.memoryChartSeries = memorySeries(for: memoryChartMetric)
         if next != menuSnapshot {
             menuSnapshot = next
             // Broadcast the scan / clean state to the tray agent so the
@@ -475,6 +535,27 @@ final class AppViewModel {
                 AppBridge.postScanState(scanStateSnapshot())
             }
         }
+    }
+
+    /// The newest window of a CPU history, downsampled to the chart's fixed
+    /// point count. The picker can ask for 24 hours, but the snapshot must
+    /// stay small enough to compare every two seconds.
+    private func cpuSeries(_ history: MetricHistory) -> [Double] {
+        history.series(
+            maxCount: cpuChartRange.sampleCount,
+            maxPoints: CPUChartRange.chartPointCount
+        )
+    }
+
+    /// The selected memory metric's fixed two-minute series.
+    private func memorySeries(for metric: MemoryChartMetric) -> [Double] {
+        let history: MetricHistory
+        switch metric {
+        case .used: history = memoryUsedHistory
+        case .compressed: history = memoryCompressedHistory
+        case .swap: history = memorySwapHistory
+        }
+        return history.suffix(Self.memoryHistoryCapacity)
     }
 
     /// Whether the current process is the main app. The agent's VM does
@@ -519,29 +600,133 @@ final class AppViewModel {
 
     /// Samples system stats once and publishes a snapshot. Visible within
     /// the module so tests can drive it directly.
-    func sampleSystemStats() {
+    ///
+    /// `force` is for the panel's first frame: at `onAppear` the
+    /// MenuBarExtra window may not be visible yet, but the detail pages must
+    /// not open on empty data.
+    func sampleSystemStats(force: Bool = false) {
         // Do not sample when nobody is watching: sampling triggers a
         // snapshot publish, and publishing makes the whole panel recompute
-        // its layout once.
-        guard showMenuBarCPU || showMenuBarMemory || showMenuBarTemperature else { return }
+        // its layout once. An open panel counts as watching even when every
+        // menu-bar toggle is off — its detail pages would otherwise open on
+        // empty or stale data.
+        guard force || showMenuBarCPU || showMenuBarMemory || showMenuBarTemperature
+                || isTrayPanelVisible else { return }
         refreshStats()
+    }
+
+    /// Whether the tray panel's MenuBarExtra window is on screen.
+    ///
+    /// The window class is SwiftUI's internal implementation, matched by the
+    /// same name prefix as `fitPanelWindow` and `dismissPanel`; if it ever
+    /// changes, the panel keeps the last sample instead of crashing. This is
+    /// more reliable than SwiftUI's `onAppear`/`onDisappear`: the panel
+    /// content is long-lived, so a lifecycle flag can stay on after the
+    /// window closes.
+    private var isTrayPanelVisible: Bool {
+        // NSApp is an implicitly unwrapped global and is nil in a test
+        // process that never started NSApplication; the optional chain keeps
+        // sampling tests from trapping on it.
+        NSApp?.windows.contains {
+            String(describing: type(of: $0)).hasPrefix("MenuBarExtraWindow") && $0.isVisible
+        } ?? false
+    }
+
+    /// Start monitoring for an open tray panel: force the first sample so the
+    /// processor/memory pages have data on the frame they appear. Further
+    /// polling is governed by `isTrayPanelVisible`.
+    func beginPanelMonitoring() {
+        processSampleCountdown = 0
+        sampleSystemStats(force: true)
+    }
+
+    /// The processor page's range picker. The snapshot carries the
+    /// downsampled series for the chosen window (see `publishMenuSnapshot`).
+    func selectCPUChartRange(_ range: CPUChartRange) {
+        guard range != cpuChartRange else { return }
+        cpuChartRange = range
+        publishMenuSnapshot(force: true)
+    }
+
+    /// The memory page's metric picker.
+    func selectMemoryChartMetric(_ metric: MemoryChartMetric) {
+        guard metric != memoryChartMetric else { return }
+        memoryChartMetric = metric
+        publishMenuSnapshot(force: true)
     }
 
     /// Unconditionally refreshes a system stats sample once.
     private func refreshStats() {
-        stats = statsSampler.sample()
+        let now = ContinuousClock.now
+        // A gap longer than the sampler's ten-second baseline threshold means
+        // the next CPU reading is only a baseline; a nil reading inside a
+        // normal cadence is a real failure and must be presented as one.
+        let isBaseline = lastStatsRefreshAt.map { now - $0 > .seconds(10) } ?? true
+        lastStatsRefreshAt = now
+
+        let sample = statsSampler.sample()
+        // The first sample after start-up, or the first one after a long idle
+        // gap, is only a baseline: the CPU and page-rate deltas need a recent
+        // previous reading. Keep the last known values for that one tick
+        // instead of blanking the monitor; the next two-second tick replaces
+        // them with a live interval. The histories still record only genuinely
+        // fresh intervals, so a reopened panel does not draw a fabricated
+        // average over the whole gap.
+        let hasFreshCPU = sample.cpuUsage != nil
+        var current = sample
+        if !hasFreshCPU, isBaseline, stats.cpuUsage != nil {
+            current.cpuUsage = stats.cpuUsage
+            current.cpuUserFraction = stats.cpuUserFraction
+            current.cpuSystemFraction = stats.cpuSystemFraction
+            current.cpuCores = stats.cpuCores
+            current.pageInsPerSecond = stats.pageInsPerSecond
+            current.pageOutsPerSecond = stats.pageOutsPerSecond
+        }
+        stats = current
         // The CPU history only records samples that got a usage reading:
         // if sampling fails, stuffing a nil in would add a spurious
         // bottom-hugging kink to the graph.
-        if let usage = stats.cpuUsage {
+        if hasFreshCPU, let usage = sample.cpuUsage {
             cpuHistory.append(usage)
             if cpuHistory.count > Self.cpuHistoryCapacity { cpuHistory.removeFirst() }
+        }
+        if hasFreshCPU, let user = sample.cpuUserFraction, let system = sample.cpuSystemFraction {
+            cpuUserHistory.append(user)
+            cpuSystemHistory.append(system)
+        }
+        if sample.memoryTotal > 0 {
+            memoryUsedHistory.append(sample.memoryUsedFraction)
+            memoryCompressedHistory.append(
+                min(1, max(0, Double(sample.memoryComposition.compressed) / Double(sample.memoryTotal)))
+            )
+            memorySwapHistory.append(sample.swap.usedFraction)
+        }
+        // The all-process table costs one rusage per pid, so it runs on
+        // every other stats tick and only where it can be shown: the agent
+        // hosts the panel, while the main app's snapshot has no consumer for
+        // the ranking. The sampler measures its own elapsed time, which keeps
+        // the CPU percentages correct across the four-second interval and
+        // lets it treat a long idle gap as a new baseline instead of
+        // averaging over hours.
+        if isAgentProcess || isTrayPanelVisible {
+            if processSampleCountdown <= 0 {
+                processRanking = processSampler.sample()
+                processSampleCountdown = Self.processSampleIntervalTicks
+            }
+            // Decrement after the possible sample so the next one lands two
+            // ticks later (four seconds), not three.
+            processSampleCountdown -= 1
         }
         // App memory is independent of the monitoring toggles: the ranking
         // is permanent content of the cleanup panel, so turning off the
         // CPU display should not also make "who is eating memory"
         // disappear.
-        topApps = AppMemorySampler.topApps()
+        //
+        // The overview reads the process ranking's app totals — the whole
+        // group, helpers included — so its rows agree with the memory page's
+        // app rows. The main app's side never samples that ranking, so there
+        // the rows fall back to each main process's own footprint.
+        topApps = AppMemorySampler.topApps(groupedMemory: processRanking.appFootprints)
         publishMenuSnapshot(force: true)
     }
 
@@ -2678,6 +2863,19 @@ struct MenuBarSnapshot: Equatable {
     var topApps: [AppMemoryEntry] = []
     /// CPU usage history, newest last; the panel's graph reads from here.
     var cpuHistory: [Double] = []
+    /// Top processes by CPU and memory for the processor and memory pages.
+    /// Separate from `topApps`, whose overview ranking keeps its existing
+    /// "regular apps only" meaning.
+    var processes = ProcessRanking()
+    /// The processor page's selected window and the downsampled stacked
+    /// series for it. The overview's `cpuHistory` stays the live two-minute
+    /// window.
+    var cpuChartRange: CPUChartRange = .live
+    var cpuUserSeries: [Double] = []
+    var cpuSystemSeries: [Double] = []
+    /// The memory page's selected metric and its fixed two-minute series.
+    var memoryChartMetric: MemoryChartMetric = .used
+    var memoryChartSeries: [Double] = []
 }
 
 /// Sort presets: the toolbar menu's options.

@@ -17,6 +17,21 @@ enum Formatters {
         value.formatted(.byteCount(style: .file))
     }
 
+    /// A byte rate, e.g. "41 MB/s".
+    ///
+    /// Page-in/out rates arrive from the sampler as a Double while `bytes`
+    /// takes an Int64. The clamping is not cosmetic: converting a NaN, an
+    /// infinity, or a value past Int64's range traps, and a sampled rate is
+    /// untrusted arithmetic over two counters. The per-second suffix is a
+    /// localized format entry like the size units.
+    static func byteRate(_ bytesPerSecond: Double) -> String {
+        let finite = bytesPerSecond.isFinite ? max(0, bytesPerSecond) : 0
+        // 2^63 rounds up when expressed as a Double, so Int64.max is not a
+        // safe upper clamp (the conversion would trap at exactly 2^63);
+        // 9e18 sits below the limit with room for the conversion.
+        return L10n.fmt("format.bytesPerSecond", bytes(Int64(min(finite, 9e18))))
+    }
+
     /// Memory capacity, e.g. "16 GB".
     ///
     /// Counts in binary multiples but writes the unit as GB—consistent with the system's
@@ -107,6 +122,25 @@ enum Formatters {
         date.formatted(date: .abbreviated, time: .shortened)
     }
 
+    /// System uptime in the running language, e.g. "14 days, 11 hours".
+    ///
+    /// `Duration.formatted(.units(...))` is macOS 13+, below the macOS 14
+    /// deployment target, so no availability guard is needed. Values at or
+    /// below zero return "—" (there is no uptime to render), and non-finite
+    /// readings are filtered before they reach `Duration.seconds`, which does
+    /// not accept them.
+    static func uptime(_ seconds: TimeInterval) -> String {
+        guard seconds.isFinite, seconds > 0 else { return "—" }
+        return Duration.seconds(seconds).formatted(
+            .units(
+                allowed: [.days, .hours, .minutes],
+                width: .wide,
+                maximumUnitCount: 2,
+                zeroValueUnits: .hide
+            )
+        )
+    }
+
     /// A 64-bit address as lowercase hex with the `0x` prefix, e.g.
     /// "0x100001000".
     ///
@@ -129,6 +163,16 @@ enum Formatters {
         // NaN must be filtered out first: Swift's min/max return the non-NaN side when
         // encountering NaN, so applying it directly would display NaN as 100%.
         let clamped = fraction.isNaN ? 0 : max(0, min(1, fraction))
+        return String(format: "%.0f%%", clamped * 100)
+    }
+
+    /// A percentage that may exceed 100 — per-process CPU can use several cores.
+    ///
+    /// Clamps below at 0 and filters NaN for the same reason as `percent`;
+    /// there is deliberately no upper bound, so a process group using two
+    /// cores reads "200%".
+    static func percentUnclamped(_ fraction: Double) -> String {
+        let clamped = fraction.isNaN ? 0 : max(0, fraction)
         return String(format: "%.0f%%", clamped * 100)
     }
 

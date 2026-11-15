@@ -1,5 +1,4 @@
 import AppKit
-import Darwin
 
 /// A running app and its memory usage.
 struct AppMemoryEntry: Equatable, Sendable, Identifiable {
@@ -8,8 +7,11 @@ struct AppMemoryEntry: Equatable, Sendable, Identifiable {
     let name: String
     /// The .app path; an empty string when unavailable, and the icon falls back to the generic app symbol.
     let path: String
-    /// Physical memory usage. The phys_footprint from `proc_pid_rusage`,
-    /// the same figure as the "Memory" column in Activity Monitor.
+    /// Physical memory usage. It is the whole app group's total — the main
+    /// process plus every helper — whenever the process ranking has a reading
+    /// for the bundle, which is the same figure the memory page lists. Falls
+    /// back to the main process's `phys_footprint` from `proc_pid_rusage`
+    /// when the ranking has no matching group.
     let bytes: Int64
 
     var id: Int { pid }
@@ -17,8 +19,9 @@ struct AppMemoryEntry: Equatable, Sendable, Identifiable {
 
 /// Enumerate running apps by memory usage.
 ///
-/// Two public interfaces: `NSWorkspace.runningApplications` for the app list,
-/// `proc_pid_rusage` for each process's physical memory usage.
+/// The app list comes from `NSWorkspace.runningApplications`; each figure
+/// comes from the process ranking's grouped totals, or from
+/// `ProcessSampler.rusage` when the ranking has no entry yet.
 enum AppMemorySampler {
     /// How many apps to show by default. Any more and the panel would need to grow taller, but the tray panel should not scroll.
     static let defaultLimit = 6
@@ -30,11 +33,20 @@ enum AppMemorySampler {
     /// "who is eating memory"; listing them would only push the real heavy
     /// users off the list.
     ///
+    /// Each app's figure is its whole process group — helpers included — when
+    /// `groupedMemory` has a total for the bundle, so the overview and the
+    /// memory page report the same number. A missing entry (the ranking has
+    /// not sampled yet, or the bundle path matches no process path) falls
+    /// back to the main process's own footprint rather than dropping the app.
+    ///
     /// `NSWorkspace.runningApplications` requires the main thread, so the
     /// whole function is `@MainActor`; the caller (polling sampling) is
     /// already on the main thread.
     @MainActor
-    static func topApps(limit: Int = defaultLimit) -> [AppMemoryEntry] {
+    static func topApps(
+        groupedMemory: [String: Int64],
+        limit: Int = defaultLimit
+    ) -> [AppMemoryEntry] {
         let apps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
 
@@ -42,12 +54,14 @@ enum AppMemorySampler {
         entries.reserveCapacity(apps.count)
         for app in apps {
             let pid = app.processIdentifier
-            guard let bytes = footprint(pid: pid) else { continue }
+            let bundlePath = app.bundleURL?.path ?? ""
+            let grouped = groupedBytes(bundlePath: bundlePath, groupedMemory: groupedMemory)
+            guard let bytes = grouped ?? footprint(pid: pid) else { continue }
             entries.append(
                 AppMemoryEntry(
                     pid: Int(pid),
                     name: app.localizedName ?? "",
-                    path: app.bundleURL?.path ?? "",
+                    path: bundlePath,
                     bytes: bytes
                 )
             )
@@ -59,18 +73,18 @@ enum AppMemorySampler {
             .map { $0 }
     }
 
+    /// The process ranking's total for an app bundle, if it has one.
+    ///
+    /// The ranking keys its groups by `ProcessSampler.outerAppPath`, so the
+    /// same normalization runs here. Split out so tests can feed a map
+    /// without depending on what is running.
+    static func groupedBytes(bundlePath: String, groupedMemory: [String: Int64]) -> Int64? {
+        guard let outer = ProcessSampler.outerAppPath(bundlePath) else { return nil }
+        return groupedMemory[outer]
+    }
+
     /// The physical memory usage of a single process; returns nil when it cannot be read (process already exited, insufficient permission).
     static func footprint(pid: Int32) -> Int64? {
-        // The buffer uses the largest version, v6: RUSAGE_INFO_CURRENT corresponds
-        // to rusage_info_current. If it is too small, the kernel fills only the
-        // front portion, and ri_phys_footprint may fall outside the buffer.
-        var info = rusage_info_v6()
-        let result = withUnsafeMutablePointer(to: &info) { pointer in
-            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { rebound in
-                proc_pid_rusage(pid, RUSAGE_INFO_CURRENT, rebound)
-            }
-        }
-        guard result == 0 else { return nil }
-        return Int64(info.ri_phys_footprint)
+        ProcessSampler.rusage(pid: pid)?.memoryBytes
     }
 }

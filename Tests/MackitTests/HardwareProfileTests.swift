@@ -114,6 +114,25 @@ struct HardwareProfileTests {
         #expect(!cores.contains("%lld"), "leftover placeholder in the core description: \(cores)")
     }
 
+    /// The tray panel's core summary states both counts when hyper-threading
+    /// makes the logical CPU count larger than the physical core count: its
+    /// ring grid has one ring per logical CPU. Without hyper-threading the
+    /// physical description is shown unchanged.
+    @Test func coreSummaryReportsThreadsOnlyWhenTheyDiffer() {
+        #expect(
+            SystemInfo.coreSummaryText(physical: 6, logical: 12, description: "6 cores")
+                == L10n.fmt("hw.cpu.coresThreads", 6, 12)
+        )
+        #expect(
+            SystemInfo.coreSummaryText(physical: 8, logical: 8, description: "8 cores")
+                == "8 cores"
+        )
+        #expect(
+            SystemInfo.coreSummaryText(physical: 0, logical: 0, description: "")
+                == "—"
+        )
+    }
+
     /// "Total Cores" is the label and "%lld cores" is the format string for the value: the two must be different keys.
     /// Using the wrong one prints the format string verbatim in the label position (the page shows "%lld cores 8 (4 performance + 4 efficiency)").
     @Test func coresLabelIsNotTheFormatString() {

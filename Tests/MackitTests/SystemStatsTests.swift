@@ -210,7 +210,7 @@ struct AppMemoryTests {
     /// Sampling must produce an app list sorted in descending order, with no
     /// more entries than the limit.
     @Test func topAppsAreSortedAndLimited() {
-        let apps = AppMemorySampler.topApps(limit: 3)
+        let apps = AppMemorySampler.topApps(groupedMemory: [:], limit: 3)
 
         #expect(apps.count <= 3)
         for pair in zip(apps, apps.dropFirst()) {
@@ -226,7 +226,7 @@ struct AppMemoryTests {
     /// Only regular apps are counted: background daemons would push the real
     /// heavy users off the list.
     @Test func topAppsExcludeBackgroundDaemons() {
-        let apps = AppMemorySampler.topApps(limit: 50)
+        let apps = AppMemorySampler.topApps(groupedMemory: [:], limit: 50)
         let regular = Set<Int32>(
             NSWorkspace.shared.runningApplications
                 .filter { $0.activationPolicy == .regular }
@@ -235,6 +235,31 @@ struct AppMemoryTests {
         for app in apps {
             #expect(regular.contains(Int32(app.pid)), "\(app.name) is not a regular app")
         }
+    }
+
+    /// The overview's row must use the process ranking's group total when one
+    /// exists, so it reports the same figure as the memory page: the main
+    /// process plus its helpers.
+    @Test func groupedBytesMatchTheAppBundle() {
+        #expect(
+            AppMemorySampler.groupedBytes(
+                bundlePath: "/Applications/WeChat.app",
+                groupedMemory: ["/Applications/WeChat.app": 1_200]
+            ) == 1_200
+        )
+        #expect(
+            AppMemorySampler.groupedBytes(
+                bundlePath: "/Applications/WeChat.app",
+                groupedMemory: [:]
+            ) == nil
+        )
+        // A path with no `.app` component has no group to match.
+        #expect(
+            AppMemorySampler.groupedBytes(
+                bundlePath: "/usr/sbin/cupsd",
+                groupedMemory: ["/usr/sbin/cupsd": 100]
+            ) == nil
+        )
     }
 
     /// When memory usage cannot be obtained it returns nil rather than 0 — 0
