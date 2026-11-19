@@ -76,6 +76,7 @@ The window's detail area is a filled container and every page view lives inside 
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — full contributor guide
 - [README.md](README.md) — product overview and feature list
+- [REVIEW.md](REVIEW.md) — code review rules; every change is reviewed against it and this file before it lands, findings carry `file:line` evidence, and unverified means reported as unverified
 
 
 ## Test
