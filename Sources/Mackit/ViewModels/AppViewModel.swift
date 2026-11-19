@@ -355,11 +355,10 @@ final class AppViewModel {
     /// The minimum publishing interval for the menu snapshot.
     ///
     /// The scan advances on a per-work-unit cadence; exposing these
-    /// changes directly to MenuBarExtra would make the menu items hosted
-    /// in an NSMenu rebuild dozens of times per second — the menu would
-    /// flicker continuously when open. The menu instead depends only on a
-    /// downsampled snapshot, while the main window still reads live
-    /// values.
+    /// changes directly to the tray's NSMenu would make its items rebuild
+    /// dozens of times per second — the menu would flicker continuously
+    /// when open. The tray instead depends only on a downsampled snapshot,
+    /// while the main window still reads live values.
     private let menuPublishInterval: Duration = .milliseconds(200)
     private var lastMenuPublish: ContinuousClock.Instant?
 
@@ -601,9 +600,9 @@ final class AppViewModel {
     /// Samples system stats once and publishes a snapshot. Visible within
     /// the module so tests can drive it directly.
     ///
-    /// `force` is for the panel's first frame: at `onAppear` the
-    /// MenuBarExtra window may not be visible yet, but the detail pages must
-    /// not open on empty data.
+    /// `force` is for the panel's first frame: at `onAppear` the panel's
+    /// popover may not have registered as visible yet, but the detail pages
+    /// must not open on empty data.
     func sampleSystemStats(force: Bool = false) {
         // Do not sample when nobody is watching: sampling triggers a
         // snapshot publish, and publishing makes the whole panel recompute
@@ -615,21 +614,17 @@ final class AppViewModel {
         refreshStats()
     }
 
-    /// Whether the tray panel's MenuBarExtra window is on screen.
+    /// Whether the tray panel is on screen.
     ///
-    /// The window class is SwiftUI's internal implementation, matched by the
-    /// same name prefix as `fitPanelWindow` and `dismissPanel`; if it ever
-    /// changes, the panel keeps the last sample instead of crashing. This is
-    /// more reliable than SwiftUI's `onAppear`/`onDisappear`: the panel
-    /// content is long-lived, so a lifecycle flag can stay on after the
-    /// window closes.
+    /// The panel lives in the status-item popover owned by
+    /// `TrayStatusController`; the controller reports its live visibility,
+    /// which AppKit updates on every show / close. This is more reliable
+    /// than SwiftUI's `onAppear`/`onDisappear`: the panel content is
+    /// long-lived, so a lifecycle flag can stay on after the popover
+    /// closes. Without a controller (the main app, and every test process)
+    /// the panel cannot be open.
     private var isTrayPanelVisible: Bool {
-        // NSApp is an implicitly unwrapped global and is nil in a test
-        // process that never started NSApplication; the optional chain keeps
-        // sampling tests from trapping on it.
-        NSApp?.windows.contains {
-            String(describing: type(of: $0)).hasPrefix("MenuBarExtraWindow") && $0.isVisible
-        } ?? false
+        TrayStatusController.current?.isPanelVisible ?? false
     }
 
     /// Start monitoring for an open tray panel: force the first sample so the
@@ -768,6 +763,34 @@ final class AppViewModel {
     func quitFromTray() {
         AppBridge.send(.quit)
         DispatchQueue.main.async { NSApp.terminate(nil) }
+    }
+
+    /// One of the display switches the tray's right-click menu toggles.
+    enum TrayDisplayToggle {
+        case cpu
+        case memory
+        case temperature
+        /// The desktop floating stats window (its visibility additionally
+        /// requires one of the three monitor switches — see
+        /// `statsOverlayVisible`).
+        case desktopOverlay
+    }
+
+    /// Flips one display switch from the tray's right-click menu and
+    /// persists it.
+    ///
+    /// The switches live in shared settings: the agent writes the file and
+    /// broadcasts, and the main app re-reads it through the
+    /// settings-changed path every other setting travels (the agent-side
+    /// observer in `AppDelegate` handles the opposite direction).
+    func toggleTrayDisplay(_ toggle: TrayDisplayToggle) {
+        switch toggle {
+        case .cpu: showMenuBarCPU.toggle()
+        case .memory: showMenuBarMemory.toggle()
+        case .temperature: showMenuBarTemperature.toggle()
+        case .desktopOverlay: showDesktopStats.toggle()
+        }
+        saveSettings()
     }
 
     /// Panel action: quit one of the apps in the memory ranking (the button
@@ -2478,9 +2501,12 @@ final class AppViewModel {
             "showDesktopStats": showDesktopStats,
             "launchAtLogin": launchAtLogin,
         ])
-        // Broadcast to the tray agent: its VM re-reads once, so setting
-        // changes take effect on the panel and menu bar labels
-        // immediately, without waiting for an agent restart.
+        // Broadcast to the other process: its VM re-reads once, so setting
+        // changes take effect on the panel, the menu bar labels and the
+        // settings page immediately, without waiting for an agent restart.
+        // The channel runs in both directions — the main app writes when
+        // its settings page changes something, the agent writes when its
+        // right-click menu toggles one of the display switches.
         AppBridge.postSettingsChanged()
     }
 
@@ -2833,14 +2859,15 @@ final class AppViewModel {
     }
 }
 
-/// One state snapshot of the menu bar panel.
+/// One state snapshot of the tray panel and its right-click menu.
 ///
-/// `MenuBarExtra`'s menu content is hosted by SwiftUI into an `NSMenu`,
-/// and any change in dependencies rebuilds the menu items. During a scan,
-/// `progressFraction` / `items` / `selection` change at a per-work-unit
-/// cadence, so having the menu read them directly would make it flicker
-/// continuously when open; it therefore depends only on this snapshot,
-/// refreshed by `AppViewModel.publishMenuSnapshot` at a fixed interval.
+/// Any change in its fields recomputes the panel body, and while the
+/// context menu is open would rebuild menu items that must hold still.
+/// During a scan, `progressFraction` / `items` / `selection` change at a
+/// per-work-unit cadence, so the tray depends only on this snapshot,
+/// refreshed by `AppViewModel.publishMenuSnapshot` at a fixed interval
+/// (publishing is additionally frozen for the whole duration of menu
+/// tracking — see `menuTrackingDepth`).
 struct MenuBarSnapshot: Equatable {
     var phase: AppViewModel.ScanPhase = .idle
     var cleanPhase: AppViewModel.CleanPhase = .idle

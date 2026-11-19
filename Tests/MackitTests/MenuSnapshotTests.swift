@@ -5,13 +5,12 @@ import Testing
 
 /// Verifies the menu bar snapshot's throttling and immediacy.
 ///
-/// Background: `MenuBarExtra`'s menu content is hosted into an NSMenu by
-/// SwiftUI, relying on rebuilding the menu items on every change. The scan
-/// advances at the pace of "each work unit", so if the menu read the live
-/// state directly it would be beaten into a flicker by dozens of
-/// rearrangements per second when opened. The menu therefore only reads
-/// `vm.menuSnapshot`: scan events are throttled by interval, while phase
-/// transitions and user actions take effect immediately.
+/// Background: the tray's panel and context menu rebuild from the snapshot
+/// whenever it changes; the scan advances at the pace of "each work unit",
+/// so if the tray read the live state directly it would be beaten into a
+/// flicker by dozens of rearrangements per second. The tray therefore only
+/// reads `vm.menuSnapshot`: scan events are throttled by interval, while
+/// phase transitions and user actions take effect immediately.
 @MainActor
 struct MenuSnapshotTests {
     private func makeVM() -> AppViewModel { AppViewModel(statsPolling: false) }

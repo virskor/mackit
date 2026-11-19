@@ -5,14 +5,14 @@ import Testing
 
 /// Verifies that snapshot publishing is suspended during menu tracking.
 ///
-/// Background: `MenuBarExtra`'s menu content is hosted by SwiftUI into an
-/// NSMenu and rebuilds the menu items on every change. While the menu is
-/// open the main thread is stuck in AppKit's modal tracking loop, but menu
-/// item actions execute inside that loop (clicking "Rescan", clicking a
-/// toggle — both), and at that moment the main thread is alive — publishing a
-/// snapshot then would re-host the NSMenu and interrupt AppKit's mouse
-/// tracking: the highlight resets, the row under the pointer is replaced, and
-/// sliding the mouse in cannot select any row.
+/// Background: the tray's context menu and the panel's small popup menus
+/// are plain NSMenus rebuilt from the snapshot whenever it changes. While a
+/// menu is open the main thread is stuck in AppKit's modal tracking loop,
+/// but menu item actions execute inside that loop (clicking "Rescan",
+/// clicking a toggle — both), and at that moment the main thread is alive —
+/// publishing a snapshot then would rebuild the menu and interrupt AppKit's
+/// mouse tracking: the highlight resets, the row under the pointer is
+/// replaced, and sliding the mouse in cannot select any row.
 /// Therefore nothing is published for the entire tracking duration, with a
 /// catch-up publish on close.
 @MainActor

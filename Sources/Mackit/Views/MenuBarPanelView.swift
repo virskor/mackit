@@ -1,13 +1,16 @@
 import SwiftUI
 import AppKit
 
-/// The panel opened by clicking the menu bar icon.
+/// The panel opened by left-clicking the menu bar icon.
 ///
-/// Hosted via `MenuBarExtra`'s `.window` style rather than `.menu`: menu content
-/// hosted into NSMenu can only render "one icon + one text" — ratio bars,
-/// right-aligned values and multi-column layouts are all dropped by SwiftUI
-/// (only the first Text of an HStack's subviews survives). For big number cards,
-/// monitor values and the app list, a panel is the only way.
+/// Hosted in the status-item popover (`TrayStatusController`) rather than in
+/// SwiftUI's `MenuBarExtra`: the `.menu` style can only render "one icon +
+/// one text" — ratio bars, right-aligned values and multi-column layouts are
+/// all dropped by SwiftUI (only the first Text of an HStack's subviews
+/// survives) — and `MenuBarExtra` cannot tell the left click that opens this
+/// panel from the right click that opens the native context menu. For big
+/// number cards, monitor values and the app list, an NSPopover is the only
+/// way.
 ///
 /// The panel is a persistent view rather than a modal menu, so the VM's
 /// real-time state can be read directly here; the poll pushes an update every
@@ -66,17 +69,17 @@ struct MenuBarPanelView: View {
         .background(
             GeometryReader { proxy in
                 Color.clear
-                    .onAppear { fitPanelWindow(to: proxy.size.height) }
-                    .onChange(of: proxy.size.height) { _, height in
-                        fitPanelWindow(to: height)
+                    .onAppear { fitPanelContent(to: proxy.size) }
+                    .onChange(of: proxy.size) { _, size in
+                        fitPanelContent(to: size)
                     }
             }
         )
         // An open panel is the exception to the "nobody is watching" sampling
         // guard: its detail pages need monitoring even when every menu-bar
-        // toggle is off. The VM checks the MenuBarExtra window's visibility
-        // on every tick, so a closed panel stops sampling even though this
-        // view stays alive.
+        // toggle is off. The VM checks the popover's visibility on every
+        // tick, so a closed panel stops sampling even though this view stays
+        // alive.
         .onAppear { vm.beginPanelMonitoring() }
     }
 
@@ -121,7 +124,7 @@ struct MenuBarPanelView: View {
     }
 
     /// The detail pages need a bounded height: their content is much taller
-    /// than the overview, and the MenuBarExtra window must stay inside the
+    /// than the overview, and the panel popover must stay inside the
     /// visible frame. The overview stays content-sized, as before.
     private var detailHeight: CGFloat {
         guard let screen = NSScreen.main else { return 620 }
@@ -481,32 +484,20 @@ struct MenuBarPanelView: View {
         .padding(.vertical, 10)
     }
 
-    /// Adjust the panel window to the content height.
+    /// Sync the popover's content size to the panel's measured size.
     ///
-    /// `MenuBarExtra`'s `.window` style only grows taller, never shorter: when
-    /// the content is shorter than last time (an app quitting removes a row from
-    /// the ranking, this app disappears from its own list after the main window
-    /// closes, monitor switches collapse a whole row), the window keeps its
-    /// previous height, the content is centered in the window, leaving a
-    /// transparent patch above and below — the desktop shows through behind the
-    /// panel, looking like the layout collapsed with blank space hanging behind
-    /// the panel. Whenever the content height changes, sync the window frame to
-    /// it, pinning the top edge below the menu bar; skip changes smaller than
-    /// half a pixel to avoid repeated updates from polling.
+    /// The panel draws from the popover's `contentSize`, and NSPopover does
+    /// not track SwiftUI's fitting size while it is open: when the content
+    /// height changes (an app quitting removes a row from the ranking, this
+    /// app disappears from its own list after the main window closes, the
+    /// monitor switches collapse a whole row), the popover would keep its
+    /// previous height and either leave a transparent blank patch behind the
+    /// panel or clip the content. Every measurement is pushed into the
+    /// controller, which skips sub-half-pixel changes so the two-second
+    /// polling does not keep resetting the size.
     @MainActor
-    private func fitPanelWindow(to height: CGFloat) {
-        guard height > 0 else { return }
-        for window in NSApp.windows
-        where String(describing: type(of: window)).hasPrefix("MenuBarExtraWindow") {
-            guard abs(window.frame.height - height) > 0.5 else { return }
-            var frame = window.frame
-            // Keep the top edge fixed: origin.y is the bottom-left corner, so
-            // moving the bottom edge up means raising the origin.
-            frame.origin.y += frame.height - height
-            frame.size.height = height
-            window.setFrame(frame, display: true)
-            return
-        }
+    private func fitPanelContent(to size: CGSize) {
+        TrayStatusController.current?.panelContentSizeChanged(size)
     }
 }
 
@@ -515,7 +506,7 @@ struct MenuBarPanelView: View {
 /// The two hover controls — the quit button and the warning beside it — take
 /// the place of the size text rather than sitting beside it: the row keeps one
 /// width, so hovering neither pushes the name aside nor grows the panel (whose
-/// height is pinned to its content, see `fitPanelWindow`).
+/// height is synced to its content, see `fitPanelContent`).
 private struct AppMemoryRow: View {
     let entry: AppMemoryEntry
     /// The app's icon, nil when it could not be read.
@@ -672,15 +663,12 @@ private struct AppMemoryRow: View {
 
 /// Dismiss the tray panel.
 ///
-/// `MenuBarExtra`'s `.window` style doesn't dismiss itself just because a button
-/// was clicked; you have to find that window and close it. `performClose` is a
-/// "close request", which this window ignores; only `close()` works. The window
-/// class is SwiftUI internal implementation, matched by name prefix — if no match
-/// is found, nothing happens; the cost is just the panel staying, which beats
-/// closing the wrong window.
+/// The panel lives in the status-item popover (`TrayStatusController`); a
+/// transient popover already closes on any outside click, but the buttons
+/// that change windows — open main window, settings, clean — close it
+/// explicitly, so the panel never lingers over a window that just came to
+/// the front.
 @MainActor
 func dismissPanel() {
-    for window in NSApp.windows where String(describing: type(of: window)).hasPrefix("MenuBarExtraWindow") {
-        window.close()
-    }
+    TrayStatusController.current?.closePanel()
 }

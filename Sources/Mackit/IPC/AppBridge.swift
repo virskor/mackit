@@ -32,6 +32,19 @@ enum AppCommand: String {
     /// Open the main window and go straight to clean confirmation (select
     /// all safe items, then pop up the confirmation panel).
     case clean
+    /// Open the main window and show the tool page. One command per tool
+    /// destination the tray's right-click menu navigates to; the pages are
+    /// embedded in the main window, so the work stays on that side.
+    case appUninstall
+    case homebrew
+    case largeFiles
+    case duplicates
+    case diskAnalysis
+    case loginItems
+    /// Have the main program check for updates. Sparkle lives only in the
+    /// main program (the agent bundle carries no update feed), so the tray
+    /// forwards this one instead of running a check itself.
+    case checkUpdates
     /// Quit the main program (the agent then quits on its own).
     case quit
     /// Have the main program pop a Toast; the text is in the payload,
@@ -101,7 +114,9 @@ enum AppBridge {
             // message to an already-open window.
             post(command, text: text, style: style)
 
-        case .openMainWindow, .settings, .hardware, .clean:
+        case .openMainWindow, .settings, .hardware, .clean,
+             .appUninstall, .homebrew, .largeFiles, .duplicates,
+             .diskAnalysis, .loginItems, .checkUpdates:
             if isMainAppRunning() {
                 post(command, text: text, style: style)
             } else {
@@ -208,6 +223,27 @@ enum AppBridge {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         NSWorkspace.shared.openApplication(at: mainAppURL, configuration: .init())
+    }
+
+    /// The update feed the main program advertises in its Info.plist,
+    /// read from the agent.
+    ///
+    /// The agent bundle deliberately carries no Sparkle keys — updates run
+    /// only on the main program side (see Scripts/build-app.sh) — but the
+    /// tray's right-click menu must gray "Check for Updates" out exactly
+    /// when the main program's own menu item would, i.e. in development
+    /// builds without a feed. The main bundle is found with the same
+    /// four-level walk as `launchMainApp`; when it cannot be read (running
+    /// from a raw build with no bundled agent) nil counts as "no feed",
+    /// the same default `UpdateController.isEnabled(feedURL:)` applies.
+    static func mainAppUpdateFeedURL() -> String? {
+        let mainAppURL = Bundle.main.bundleURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        return Bundle(url: mainAppURL)?
+            .object(forInfoDictionaryKey: "SUFeedURL") as? String
     }
 
     /// Ensures the agent is running from within the main program process.

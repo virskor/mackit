@@ -268,9 +268,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static var reopenMainWindow: (@MainActor () -> Void)?
 
     /// The current process's VM. Installed by the main window root view /
-    /// the tray label respectively; the command handler and state
+    /// the agent's launch respectively; the command handler and state
     /// subscription modify the VM accordingly.
     static var viewModel: AppViewModel?
+
+    /// The agent's status item controller (agent role only). Strong
+    /// reference for the life of the process: the status item's button
+    /// target is weak, so without this the controller — and with it the
+    /// menu bar icon — would be deallocated immediately.
+    private var trayStatusController: TrayStatusController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Crash collection is armed here, before anything can crash and in
@@ -299,6 +305,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // LaunchServices login item still get tagged with TAL, so
             // disable it programmatically once more.
             ProcessInfo.processInfo.disableAutomaticTermination("Mackit tray stays resident")
+            // SwiftUI has nothing to mount in the agent (see
+            // MackitAgentApp), so the VM and the status item are built
+            // here: the icon, the popover panel and the right-click menu
+            // are AppKit-owned (see TrayStatusController for why SwiftUI's
+            // MenuBarExtra could not do the job).
+            let vm = AppViewModel()
+            Self.viewModel = vm
+            trayStatusController = TrayStatusController(viewModel: vm)
+            // The desktop floating stats window lives only in the agent
+            // process; the controller outlives every scene, making it the
+            // natural mount point for the overlay as well.
+            StatsOverlayController.shared.attach(vm)
             // The main app broadcasts scan / clean state over, which is
             // merged into the panel snapshot's scan fields; the monitoring
             // fields (CPU / memory / temperature / rankings) are polled by
@@ -362,6 +380,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Tray command channel.
             AppBridge.observeCommands { command, text, style in
                 Self.handleCommand(command, text: text, style: style)
+            }
+            // Settings now travel in both directions: the tray's right-click
+            // menu toggles the menu-bar display switches, writing shared
+            // settings and broadcasting. Re-read them here as well, so the
+            // settings page's switches and the desktop overlay follow a
+            // change made from the tray. The reload is safe when the
+            // broadcast originates from this process: it only re-assigns the
+            // values that were just written (loadSettings does not save, so
+            // this cannot loop).
+            AppBridge.observeSettingsChanged {
+                Self.viewModel?.reloadSettings()
             }
         }
     }
@@ -440,6 +469,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .clean:
             reopen()
             vm.cleanFromRemote()
+        case .appUninstall:
+            reopen()
+            vm.showAppUninstall()
+        case .homebrew:
+            reopen()
+            vm.showHomebrew()
+        case .largeFiles:
+            reopen()
+            vm.showLargeFiles()
+        case .duplicates:
+            reopen()
+            vm.showDuplicateFiles()
+        case .diskAnalysis:
+            reopen()
+            vm.showDiskAnalysis()
+        case .loginItems:
+            reopen()
+            vm.showLoginItems()
+        case .checkUpdates:
+            // Sparkle lives in this process only. A development build has
+            // no feed and no updater — the tray grays the menu item out for
+            // the same condition (see TrayStatusController.showContextMenu),
+            // so this guard is only a safety net.
+            guard UpdateController.shared.isEnabled else { return }
+            UpdateController.shared.checkForUpdates()
         case .quit:
             // First dismiss any pending sheets before quitting: sheets
             // like the confirmation dialog hang off the modal session, so
