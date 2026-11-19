@@ -38,7 +38,6 @@ What Mackit does:
 - **Build artifact scan**: point it at a directory (e.g. `~/Projects`) to find `node_modules`, `build`, `Pods`, `.dart_tool`, `DerivedData`, `target`, `.venv` and other rebuildable folders
 - **Command-line cleaning**: `go clean -cache`, `npm cache clean`, `brew cleanup`, `dart pub cache clean`, etc.
 - **Menu bar panel**: a resident menu bar icon opens a panel with reclaimable space, CPU / memory / temperature, per-app memory ranking with one-tap "free memory", free disk space and a CPU graph
-- **Desktop stats overlay**: an optional always-on-top bar showing CPU / memory / temperature compactly, readable on any wallpaper, draggable with position memory, living only in the tray process
 - **Disk space analysis**: a tool page (sidebar "Tools" section, below the cleanup entries) answering "where did the space go" — breadcrumb drill-down from the startup disk, every folder's recursive size, and a treemap of the selected folder's breakdown
 - **Hardware info**: model, disks, battery and other static information
 - **Native UI**: SwiftUI sidebar + table + toolbar with native context menus, keyboard shortcuts, search and click-to-sort column headers
@@ -49,7 +48,7 @@ What Mackit does:
 
 ![Mackit main window](docs/images/main-window-en.png)
 
-> Screenshots of the menu bar panel, desktop overlay and hardware page are still to come.
+> Screenshots of the menu bar panel and hardware page are still to come.
 
 ## Installation
 
@@ -169,7 +168,7 @@ Mackit is two processes from one binary, shipped in two bundles that switch role
 | | Mackit.app (`cn.mingcui.mackit`) | MackitAgent.app (`cn.mingcui.mackit.agent`) |
 | --- | --- | --- |
 | Form | regular, has a Dock icon | LSUIElement, menu bar only |
-| Role | main window, scanning, cleaning, settings, Sparkle updates | menu bar icon and panel, desktop stats overlay, system monitoring |
+| Role | main window, scanning, cleaning, settings, Sparkle updates | menu bar icon and panel, system monitoring |
 | Lifecycle | quits when the window closes | resident; a login item launches it at login |
 
 **Closing the main window = the main process exits = the Dock icon disappears, while the menu bar monitoring keeps ticking every minute** — that is how "window closed but the tray lives on" is implemented, without any activation policy switching at runtime (switching between regular and accessory at runtime makes macOS rebuild the menu bar and add/remove Dock tiles every time, which is exactly why the menu bar flickers and the Dock row shifts).
@@ -238,7 +237,7 @@ Sources/Mackit/
 │   ├── DiskAnalysisModel.swift   # disk analysis page: navigation, streaming measurement, cache
 │   ├── HomebrewModel.swift       # Homebrew manager page: snapshot, sections, actions, search
 │   └── AppUninstallModel.swift   # app uninstall page: app list, selection, uninstall flow
-├── Views/                        # SwiftUI: main window, tray panel, overlay, settings, hardware, disk analysis
+├── Views/                        # SwiftUI: main window, tray panel, settings, hardware, disk analysis
 │   └── Components/               #   reusable components (badges, progress ring, notice rows, flow layout…)
 └── Utilities/
     ├── AppLanguage.swift         # interface language selection (system + eight languages, writes AppleLanguages)

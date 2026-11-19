@@ -313,10 +313,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let vm = AppViewModel()
             Self.viewModel = vm
             trayStatusController = TrayStatusController(viewModel: vm)
-            // The desktop floating stats window lives only in the agent
-            // process; the controller outlives every scene, making it the
-            // natural mount point for the overlay as well.
-            StatsOverlayController.shared.attach(vm)
             // The main app broadcasts scan / clean state over, which is
             // merged into the panel snapshot's scan fields; the monitoring
             // fields (CPU / memory / temperature / rankings) are polled by

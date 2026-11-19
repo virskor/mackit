@@ -113,7 +113,9 @@ struct SystemStats: Equatable, Sendable {
     /// Whether the kernel reports the critical pressure level.
     var memoryPressureIsCritical: Bool { memoryPressureLevel >= 4 }
 
-    /// The localization key for the thermal state. Shared by the menu bar panel and the desktop floating window.
+    /// The localization key for the thermal state, used wherever the
+    /// temperature figure degrades to the thermal-state word (the menu bar
+    /// item and the tray panel's pages).
     var thermalStateKey: String {
         switch ProcessInfo.ThermalState(rawValue: thermalState) {
         case .fair: return "menubar.thermal.fair"

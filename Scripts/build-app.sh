@@ -232,11 +232,16 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 # ---- Tray agent (embedded in the main app under Contents/Library/LoginItems) ----
 # SMAppService.loginItem only accepts this location. The agent lives in the
-# menu bar and does not appear in the Dock, so it needs no icon; no Sparkle
-# keys are written at all (updates only happen on the main app side).
+# menu bar and never enters the Dock, but it does not run icon-less: the
+# tray's About panel draws the product icon, so the icns is copied in and
+# read back by the panel (see TrayStatusController.performMenuAction). The
+# bundle provides no icon through its own identity — CFBundleIconFile stays
+# absent and the panel is fed the icon and name explicitly. No Sparkle keys
+# are written at all (updates only happen on the main app side).
 AGENT="$APP/Contents/Library/LoginItems/MackitAgent.app"
 mkdir -p "$AGENT/Contents/MacOS" "$AGENT/Contents/Resources" "$AGENT/Contents/Frameworks"
 cp "$BINARY" "$AGENT/Contents/MacOS/MackitAgent"
+cp "$BUILD_DIR/AppIcon.icns" "$AGENT/Contents/Resources/AppIcon.icns"
 cp -R "$RESOURCE_BUNDLE" "$AGENT/Contents/Resources/"
 cp -R "$SPARKLE_FRAMEWORK" "$AGENT/Contents/Frameworks/"
 install_name_tool -add_rpath @executable_path/../Frameworks "$AGENT/Contents/MacOS/MackitAgent"

@@ -8,6 +8,14 @@ enum AppIdentity {
     /// The tray agent's bundle ID. Consistent with MackitAgent.app's
     /// Info.plist.
     static let agentBundleID = "cn.mingcui.mackit.agent"
+    /// The product name, as user-facing surfaces show it. A proper noun —
+    /// identical in all eight languages — so it stays a literal instead of
+    /// a catalog key, like the otherwise-localized `menubar.*` titles that
+    /// embed it. The tray's About panel needs it explicitly: that panel
+    /// runs from the agent bundle, whose own name is "Mackit Agent" (see
+    /// `TrayStatusController.performMenuAction`).
+    static let productName = "Mackit"
+
 
     /// Whether the current process is the tray agent. The same binary is
     /// installed in two bundles, with the role distinguished by bundle ID.

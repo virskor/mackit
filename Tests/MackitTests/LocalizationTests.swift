@@ -119,7 +119,6 @@ struct LocalizationTests {
             "settings.menubar.cpu", "settings.menubar.memory", "settings.menubar.temperature",
             "settings.menubar.logo",
             "settings.menubar.footer",
-            "settings.overlay.header", "settings.overlay.show", "settings.overlay.footer",
             "menubar.cpu", "menubar.memory", "menubar.temperature",
             "panel.quitApp", "panel.quitApp.help", "panel.quitApp.warning",
             "toast.memoryReleased", "toast.memoryReleasedNone",

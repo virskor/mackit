@@ -92,16 +92,8 @@ extension Theme {
         /// The quietest label — a hint under a title, a category caption.
         static let labelTertiary = Color(nsColor: .tertiaryLabelColor)
         /// Text and symbols that sit on a colored fill — an accent segment,
-        /// a selected chip — or directly on the wallpaper, as the stats
-        /// overlay does.
+        /// a selected chip.
         static let onColor = Color.white
-        /// The overlay's label: white, dropped so it does not compete with
-        /// the value above it.
-        static let onColorMuted = Color.white.opacity(0.6)
-        /// The overlay's divider: a 1pt white line, faint enough to read as a
-        /// separator on any wallpaper. Not `separator`, which is drawn for a
-        /// window surface and vanishes against a desktop picture.
-        static let onColorSeparator = Color.white.opacity(0.3)
         /// The window's own background, as AppKit paints it.
         static let windowBackground = Color(nsColor: .windowBackgroundColor)
         /// A text view's background, one step off the window's.

@@ -242,21 +242,6 @@ final class AppViewModel {
     /// image and the app would vanish from the menu bar with no way back
     /// (see `MenuBarStatsImage`).
     var showMenuBarLogo: Bool = true
-    /// Master toggle for the desktop floating stats window. Off by
-    /// default: a permanently present block on the desktop is a
-    /// conspicuous change, so the user should turn it on themselves;
-    /// which items are shown follows the three monitoring toggles above,
-    /// and the position is persisted separately (only the agent writes
-    /// it, see `OverlayPositionStore`).
-    var showDesktopStats: Bool = false
-
-    /// Whether the floating window should be shown at this moment: the
-    /// master toggle is on, and at least one monitoring toggle is on.
-    /// With all three off the floating window would be empty, so better to
-    /// collapse it.
-    var statsOverlayVisible: Bool {
-        showDesktopStats && (showMenuBarCPU || showMenuBarMemory || showMenuBarTemperature)
-    }
 
     /// Static info shown on the hardware page. Sampled once when entering
     /// the page (see `showHardware`), and not refreshed along with the
@@ -770,10 +755,6 @@ final class AppViewModel {
         case cpu
         case memory
         case temperature
-        /// The desktop floating stats window (its visibility additionally
-        /// requires one of the three monitor switches — see
-        /// `statsOverlayVisible`).
-        case desktopOverlay
     }
 
     /// Flips one display switch from the tray's right-click menu and
@@ -788,7 +769,6 @@ final class AppViewModel {
         case .cpu: showMenuBarCPU.toggle()
         case .memory: showMenuBarMemory.toggle()
         case .temperature: showMenuBarTemperature.toggle()
-        case .desktopOverlay: showDesktopStats.toggle()
         }
         saveSettings()
     }
@@ -2469,9 +2449,6 @@ final class AppViewModel {
         if let value = values["showMenuBarLogo"] as? Bool {
             showMenuBarLogo = value
         }
-        if let value = values["showDesktopStats"] as? Bool {
-            showDesktopStats = value
-        }
         // The persisted launch-at-login choice, with the system registration as
         // the fallback for settings files written before the key existed (an
         // upgrade). The rule lives in LaunchAtLogin because the launch-time
@@ -2498,7 +2475,6 @@ final class AppViewModel {
             "showMenuBarMemory": showMenuBarMemory,
             "showMenuBarTemperature": showMenuBarTemperature,
             "showMenuBarLogo": showMenuBarLogo,
-            "showDesktopStats": showDesktopStats,
             "launchAtLogin": launchAtLogin,
         ])
         // Broadcast to the other process: its VM re-reads once, so setting

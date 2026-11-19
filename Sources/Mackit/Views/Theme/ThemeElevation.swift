@@ -25,10 +25,6 @@ extension Theme {
         /// The treemap's hover label, which hugs its content.
         static let label: (color: Color, radius: CGFloat, y: CGFloat) =
             (color: .black.opacity(0.16), radius: 7, y: 2)
-        /// Text sitting directly on the wallpaper, where it washes out on a
-        /// light background.
-        static let text: (color: Color, radius: CGFloat, y: CGFloat) =
-            (color: .black.opacity(0.35), radius: 2, y: 1)
 
         /// A hairline drawn between two segments of one control.
         static let hairlineWidth: CGFloat = 0.5

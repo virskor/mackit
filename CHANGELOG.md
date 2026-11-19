@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.20] - 2026-11-19
+
+### Added
+
+- **The tray icon now has a right-click context menu** — one native menu carries the main window and settings entries, every tool page, the CPU / memory / temperature display switches with their current states, check for updates, about and quit, without opening the panel first.
+
+### Removed
+
+- **The desktop floating stats window is gone** — CPU / memory / temperature remain in the menu-bar item and the tray panel, and the settings page and tray menu no longer offer the overlay.
+
 ## [1.0.19] - 2026-11-15
 
 ### Added

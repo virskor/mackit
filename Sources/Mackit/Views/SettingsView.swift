@@ -76,7 +76,6 @@ struct SettingsView: View {
         .onChange(of: vm.showMenuBarMemory) { _, _ in vm.saveSettings() }
         .onChange(of: vm.showMenuBarTemperature) { _, _ in vm.saveSettings() }
         .onChange(of: vm.showMenuBarLogo) { _, _ in vm.saveSettings() }
-        .onChange(of: vm.showDesktopStats) { _, _ in vm.saveSettings() }
         // A crash log deletion that failed (a file that would not move to
         // the Trash, say) carries its own message; the row stays listed.
         .onChange(of: vm.crashLogs.lastError) { _, message in
@@ -541,20 +540,6 @@ struct SettingsView: View {
                 Label(L10n.tr("settings.menubar.header"), systemImage: "menubar.rectangle")
             } footer: {
                 Text(verbatim: L10n.tr("settings.menubar.footer"))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            // Desktop overlay: another arrangement of the same monitor data — not
-            // crammed into the menu bar, but resident at the top of the desktop.
-            // Which items are shown follows the three switches above, and the
-            // position is remembered separately once the user drags it (only the
-            // agent writes it, see OverlayPositionStore).
-            Section {
-                Toggle(L10n.tr("settings.overlay.show"), isOn: $vm.showDesktopStats)
-            } header: {
-                Label(L10n.tr("settings.overlay.header"), systemImage: "macwindow.on.rectangle")
-            } footer: {
-                Text(verbatim: L10n.tr("settings.overlay.footer"))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

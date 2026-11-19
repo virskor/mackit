@@ -24,11 +24,10 @@ enum TrayMenuRole: Equatable, Hashable {
     case diskAnalysis
     case loginItems
     case hardware
-    /// The four display switches, toggled in place.
+    /// The three display switches, toggled in place.
     case toggleCPU
     case toggleMemory
     case toggleTemperature
-    case toggleOverlay
     /// Updates / about / quit.
     case checkUpdates
     case about
@@ -47,14 +46,13 @@ enum TrayMenuEntry: Equatable {
     case toggle(role: TrayMenuRole, title: String, isOn: Bool)
 }
 
-/// The inputs the menu depends on: the four display switches' current
+/// The inputs the menu depends on: the three display switches' current
 /// states and whether an update feed exists.
 struct TrayMenuState: Equatable {
     var updateEnabled: Bool
     var showCPU: Bool
     var showMemory: Bool
     var showTemperature: Bool
-    var showOverlay: Bool
 }
 
 enum TrayMenuBuilder {
@@ -82,7 +80,6 @@ enum TrayMenuBuilder {
             .toggle(role: .toggleCPU, title: L10n.tr("settings.menubar.cpu"), isOn: state.showCPU),
             .toggle(role: .toggleMemory, title: L10n.tr("settings.menubar.memory"), isOn: state.showMemory),
             .toggle(role: .toggleTemperature, title: L10n.tr("settings.menubar.temperature"), isOn: state.showTemperature),
-            .toggle(role: .toggleOverlay, title: L10n.tr("settings.overlay.show"), isOn: state.showOverlay),
             .separator,
             .action(
                 role: .checkUpdates,

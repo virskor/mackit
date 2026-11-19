@@ -41,19 +41,6 @@ final class TrayStatusController: NSObject, NSPopoverDelegate {
     /// that arrive within this window of a close.
     private var lastPanelCloseAt: ContinuousClock.Instant?
 
-    /// The display-switch values last seen by the observation loop. The
-    /// four switches also gate the desktop overlay, so `sync()` runs only
-    /// when one of them actually changed — snapshot publishes happen every
-    /// two seconds and must not count as a settings change.
-    private var displaySwitches: DisplaySwitches
-
-    private struct DisplaySwitches: Equatable {
-        var cpu: Bool
-        var memory: Bool
-        var temperature: Bool
-        var overlay: Bool
-    }
-
     init(viewModel: AppViewModel) {
         self.viewModel = viewModel
         // .variableLength rather than a fixed width: the stats image already
@@ -62,12 +49,6 @@ final class TrayStatusController: NSObject, NSPopoverDelegate {
         // black or white with the menu bar's appearance.
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.panelPopover = NSPopover()
-        self.displaySwitches = DisplaySwitches(
-            cpu: viewModel.showMenuBarCPU,
-            memory: viewModel.showMenuBarMemory,
-            temperature: viewModel.showMenuBarTemperature,
-            overlay: viewModel.showDesktopStats
-        )
         super.init()
 
         // Both buttons go through one action; the dispatcher below tells
@@ -168,8 +149,7 @@ final class TrayStatusController: NSObject, NSPopoverDelegate {
             updateEnabled: UpdateController.isEnabled(feedURL: AppBridge.mainAppUpdateFeedURL()),
             showCPU: viewModel.showMenuBarCPU,
             showMemory: viewModel.showMenuBarMemory,
-            showTemperature: viewModel.showMenuBarTemperature,
-            showOverlay: viewModel.showDesktopStats
+            showTemperature: viewModel.showMenuBarTemperature
         )
         let menu = makeMenu(state: state)
         // Anchored just above the button's top edge (the point is in the
@@ -278,8 +258,6 @@ final class TrayStatusController: NSObject, NSPopoverDelegate {
             viewModel.toggleTrayDisplay(.memory)
         case .toggleTemperature:
             viewModel.toggleTrayDisplay(.temperature)
-        case .toggleOverlay:
-            viewModel.toggleTrayDisplay(.desktopOverlay)
         case .checkUpdates:
             AppBridge.send(.checkUpdates)
         case .about:
@@ -288,10 +266,34 @@ final class TrayStatusController: NSObject, NSPopoverDelegate {
             // open behind other windows of an app that cannot activate on
             // its own.
             NSApp.activate(ignoringOtherApps: true)
-            NSApp.orderFrontStandardAboutPanel(nil)
+            NSApp.orderFrontStandardAboutPanel(options: Self.aboutPanelOptions())
         case .quit:
             viewModel.quitFromTray()
         }
+    }
+
+    // MARK: - About panel
+
+    /// The identity the standard About panel would otherwise get wrong.
+    ///
+    /// With no options the panel reads everything from the running bundle —
+    /// the agent bundle, which is named "Mackit Agent" and carries no icon
+    /// of its own (LSUIElement never enters the Dock). The user opens
+    /// About through Mackit's menu bar presence, so the name and icon are
+    /// overridden with the product's; version and copyright already come
+    /// from the same Info.plist the main app uses and need no override.
+    private static func aboutPanelOptions() -> [NSApplication.AboutPanelOptionKey: Any] {
+        var options: [NSApplication.AboutPanelOptionKey: Any] = [
+            .applicationName: AppIdentity.productName
+        ]
+        // The icns is copied into the agent bundle's Resources by
+        // Scripts/build-app.sh. A missing file leaves the default generic
+        // icon rather than failing the panel.
+        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let icon = NSImage(contentsOf: iconURL) {
+            options[.applicationIcon] = icon
+        }
+        return options
     }
 
     // MARK: - Label image and observation
@@ -378,7 +380,6 @@ final class TrayStatusController: NSObject, NSPopoverDelegate {
             _ = viewModel.showMenuBarMemory
             _ = viewModel.showMenuBarTemperature
             _ = viewModel.showMenuBarLogo
-            _ = viewModel.showDesktopStats
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.stateDidChange()
@@ -388,18 +389,6 @@ final class TrayStatusController: NSObject, NSPopoverDelegate {
 
     private func stateDidChange() {
         updateLabel()
-        let current = DisplaySwitches(
-            cpu: viewModel.showMenuBarCPU,
-            memory: viewModel.showMenuBarMemory,
-            temperature: viewModel.showMenuBarTemperature,
-            overlay: viewModel.showDesktopStats
-        )
-        if current != displaySwitches {
-            displaySwitches = current
-            // The same hook the SwiftUI label carried: the master overlay
-            // switch and the three monitor switches re-check visibility.
-            StatsOverlayController.shared.sync()
-        }
         observeState()
     }
 }

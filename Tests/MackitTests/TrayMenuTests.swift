@@ -16,15 +16,13 @@ struct TrayMenuTests {
         updateEnabled: Bool = true,
         cpu: Bool = true,
         memory: Bool = true,
-        temperature: Bool = true,
-        overlay: Bool = false
+        temperature: Bool = true
     ) -> [TrayMenuEntry] {
         TrayMenuBuilder.entries(for: TrayMenuState(
             updateEnabled: updateEnabled,
             showCPU: cpu,
             showMemory: memory,
-            showTemperature: temperature,
-            showOverlay: overlay
+            showTemperature: temperature
         ))
     }
 
@@ -95,7 +93,6 @@ struct TrayMenuTests {
             (.toggleCPU, "settings.menubar.cpu"),
             (.toggleMemory, "settings.menubar.memory"),
             (.toggleTemperature, "settings.menubar.temperature"),
-            (.toggleOverlay, "settings.overlay.show"),
             (.checkUpdates, "menu.checkForUpdates"),
             (.about, "menubar.about"),
             (.quit, "menubar.quit"),
@@ -108,9 +105,9 @@ struct TrayMenuTests {
         }
     }
 
-    /// The four display switches are checkmarked per their current state.
+    /// The three display switches are checkmarked per their current state.
     @Test func togglesReflectTheSwitchStates() {
-        let list = entries(cpu: true, memory: false, temperature: true, overlay: false)
+        let list = entries(cpu: true, memory: false, temperature: true)
 
         func isOn(_ role: TrayMenuRole) -> Bool? {
             for entry in list {
@@ -124,7 +121,6 @@ struct TrayMenuTests {
         #expect(isOn(.toggleCPU) == true)
         #expect(isOn(.toggleMemory) == false)
         #expect(isOn(.toggleTemperature) == true)
-        #expect(isOn(.toggleOverlay) == false)
     }
 
     /// Without an update feed (a development build) the "Check for Updates"
@@ -159,24 +155,21 @@ struct TrayMenuTests {
         #expect(written.last?["showMenuBarCPU"] as? Bool == false)
     }
 
-    /// All four switches flip independently.
+    /// The three switches flip independently.
     @Test func everyDisplaySwitchToggles() {
         let vm = AppViewModel(statsPolling: false)
         vm.showMenuBarCPU = false
         vm.showMenuBarMemory = false
         vm.showMenuBarTemperature = false
-        vm.showDesktopStats = false
         vm.settingsSink = { _ in }
 
         vm.toggleTrayDisplay(.cpu)
         vm.toggleTrayDisplay(.memory)
         vm.toggleTrayDisplay(.temperature)
-        vm.toggleTrayDisplay(.desktopOverlay)
 
         #expect(vm.showMenuBarCPU)
         #expect(vm.showMenuBarMemory)
         #expect(vm.showMenuBarTemperature)
-        #expect(vm.showDesktopStats)
     }
 
     /// With no status-item controller attached (the main app, and every
