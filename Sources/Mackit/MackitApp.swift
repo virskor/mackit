@@ -307,7 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ProcessInfo.processInfo.disableAutomaticTermination("Mackit tray stays resident")
             // SwiftUI has nothing to mount in the agent (see
             // MackitAgentApp), so the VM and the status item are built
-            // here: the icon, the popover panel and the right-click menu
+            // here: the icon, the panel window and the right-click menu
             // are AppKit-owned (see TrayStatusController for why SwiftUI's
             // MenuBarExtra could not do the job).
             let vm = AppViewModel()

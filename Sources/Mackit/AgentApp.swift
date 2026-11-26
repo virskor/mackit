@@ -14,7 +14,7 @@ import SwiftUI
 /// minute. When the user clicks the tray icon, the agent brings the main
 /// program up on demand.
 ///
-/// The icon, its popover panel and its context menu are AppKit-owned (see
+/// The icon, its panel window and its context menu are AppKit-owned (see
 /// `TrayStatusController`, created by `AppDelegate` at launch): SwiftUI's
 /// `MenuBarExtra` cannot tell a left click from a right click — the same
 /// window opens for either — and the product wants a right-click-only

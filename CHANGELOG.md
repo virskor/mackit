@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.21] - 2026-11-26
+
+### Changed
+
+- **The tray panel no longer shows the wallpaper through its background** — the panel window paints its own opaque surface instead of the system's translucent popover chrome.
+- **The tray menu no longer spends CPU re-rendering while it is closed** — the hidden panel's view tree is torn down until the next open, and the process ranking is only sampled while the panel is visible.
+
 ## [1.0.20] - 2026-11-19
 
 ### Added

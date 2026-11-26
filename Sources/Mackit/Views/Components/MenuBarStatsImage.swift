@@ -26,7 +26,10 @@ import SwiftUI
 @MainActor
 enum MenuBarStatsImage {
     /// One group of "value + short label".
-    struct Metric {
+    ///
+    /// Equatable so the status item can skip a redraw when nothing the
+    /// image draws has changed (see `TrayStatusController.updateLabel`).
+    struct Metric: Equatable {
         let value: String
         let label: String
         /// What other values this group's value may take. Group width reserves the widest

@@ -266,6 +266,17 @@ final class AppViewModel {
     /// list daemons the user can actually see in the figures.
     private(set) var processRanking = ProcessRanking()
 
+    /// Whether the tray panel is open. Observable, unlike the controller's
+    /// `isPanelVisible`: the panel's SwiftUI body gates on this to tear its
+    /// content down while the window is hidden. A hidden window is not
+    /// skipped by SwiftUI — a hosting view re-lays-out its whole tree on
+    /// every state change even when ordered out — and the panel tree is
+    /// hundreds of views, so without the gate every two-second snapshot
+    /// publish re-laid-out an invisible panel (a sampled profile of the
+    /// running agent showed the layout engine as the top consumer).
+    /// `TrayStatusController` flips this when it shows or closes the window.
+    private(set) var isPanelPresented = false
+
     /// Full-resolution CPU histories behind the processor page's range
     /// picker. 24 hours at the two-second poll is the widest window; only a
     /// 60-point downsample enters the snapshot, so the menu's equality check
@@ -585,8 +596,8 @@ final class AppViewModel {
     /// Samples system stats once and publishes a snapshot. Visible within
     /// the module so tests can drive it directly.
     ///
-    /// `force` is for the panel's first frame: at `onAppear` the panel's
-    /// popover may not have registered as visible yet, but the detail pages
+    /// `force` is for the panel's first frame: at `onAppear` the panel
+    /// window may not have registered as visible yet, but the detail pages
     /// must not open on empty data.
     func sampleSystemStats(force: Bool = false) {
         // Do not sample when nobody is watching: sampling triggers a
@@ -601,13 +612,13 @@ final class AppViewModel {
 
     /// Whether the tray panel is on screen.
     ///
-    /// The panel lives in the status-item popover owned by
-    /// `TrayStatusController`; the controller reports its live visibility,
-    /// which AppKit updates on every show / close. This is more reliable
-    /// than SwiftUI's `onAppear`/`onDisappear`: the panel content is
-    /// long-lived, so a lifecycle flag can stay on after the popover
-    /// closes. Without a controller (the main app, and every test process)
-    /// the panel cannot be open.
+    /// The panel is the status-item window owned by `TrayStatusController`;
+    /// the controller reports its live visibility, which AppKit updates on
+    /// every show / close. This is more reliable than SwiftUI's
+    /// `onAppear`/`onDisappear`: the panel content is long-lived, so a
+    /// lifecycle flag can stay on after the window is ordered out. Without
+    /// a controller (the main app, and every test process) the panel cannot
+    /// be open.
     private var isTrayPanelVisible: Bool {
         TrayStatusController.current?.isPanelVisible ?? false
     }
@@ -618,6 +629,21 @@ final class AppViewModel {
     func beginPanelMonitoring() {
         processSampleCountdown = 0
         sampleSystemStats(force: true)
+    }
+
+    /// The tray controller's panel show / close hook.
+    ///
+    /// Mirrors the window's visibility into the observable `isPanelPresented`
+    /// flag the panel view gates on, and resets the process-sample countdown
+    /// so the first tick after opening refreshes the rankings immediately —
+    /// the ranking is not sampled at all while the panel is hidden (nothing
+    /// reads it then; the menu bar item only draws the stats).
+    func setPanelPresented(_ presented: Bool) {
+        guard isPanelPresented != presented else { return }
+        isPanelPresented = presented
+        if presented {
+            processSampleCountdown = 0
+        }
     }
 
     /// The processor page's range picker. The snapshot carries the
@@ -681,14 +707,16 @@ final class AppViewModel {
             )
             memorySwapHistory.append(sample.swap.usedFraction)
         }
-        // The all-process table costs one rusage per pid, so it runs on
-        // every other stats tick and only where it can be shown: the agent
-        // hosts the panel, while the main app's snapshot has no consumer for
-        // the ranking. The sampler measures its own elapsed time, which keeps
-        // the CPU percentages correct across the four-second interval and
-        // lets it treat a long idle gap as a new baseline instead of
-        // averaging over hours.
-        if isAgentProcess || isTrayPanelVisible {
+        // The all-process table costs one rusage plus one pidpath and one
+        // name read per pid (about three milliseconds on a 671-process
+        // machine — measured, not guessed), so it runs on every other stats
+        // tick and only while the panel is actually open: the menu bar item
+        // draws only the stats, and nothing else reads the ranking. The
+        // sampler measures its own elapsed time, which keeps the CPU
+        // percentages correct across the four-second interval and lets it
+        // treat a long idle gap as a new baseline instead of averaging over
+        // hours.
+        if isPanelPresented {
             if processSampleCountdown <= 0 {
                 processRanking = processSampler.sample()
                 processSampleCountdown = Self.processSampleIntervalTicks

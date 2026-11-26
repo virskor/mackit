@@ -3,14 +3,14 @@ import AppKit
 
 /// The panel opened by left-clicking the menu bar icon.
 ///
-/// Hosted in the status-item popover (`TrayStatusController`) rather than in
-/// SwiftUI's `MenuBarExtra`: the `.menu` style can only render "one icon +
-/// one text" — ratio bars, right-aligned values and multi-column layouts are
-/// all dropped by SwiftUI (only the first Text of an HStack's subviews
-/// survives) — and `MenuBarExtra` cannot tell the left click that opens this
-/// panel from the right click that opens the native context menu. For big
-/// number cards, monitor values and the app list, an NSPopover is the only
-/// way.
+/// Hosted in the status-item panel window (`TrayStatusController`) rather
+/// than in SwiftUI's `MenuBarExtra`: the `.menu` style can only render "one
+/// icon + one text" — ratio bars, right-aligned values and multi-column
+/// layouts are all dropped by SwiftUI (only the first Text of an HStack's
+/// subviews survives) — and `MenuBarExtra` cannot tell the left click that
+/// opens this panel from the right click that opens the native context
+/// menu. For big number cards, monitor values and the app list, an AppKit
+/// window owned by the controller is the only way.
 ///
 /// The panel is a persistent view rather than a modal menu, so the VM's
 /// real-time state can be read directly here; the poll pushes an update every
@@ -32,6 +32,49 @@ struct MenuBarPanelView: View {
     private var snapshot: MenuBarSnapshot { vm.menuSnapshot }
 
     var body: some View {
+        Group {
+            if vm.isPanelPresented {
+                panelBody
+            } else {
+                // Collapsed while the window is hidden. A hosted SwiftUI
+                // tree re-lays-out on every state change even when its
+                // window is ordered out, and this tree is hundreds of
+                // views — without the gate the agent re-rendered an
+                // invisible panel on every two-second snapshot publish.
+                // The body is rebuilt from the (live) snapshot the moment
+                // the controller marks the panel presented, before the
+                // window is ordered front.
+                Color.clear
+            }
+        }
+        .frame(width: panelWidth)
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { fitPanelContent(to: proxy.size) }
+                    .onChange(of: proxy.size) { _, size in
+                        fitPanelContent(to: size)
+                    }
+            }
+        )
+        // An open panel is the exception to the "nobody is watching" sampling
+        // guard: its detail pages need monitoring even when every menu-bar
+        // toggle is off. The VM checks the panel's visibility on every
+        // tick, so a closed panel stops sampling even though this view stays
+        // alive.
+        .onAppear { vm.beginPanelMonitoring() }
+    }
+
+    /// The panel body: everything the panel shows.
+    ///
+    /// The surface and the corner rounding are drawn here rather than by the
+    /// window layer. The fill is the window background — the same surface
+    /// the main window's pages use, so it follows light and dark appearance
+    /// the same way — and the shape clip keeps every surface inside the
+    /// rounded outline, including the tab band's square top corners. The
+    /// hosting window paints nothing of its own, so this is the whole panel
+    /// surface: opaque, with no system material behind it.
+    private var panelBody: some View {
         VStack(spacing: 0) {
             tabBar
 
@@ -65,22 +108,14 @@ struct MenuBarPanelView: View {
             Divider()
             bottomBar
         }
-        .frame(width: panelWidth)
-        .background(
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear { fitPanelContent(to: proxy.size) }
-                    .onChange(of: proxy.size) { _, size in
-                        fitPanelContent(to: size)
-                    }
-            }
-        )
-        // An open panel is the exception to the "nobody is watching" sampling
-        // guard: its detail pages need monitoring even when every menu-bar
-        // toggle is off. The VM checks the popover's visibility on every
-        // tick, so a closed panel stops sampling even though this view stays
-        // alive.
-        .onAppear { vm.beginPanelMonitoring() }
+        .background { bodyShape.fill(Theme.Palette.windowBackground) }
+        .clipShape(bodyShape)
+    }
+
+    /// The body's outline: the panel's rounded shape, one radius from
+    /// `Theme.Radius` like every other plate.
+    private var bodyShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
     }
 
     /// The tab header.
@@ -484,17 +519,18 @@ struct MenuBarPanelView: View {
         .padding(.vertical, 10)
     }
 
-    /// Sync the popover's content size to the panel's measured size.
+    /// Sync the panel window's frame to the panel's measured size.
     ///
-    /// The panel draws from the popover's `contentSize`, and NSPopover does
-    /// not track SwiftUI's fitting size while it is open: when the content
-    /// height changes (an app quitting removes a row from the ranking, this
-    /// app disappears from its own list after the main window closes, the
-    /// monitor switches collapse a whole row), the popover would keep its
-    /// previous height and either leave a transparent blank patch behind the
-    /// panel or clip the content. Every measurement is pushed into the
-    /// controller, which skips sub-half-pixel changes so the two-second
-    /// polling does not keep resetting the size.
+    /// The window is positioned by the controller (a plain window has no
+    /// positioning view the way a popover has), so it has to be told the
+    /// size every time it changes: when the content height shrinks or grows
+    /// (an app quitting removes a row from the ranking, this app disappears
+    /// from its own list after the main window closes, the monitor switches
+    /// collapse a whole row), the window would otherwise keep its previous
+    /// height and either leave a blank patch behind the panel or clip the
+    /// content. Every measurement is pushed into the controller, which
+    /// skips sub-half-pixel changes so the two-second polling does not keep
+    /// resetting the frame.
     @MainActor
     private func fitPanelContent(to size: CGSize) {
         TrayStatusController.current?.panelContentSizeChanged(size)
@@ -663,11 +699,11 @@ private struct AppMemoryRow: View {
 
 /// Dismiss the tray panel.
 ///
-/// The panel lives in the status-item popover (`TrayStatusController`); a
-/// transient popover already closes on any outside click, but the buttons
-/// that change windows — open main window, settings, clean — close it
-/// explicitly, so the panel never lingers over a window that just came to
-/// the front.
+/// The panel is the status-item window owned by `TrayStatusController`; a
+/// click outside the app dismisses it through the controller's dismissal
+/// monitor, but the buttons that change windows — open main window,
+/// settings, clean — close it explicitly, so the panel never lingers over a
+/// window that just came to the front.
 @MainActor
 func dismissPanel() {
     TrayStatusController.current?.closePanel()
